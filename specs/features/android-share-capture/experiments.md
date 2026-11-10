@@ -119,8 +119,42 @@ Package manager: `pm query-activities` resolves `MainActivity` for `SEND text/pl
 
 ## Not verified
 
-- After the device run (2026-11-10): a relaunch from Recents after a device reboot (saved state may be absent); a shared image while the app is not running or in the foreground (images were shared to the running app only); the Capture box into an encrypted project other than by the hand-placed marker; a second device or Android version; Cancel or an escape while a capture never settles (Cancel is disabled while capturing, so a stuck capture needs the app closed). Task 17 appends the final list.
+- Any device or Android version other than the Pixel 7 Pro on Android 17 (WebView 157.0.8103.50).
+- A share of several near-cap images read in turn; a large share from a slow provider.
+- SEND_MULTIPLE of text (no filter offers it).
+- Hosted web: there is no share target there (OQ-186).
+- Native storage has no encryption layer: a native write, including the typed capture, is not encrypted; making it encrypting is a separate feature.
+- Whether an encrypted project can exist on a device (the run used a hand-placed marker).
+- FR-15 paths Task 14 did not run: a shared image while the app is not running or in the foreground (images were shared to the running app only); a relaunch from Recents after a device reboot (saved state may be absent).
+- A capture that never settles cannot be cancelled (FU-2, known limit).
+- The item summary missing from the first cold-start sheet: not reproduced; cause not established.
+- The Capture entry with no project in the workspace, and the "project needed" message, on the device (component tests only).
 
 ## Acceptance
 
-Not yet written. Task 17 appends here.
+Task 17 (lead, 2026-11-10). Main checkout, outside the sandbox. The CI command list was re-read (`grep -hE "^\s+(- )?run:" .github/workflows/*.yml | sort -u`); it matches the task's list, plus `pnpm --filter getwrite-android build` and the CLI `--help` smoke steps, both run. Code commands ran at efc06423; the two later commits (5f564418, 653a90f9) change only `specs/`, `docs/` and `CLAUDE.md` files, and `pnpm run format:check` ran after them.
+
+| Command | Result |
+|---|---|
+| `pnpm run format:check` (root, at 653a90f9) | exit 0 |
+| frontend `pnpm lint` | exit 0 (warnings only) |
+| frontend `pnpm run check:no-hex` | exit 0 |
+| frontend `pnpm typecheck` | exit 0 |
+| frontend `pnpm test:ci` | exit 1: 11,628 passed, 1 failed, 7 expected fail, 1 skipped. The failure is a 5 s timeout in `tests/unit/indexer-queue.test.ts` ("records per-save time with and without one isExtra unlocked project.json read", Feature 103 Task 1), a file this branch does not change; the same test timed out in Feature 106's run. Rerun alone 5 times: 25/25 each time. Cause not established. |
+| frontend build (`pnpm --filter getwrite-frontend build`) | exit 0 |
+| frontend `pnpm build:native` | exit 0 |
+| frontend `pnpm test:e2e` (Storybook :6006 free) | exit 0, 249 passed |
+| `pnpm --filter getwrite-electron typecheck` / `test` / `build` | exit 0 / 565 passed / exit 0 |
+| `pnpm --filter getwrite-cli typecheck` / `test` / `build` | exit 0 / 164 passed / exit 0 |
+| CLI smoke (`--help`, `doctor --help`, `prune --help`) | exit 0 |
+| `pnpm --filter getwrite-android build` | exit 0 (placeholder) |
+| Gradle `:app:assembleDebug` | BUILD SUCCESSFUL (Task 13 and each device-run rebuild) |
+
+`pnpm knip` (not in CI; owner's request), compared with the same command on `main` in a detached worktree with linked `node_modules`:
+- Unused exports 156 (main 154). New: `InvalidProjectIdCoreError` re-export in `inbox-image-capture-core.ts`, `TREE_REFRESH_FAILED_MESSAGE` in `useRefreshOpenProjectTree.ts`.
+- Unused exported types 186 (main 174). New: `ImageCaptureCreated`, `ImageCaptureRefusalReason`, `ImageCaptureRefused` (`inbox-image-capture-core.ts`); `ShareItemCaptured`, `ShareItemFailed`, `ShareItemRefused`, `ShareListenerHandle`, `ShareReceivedEventName` (`share-capture-types.ts`); `ShareSessionOutcome`, `ShareSessionPhase`, `UnlockFailureReason` (`share-session.ts`); `ShareSheetPhase` (`ShareSheet.tsx`).
+- Unused files 295 (main 50): every added entry is under `android/android/app/build/` or `android/android/app/src/main/assets/public/`, the local Gradle output and synced web assets, ignored by git and absent from the main worktree and from a CI checkout. No source file is new in the list.
+- Gone on the branch: `@capacitor/android` and `@capacitor/core` as unused devDependencies of `android/package.json`.
+- Duplicate exports 14 (main 14).
+
+FR-16: no `package.json`, lockfile or Gradle file changed on the branch (`git diff --stat main..HEAD`).
