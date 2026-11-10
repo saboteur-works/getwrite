@@ -48,7 +48,7 @@ export interface ShareReceivedEvent {
 export type ShareReceivedEventName = "shareReceived";
 
 /** A handle that removes a listener. */
-export interface ShareListenerHandle {
+interface ShareListenerHandle {
   remove: () => Promise<void>;
 }
 
@@ -64,7 +64,7 @@ export interface ShareInPluginContract {
 }
 
 /** An item that became a resource. */
-export interface ShareItemCaptured {
+interface ShareItemCaptured {
   status: "captured";
   index: number;
   kind: ShareItem["kind"];
@@ -74,7 +74,7 @@ export interface ShareItemCaptured {
 }
 
 /** An item refused by a rule (for example the size cap); nothing was written. */
-export interface ShareItemRefused {
+interface ShareItemRefused {
   status: "refused";
   index: number;
   kind: ShareItem["kind"];
@@ -82,7 +82,7 @@ export interface ShareItemRefused {
 }
 
 /** An item that failed (for example a read error); never the same as a refusal. */
-export interface ShareItemFailed {
+interface ShareItemFailed {
   status: "failed";
   index: number;
   kind: ShareItem["kind"];

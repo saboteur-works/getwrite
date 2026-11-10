@@ -157,4 +157,8 @@ Task 17 (lead, 2026-11-10). Main checkout, outside the sandbox. The CI command l
 - Gone on the branch: `@capacitor/android` and `@capacitor/core` as unused devDependencies of `android/package.json`.
 - Duplicate exports 14 (main 14).
 
+Knip cleanup after Gate 6 (owner, 2026-11-10): the two new unused exports and eleven of the twelve new unused exported types were un-exported. `ShareReceivedEventName` stays exported because `tests/shareInAndroidNative.test.ts` reads it from the source text. Knip after: Unused exports 154 (main 154), Unused exported types 175 (main 174; the one extra is `ShareReceivedEventName`). Frontend typecheck, Electron and CLI typechecks pass. `pnpm test:ci` (with `next dev` running): 11,628 passed, 1 failed, the same `indexer-queue.test.ts` timeout as above.
+
+Desktop check of the tree refresh (Stage 6.5, 2026-11-10): `next dev`, Playwright Chromium. With "F106 capture check" open, Cmd/Ctrl+Shift+K, typed "F107 desktop tree refresh check", Enter: the toast read "Captured to F106 capture check", the item appeared under the Inbox in the open project's tree without a reopen, and the project went from 5 to 6 resources on disk. The only console errors were the existing load-time 404s (`favicon.ico`, `/api/auth/get-session`).
+
 FR-16: no `package.json` or lockfile changed on the branch. `git diff --stat main..HEAD` lists six Gradle files under `android/android/` (129 insertions); `git log main..HEAD` shows the only commit touching them is a9311ff9, which began tracking the stock Capacitor project (owner decision after Task 1). No later commit edits a Gradle file.

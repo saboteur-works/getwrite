@@ -26,7 +26,7 @@ import type {
 } from "./api/share-capture-types";
 
 /** Where the current share stands. */
-export type ShareSessionPhase =
+type ShareSessionPhase =
   | "idle"
   | "choosing"
   | "needs-project"
@@ -35,7 +35,7 @@ export type ShareSessionPhase =
   | "ended";
 
 /** How the last share ended, shown until dismissed. */
-export type ShareSessionOutcome =
+type ShareSessionOutcome =
   | { kind: "result"; result: ShareResult }
   | { kind: "refused"; message: string }
   | { kind: "discarded"; message: string };
@@ -60,7 +60,7 @@ export interface ShareSessionState {
 }
 
 /** Why an unlock did not go ahead. */
-export type UnlockFailureReason = "declined" | "limited";
+type UnlockFailureReason = "declined" | "limited";
 
 /** Everything that can happen to the session. */
 export type ShareSessionAction =

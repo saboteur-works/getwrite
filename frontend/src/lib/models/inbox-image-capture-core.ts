@@ -49,8 +49,6 @@ import type {
   CaptureNeedsChoice,
 } from "../api/inbox-capture-types";
 
-export { InvalidProjectIdCoreError };
-
 /** Shown when seeding the compile exclusion threw; the item is kept. */
 export const IMAGE_CAPTURE_SEEDING_FAILED_MESSAGE =
   "The image was captured, but it could not be left out of compile by default because saving the compile default failed. Leave the image out in the Compile dialog.";
@@ -77,13 +75,10 @@ export interface ImageCaptureRequest {
 }
 
 /** Why an image was refused before any write. */
-export type ImageCaptureRefusalReason =
-  | "too-large"
-  | "unsupported-type"
-  | "empty";
+type ImageCaptureRefusalReason = "too-large" | "unsupported-type" | "empty";
 
 /** The item was written. */
-export interface ImageCaptureCreated {
+interface ImageCaptureCreated {
   status: "created";
   resourceId: string;
   inboxFolderId: string;
@@ -91,7 +86,7 @@ export interface ImageCaptureCreated {
 }
 
 /** The image was refused; nothing was written. */
-export interface ImageCaptureRefused {
+interface ImageCaptureRefused {
   status: "refused";
   reason: ImageCaptureRefusalReason;
   message: string;

@@ -18,7 +18,7 @@ import { classifyShareText } from "../../src/lib/models/share-item-core";
 import type { CaptureProjectOption } from "../../src/hooks/useCaptureProjectChoice";
 
 /** Which view the sheet shows: choosing, waiting on the capture, or the outcome. */
-export type ShareSheetPhase = "picking" | "pending" | "result";
+type ShareSheetPhase = "picking" | "pending" | "result";
 
 export interface ShareSheetProps {
   /** Whether the dialog is visible. */

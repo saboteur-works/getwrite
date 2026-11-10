@@ -8,7 +8,7 @@ import { loadResources, setFolders } from "../../src/store/resourcesSlice";
 import type { RootState } from "../../src/store/store";
 import { useOptionalTrashRefresh } from "../Layout/TrashRefreshContext";
 
-export const TREE_REFRESH_FAILED_MESSAGE =
+const TREE_REFRESH_FAILED_MESSAGE =
   "Your capture was saved, but the project tree could not be refreshed. Reopen the project to see it.";
 
 /**
