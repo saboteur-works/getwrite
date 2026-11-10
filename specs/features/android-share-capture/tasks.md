@@ -189,7 +189,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 14, 15
 **Estimate:** 3
 **Notes:** Satisfies FR-18. Prose is the scribe stage's job; the orchestrator passes it the files and the facts recorded in `experiments.md`. Do not name a cause in any document.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: LEAD-RUN: final suites exactly as CI runs them
 **What:** Run every CI command from the places the workflows run them, run `pnpm knip` and compare with main, and write the acceptance record including the "Not verified" list.

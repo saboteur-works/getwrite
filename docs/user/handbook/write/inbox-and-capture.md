@@ -25,6 +25,39 @@ The first non-empty line of your note, up to 80 characters, becomes the note's n
 
 If something goes wrong, the window stays open, your text stays in the box, and a message says that nothing was captured, or what was captured and what wasn't.
 
+### Capture on Android
+
+On Android, the top bar has a **Capture** button, a small icon button. Choose it to open the same **Capture** window and type a note as described above.
+
+#### Share to GetWrite
+
+You can also send things to GetWrite from other Android apps. GetWrite appears in the share sheet for text, links and images. It does not appear for video.
+
+1. In another app, choose Share, then GetWrite.
+2. In the **Share to GetWrite** window, choose the **Project**. Every item goes to that project's Inbox. Nothing is saved until you choose **Capture**.
+3. Choose **Capture**. While GetWrite saves, **Cancel** is turned off.
+4. A list shows what happened to each item. Choose **Done**.
+
+- Each item becomes its own note or image in the Inbox. If you share several images, you get several resources.
+- A shared link or a piece of text becomes a note. A shared image becomes an image resource.
+- An image over 30 MB is refused, and the list says so with its size. The other items you shared are still saved.
+- If you have no project, the window says a project is needed and nothing is saved. Create or open a project, then share again.
+- Shared items are left out of **Compile Project** by default, like any Inbox item. See "What the Inbox leaves out" below.
+- Shared text is recorded in the [Daily Writing Log](writing-log.md) as an import, so it doesn't count toward your daily goal. Images add nothing to the log.
+- If the project's Inbox is in Trash, GetWrite asks you to restore it or make a new one, as it does for a typed capture.
+
+#### Encrypted projects on Android
+
+GetWrite on Android can't encrypt what it saves. If a project is marked as encrypted, both the share window and the **Capture** window refuse it. Nothing is saved, and a message says so. Neither asks you to unlock the project. Capture into a project that isn't encrypted instead.
+
+Anything GetWrite saves on Android, including a note you type into **Capture**, is stored without encryption.
+
+#### If you reopen the app
+
+Sharing something and then reopening GetWrite from the recent apps list does not share it again, including after Android stopped the app in the background. If you reopen GetWrite from the recent apps list after restarting your phone, whether the share is repeated has not been checked.
+
+If a capture never finishes, you can't cancel it. Close the app.
+
 ### The Inbox
 
 The Inbox is a folder at the top level of the project. GetWrite creates it the first time you capture into the project. The folder is named **Inbox**, and you can rename it or move it. GetWrite still treats it as the Inbox.
