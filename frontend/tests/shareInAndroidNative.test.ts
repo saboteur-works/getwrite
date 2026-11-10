@@ -128,6 +128,25 @@ describe("ShareInPlugin source", () => {
     expect(plugin).toContain("setAction(Intent.ACTION_MAIN)");
   });
 
+  it("delivers from both load() and handleOnNewIntent, and skips an intent already reported", () => {
+    expect(plugin).toMatch(
+      /void\s+load\s*\(\s*\)\s*\{\s*deliver\(getActivity\(\)\.getIntent\(\)\)/,
+    );
+    expect(plugin).toMatch(
+      /handleOnNewIntent\s*\(\s*Intent\s+intent\s*\)\s*\{[^}]*deliver\(intent\)/,
+    );
+    const deliverBody = plugin.slice(plugin.indexOf("private void deliver("));
+    expect(deliverBody).toMatch(
+      /if\s*\(\s*intent\s*==\s*lastDeliveredIntent\s*\)\s*\{\s*return;/,
+    );
+    expect(deliverBody).toMatch(/lastDeliveredIntent\s*=\s*intent;/);
+    const ack = plugin.slice(
+      plugin.indexOf("public void acknowledge("),
+      plugin.indexOf("private void clearIntent("),
+    );
+    expect(ack).not.toContain("lastDeliveredIntent");
+  });
+
   it("reads the size column and type per item", () => {
     expect(plugin).toContain("OpenableColumns.SIZE");
     expect(plugin).toContain("getType(uri)");

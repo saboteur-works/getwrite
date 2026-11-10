@@ -37,6 +37,13 @@ public class ShareInPlugin extends Plugin {
     private Intent pendingIntent;
     private String pendingShareId;
 
+    /**
+     * The last intent object reported. Not cleared by acknowledge: a later
+     * redelivery of the same object is dropped here (and by the action check,
+     * since acknowledge sets the action to MAIN on it).
+     */
+    private Intent lastDeliveredIntent;
+
     /** Reports a share that launched the app (cold start). */
     @Override
     public void load() {
@@ -78,6 +85,14 @@ public class ShareInPlugin extends Plugin {
     }
 
     private void deliver(Intent intent) {
+        // Reading of BridgeActivity.java:44-52 (Capacitor 8.4.2), not tested on its own:
+        // load() creates the bridge and then calls onNewIntent(getIntent()), so a cold
+        // start reaches this method twice with the same launch Intent (load() and
+        // handleOnNewIntent). Both retained events would be replayed, so skip an
+        // Intent object already reported.
+        if (intent == lastDeliveredIntent) {
+            return;
+        }
         if (intent == null || (intent.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) {
             return;
         }
@@ -102,6 +117,7 @@ public class ShareInPlugin extends Plugin {
         JSObject event = new JSObject();
         event.put("shareId", shareId);
         event.put("items", items);
+        lastDeliveredIntent = intent;
         pendingIntent = intent;
         pendingShareId = shareId;
         notifyListeners(EVENT_NAME, event, true);
