@@ -77,10 +77,24 @@ function decodeBase64(data: string | Blob): Uint8Array {
   return out;
 }
 
-/** Loads the real plugin through a dynamic import; native only. */
+/**
+ * Loads the real plugin through a dynamic import; native only.
+ *
+ * Never resolves a promise with the plugin object itself. Likely cause, from
+ * a Pixel 7 Pro device log (`"Filesystem.then()" is not implemented on
+ * android`) and not yet isolated by a further experiment: resolving a promise
+ * with the Capacitor plugin proxy makes promise resolution read `.then` on
+ * it; the native proxy treats `then` as a plugin method, which rejects
+ * separately and never settles the awaiting caller. A plain wrapper object
+ * has no `then`, so it resolves normally.
+ */
 async function loadRealFilesystem(): Promise<SharedContentFilesystem> {
   const { Filesystem } = await import("@capacitor/filesystem");
-  return Filesystem as unknown as SharedContentFilesystem;
+  return {
+    readFile: (options) => Filesystem.readFile(options),
+    readFileInChunks: (options, callback) =>
+      Filesystem.readFileInChunks(options, callback),
+  };
 }
 
 /** Wraps decoded bytes: empty is a failure, never an empty image. */

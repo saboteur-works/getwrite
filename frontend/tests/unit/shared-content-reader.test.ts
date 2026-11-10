@@ -5,7 +5,7 @@
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   readSharedImage,
   SHARED_READ_CHUNK_BYTES,
@@ -202,6 +202,44 @@ describe("readSharedImage", () => {
     expect(fs.calls.every((c) => !/write|append|copy|mkdir/i.test(c))).toBe(
       true,
     );
+  });
+
+  it("settles when the real plugin is a thenable proxy (device log: Filesystem.then() is not implemented)", async () => {
+    // Stand-in for the Capacitor native proxy: reading `then` yields a method
+    // that rejects and never calls resolve/reject, so a promise resolved with
+    // the proxy itself never settles.
+    const proxy = new Proxy(
+      {
+        readFile: async () => ({ data: b64(makeBytes(16)) }),
+        readFileInChunks: async () => "cb-1",
+      },
+      {
+        get(target, prop, receiver) {
+          if (prop === "then") {
+            return () =>
+              Promise.reject(
+                new Error('"Filesystem.then()" is not implemented'),
+              );
+          }
+          return Reflect.get(target, prop, receiver) as unknown;
+        },
+      },
+    );
+    vi.resetModules();
+    vi.doMock("@capacitor/filesystem", () => ({ Filesystem: proxy }));
+    try {
+      const { readSharedImage: read } =
+        await import("../../src/store/transport/shared-content-reader");
+      const outcome = await Promise.race([
+        read(item(16)).then((r) => r.status),
+        new Promise<string>((resolve) =>
+          setTimeout(() => resolve("hung"), 1000),
+        ),
+      ]);
+      expect(outcome).toBe("read");
+    } finally {
+      vi.doUnmock("@capacitor/filesystem");
+    }
   });
 
   it("imports no node:* module, no React and no static Capacitor import", () => {
