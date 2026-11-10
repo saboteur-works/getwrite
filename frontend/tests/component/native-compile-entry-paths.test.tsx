@@ -41,6 +41,11 @@ vi.mock("../../components/TipTapEditor", () => ({
   __esModule: true,
   default: () => <textarea data-testid="tiptap-mock" />,
 }));
+// Feature 107: AppShell mounts the share host on native; the real plugin
+// cannot register in jsdom, so its listener is faked inert here.
+vi.mock("../../src/lib/api/share-in", () => ({
+  startShareListener: async () => ({ stop: async () => undefined }),
+}));
 vi.mock("../../src/lib/models/native-bootstrap", async () => {
   const { createFakeCapacitorFilesystem } =
     await import("../../src/lib/models/capacitor-filesystem");

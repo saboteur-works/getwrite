@@ -27,7 +27,8 @@ export type CaptureBoxIssue =
   | { kind: "writingLogNotice" }
   | { kind: "network" }
   | { kind: "server" }
-  | { kind: "pairedRefused" };
+  | { kind: "pairedRefused" }
+  | { kind: "encryptedRefused"; message: string };
 
 /** How an issue is announced: `alert` for a failure, `status` for a notice. */
 type CaptureBoxIssueSeverity = "alert" | "status";
@@ -111,6 +112,8 @@ export function describeCaptureIssue(
         message:
           "Nothing was captured: this paired device is not allowed to capture.",
       };
+    case "encryptedRefused":
+      return { severity: "alert", message: issue.message };
   }
 }
 

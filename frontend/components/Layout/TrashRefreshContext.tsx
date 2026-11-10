@@ -72,6 +72,15 @@ export function useTrashRefresh(): TrashRefreshContextValue {
   return value;
 }
 
+/**
+ * Like {@link useTrashRefresh} but returns `null` outside the provider, for
+ * components that signal a refresh only when the page that owns the project
+ * state is present (the Capture hosts).
+ */
+export function useOptionalTrashRefresh(): TrashRefreshContextValue | null {
+  return useContext(TrashRefreshContext);
+}
+
 export default function TrashRefreshProvider({
   children,
 }: {

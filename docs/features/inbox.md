@@ -2,7 +2,7 @@
 
 Feature 106. Spec: [specs/features/inbox-quick-capture.md](../../specs/features/inbox-quick-capture.md). Measurements and device records: [experiments.md](../../specs/features/inbox-quick-capture/experiments.md). User page: [docs/user/handbook/write/inbox-and-capture.md](../user/handbook/write/inbox-and-capture.md).
 
-A writer presses Cmd/Ctrl+Shift+K (or chooses "Capture..." in the resource palette), types, presses Enter, and the text becomes an ordinary text resource in the Inbox of a project they chose, without that project being open. The Inbox is a folder named by `config.inboxFolderId` and created on first capture. This feature covers desktop, hosted web and a paired device. The Android capture button and share target are Feature 107 and call the same core in process.
+A writer presses Cmd/Ctrl+Shift+K (or chooses "Capture..." in the resource palette), types, presses Enter, and the text becomes an ordinary text resource in the Inbox of a project they chose, without that project being open. The Inbox is a folder named by `config.inboxFolderId` and created on first capture. This feature covers desktop, hosted web and a paired device. The Android capture button and share target are Feature 107 (see "Android entry and share target" below) and call the same cores in process.
 
 ## The Inbox
 
@@ -67,11 +67,42 @@ Cmd/Ctrl+Shift+K is an in-app keydown handler, not a global shortcut. Recorded i
 - Synthetic key input in the Playwright builds of Chromium, Firefox and WebKit reached the handler with `preventDefault` taking effect. That run does not show what a real browser's own menu shortcut or the OS does with the key.
 - The Electron shell defines no custom menu, accelerator or global shortcut (a search of `electron/src`). Whether its default menu binds the key was not read or run.
 
+## Android entry and share target (Feature 107)
+
+Spec: [specs/features/android-share-capture.md](../../specs/features/android-share-capture.md). Records, including the device run: [experiments.md](../../specs/features/android-share-capture/experiments.md). Native only; hosted web has no share target.
+
+- Capture entry: `ShellSettingsMenu.tsx` shows a "Capture" icon button in the top bar when `AppShell` passes `onCapture` (native). It opens the same `CaptureBox`.
+- Share target: the manifest offers the app for `SEND text/plain`, `SEND image/*` and `SEND_MULTIPLE image/*` only; a video is not offered (`pm query-activities` on the device resolved the activity for the first three and not for `SEND video/mp4`). `ShareCaptureHost.tsx` is mounted in `AppShell` so a share that arrives before any Capture open is not missed; it shows `ShareSheet.tsx` (project picker, then a per-item result).
+- Pipeline: `share-runner.ts` captures every item in turn; each becomes its own resource. Text goes to `captureToInboxCore` with `origin: "shared"` (an import entry in the writing log, no document id; a trimmed text that is exactly one http or https URL is stored as the body and as `capturedLink`, see `share-item-core.ts`). An image is read through `shared-content-reader.ts` and written by `captureImageToInboxCore` (`inbox-image-capture-core.ts`) through `uploadMediaResourceCore`, with `capturedAt`, a compile exclusion like text, and no writing-log entry. The Inbox rules (compile exclusion, goals, filing) are the ones above.
+- Size: an image over 31,457,280 bytes (30 MB) is refused on its own with `mediaTooLargeToShowMessage(size)`; the other items are still saved. A size the provider does not report goes to a counted read. On the device, an over-cap image with a reported size was refused without a `content://` read.
+- No staging copy: shared bytes are read from the `content://` URI after the project is chosen and are written only by the capture core. On the device, the grant still allowed the read after the project picker.
+- Refusals: no project open or listed gives a "project is needed" message and writes nothing. An Inbox in Trash raises the same restore-or-new choice as a typed capture.
+- Cancel is disabled in `ShareSheet` while a capture runs; Escape and outside-click are ignored then. Known limit (FU-2): a capture that never finishes cannot be cancelled, so the app has to be closed. No abort exists in `runShare`.
+- A capture into the open project refreshes the page's project state (`useRefreshOpenProjectTree`, both hosts), so the Inbox and item appear at once. `stored-project-inbox.ts` updates the stored Inbox id when a capture created it.
+
+### Native storage has no encryption layer
+
+`native-bootstrap.ts` binds `capacitorFsAdapter` with no `workspaceEncryptionAdapter` or `encryptingAdapter`, so a native write is not encrypted, including the typed capture from Feature 106. A probe in `experiments.md` (FR-1 (c)) with an encrypted-marked project wrote the 70-byte input unchanged through the raw adapter and a sealed envelope through the workspace adapter. Making native storage encrypting is a separate feature and is not built.
+
+Decision: on native, `native-encrypted-project-guard.ts` refuses a project that carries the encrypted marker, for the share sheet and for the Capture box alike (`encrypted-project-refusal.ts` carries the message). Nothing is written and no unlock prompt appears. A marker that cannot be read is treated as encrypted and refused, with its own message. Whether an encrypted project can exist on a device at all is not measured; the device run used a hand-placed marker.
+
+### Device run (Pixel 7 Pro, Android 17, 2026-11-10)
+
+As recorded in `experiments.md`:
+
+- Text share with the app not running, in the background, and into the open project: each produced one sheet and wrote to the Inbox. Images were shared to the running app only; a share while the app is not running was not run for images.
+- A share and a typed capture were each refused for the hand-placed encrypted marker, with no prompt after the fix.
+- Two images, one over the cap: "1 captured, 1 refused", the other image saved, nothing partial.
+- Relaunch: after the fix, a share-rooted task killed in the background with `am kill` and reopened from Recents delivered nothing (start page). `MainActivity.java` strips the launch intent when saved state is present, and `ShareInPlugin.java` drops a launch intent object it has already reported and clears the consumed intent on `acknowledge`. A relaunch from Recents after a device reboot (saved state may be absent) was not run.
+- The cold-start sheet once showed only "1 item shared" for the item summary before a fix to cold-start delivery; it was not reproduced afterwards.
+
+Not run: another device or Android version, several near-cap images in turn, SEND_MULTIPLE of text, a large share from a slow provider, a share of an image while the app is not running or in the foreground, and Cancel or escape on a capture that never settles. Unit tests with fakes are not evidence about the device.
+
 ## Not verified
 
 - The shortcut with a physical keypress in Safari, in the Firefox app, in the Electron desktop shell, and on Windows or Linux (including Firefox there).
 - A paired-device run of capture and of its refusal, and hosted web against a real tenant.
 - A locked-project capture in the real unlock flow.
-- The Android entry (Feature 107).
+- The Android entry and share target beyond the device run listed above (Feature 107).
 - The `plainText`-only create path, a built-output check of the runtime inlining, and the folder-tree read cost at sizes other than the one recorded.
 - Unit tests with fakes are not evidence about browsers, devices or a real tenant.

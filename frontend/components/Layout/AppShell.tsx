@@ -59,6 +59,7 @@ import ShellSettingsMenu, {
 } from "./ShellSettingsMenu";
 import ShellModalCoordinator from "./ShellModalCoordinator";
 import CaptureBoxHost from "../Capture/CaptureBoxHost";
+import ShareCaptureHost from "../Capture/ShareCaptureHost";
 import type { ProjectGoalSavedHandler } from "./ProjectSettingsDialog";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
@@ -1225,6 +1226,12 @@ export default function AppShell({
           onClose={() => setIsCaptureBoxOpen(false)}
         />
       ) : null}
+      {/* Feature 107: the share listener must exist from the shell's first
+          mount on native, so a share arriving before any Capture open is
+          taken. Not mounted, and the plugin never called, elsewhere. */}
+      {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native" ? (
+        <ShareCaptureHost />
+      ) : null}
       <ShellLayoutProvider>
         <UpdateNotice />
 
@@ -1246,6 +1253,15 @@ export default function AppShell({
           }
           trailingSlot={
             showSidebars ? <ShellSidebarToggle side="right" /> : undefined
+          }
+          onCapture={
+            process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native"
+              ? () => {
+                  setIsSettingsMenuOpen(false);
+                  setHasCaptureBoxBeenOpened(true);
+                  setIsCaptureBoxOpen(true);
+                }
+              : undefined
           }
         />
 

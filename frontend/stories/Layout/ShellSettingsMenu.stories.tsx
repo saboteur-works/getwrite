@@ -33,6 +33,46 @@ export const Default: Story = {
   ),
 };
 
+/** Native runtime: the top bar carries the Capture entry (Feature 107). */
+export const WithCaptureEntry: Story = {
+  render: () => (
+    <div className="bg-gw-chrome min-h-[80px]">
+      <ShellSettingsMenu
+        projectName="The Long Winter"
+        isDarkMode={false}
+        isOpen={false}
+        isProjectMenuOpen={false}
+        hasProject={true}
+        onToggleOpen={noop}
+        onClose={noop}
+        onToggleProjectMenuOpen={noop}
+        onCloseProjectMenu={noop}
+        onAction={action("onAction")}
+        onCapture={action("onCapture")}
+      />
+    </div>
+  ),
+};
+
+export const WithCaptureEntryNoProject: Story = {
+  render: () => (
+    <div className="bg-gw-chrome min-h-[80px]">
+      <ShellSettingsMenu
+        isDarkMode={false}
+        isOpen={false}
+        isProjectMenuOpen={false}
+        hasProject={false}
+        onToggleOpen={noop}
+        onClose={noop}
+        onToggleProjectMenuOpen={noop}
+        onCloseProjectMenu={noop}
+        onAction={action("onAction")}
+        onCapture={action("onCapture")}
+      />
+    </div>
+  ),
+};
+
 export const NoProject: Story = {
   render: () => (
     <div className="bg-gw-chrome min-h-[80px]">

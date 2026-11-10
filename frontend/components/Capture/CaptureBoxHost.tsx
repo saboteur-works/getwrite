@@ -39,17 +39,21 @@ import type {
   CaptureResult,
   InboxTrashChoice,
 } from "../../src/lib/api/inbox-capture-types";
+import {
+  EncryptedProjectCaptureRefusedError,
+  isEncryptedProjectCaptureRefusal,
+} from "../../src/lib/api/encrypted-project-refusal";
 import { isLimitRefusalError } from "../../src/lib/api/limit-refusal";
 import { writeLastCapturedProjectId } from "../../src/lib/capture-preferences";
 import { CAPTURE_TEXT_MAX_LENGTH } from "../../src/lib/models/inbox-capture-text";
 import { isLockedAccessError } from "../../src/lib/models/crypto/locked-errors";
 import {
-  getProjectDirectoryId,
   selectActiveProjectDirectoryId,
   setProject,
-  type StoredProject,
 } from "../../src/store/projectsSlice";
 import type { RootState } from "../../src/store/store";
+import { findStoredByDirectoryId } from "./stored-project-inbox";
+import { useRefreshOpenProjectTree } from "./useRefreshOpenProjectTree";
 
 export interface CaptureBoxHostProps {
   /** Whether the Capture box is open. */
@@ -100,6 +104,9 @@ function refusalIssue(notices: CaptureNotice[]): CaptureBoxIssue {
  * error, never as success.
  */
 function classifyError(error: unknown): CaptureBoxIssue {
+  if (isEncryptedProjectCaptureRefusal(error)) {
+    return { kind: "encryptedRefused", message: error.message };
+  }
   if (isLimitRefusalError(error)) return { kind: "pairedRefused" };
   if (error instanceof TypeError) return { kind: "network" };
   const message = error instanceof Error ? error.message : "";
@@ -122,23 +129,6 @@ function optionText(option: CaptureProjectOption): string {
 }
 
 /**
- * The store keys projects by `StoredProject.id` (the manifest id), while the
- * Capture box names a project by its directory basename, so the entry is found
- * through `rootPath`. An entry with no `rootPath` is matched by its key, the
- * same fallback the project choice uses.
- */
-function findStoredByDirectoryId(
-  projects: Record<string, StoredProject>,
-  directoryId: string,
-): StoredProject | undefined {
-  return Object.values(projects).find((p) =>
-    p.rootPath
-      ? getProjectDirectoryId(p.rootPath) === directoryId
-      : p.id === directoryId,
-  );
-}
-
-/**
  * Hosts the Capture box: fills in the project choice, calls the capture
  * client, shows each notice and failure, and closes with a confirmation on
  * success. The typed text lives in component state only.
@@ -153,6 +143,7 @@ export default function CaptureBoxHost({
   const dispatch = useAppDispatch();
   const openProjectId = useAppSelector(selectActiveProjectDirectoryId);
   const choice = useCaptureProjectChoice(isOpen, openProjectId);
+  const refreshOpenProjectTree = useRefreshOpenProjectTree();
   const {
     state: limitsState,
     hasDesktopBridge,
@@ -216,6 +207,7 @@ export default function CaptureBoxHost({
   ): void {
     writeLastCapturedProjectId(project.id);
     refreshStoredInbox(result, project.id);
+    void refreshOpenProjectTree(project.id);
     const noticeIssues = result.notices
       .map((n) => NOTICE_ISSUES[n.code])
       .filter((i): i is CaptureBoxIssue => i !== undefined);
@@ -306,6 +298,14 @@ export default function CaptureBoxHost({
     setConfirmation(undefined);
     const capturing: HeldCapture = { project: selected, text };
     if (selected.kind === "locked") {
+      if (process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native") {
+        // Native has no encryption layer and no unlock prompt: refuse the
+        // encrypted-marked project exactly as the share sheet does.
+        fail(
+          classifyError(new EncryptedProjectCaptureRefusedError("encrypted")),
+        );
+        return;
+      }
       await beginUnlock(capturing);
       return;
     }

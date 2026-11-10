@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GetWrite</string>
+    <string name="title_activity_main">GetWrite</string>
+    <string name="package_name">works.saboteur.getwrite</string>
+    <string name="custom_url_scheme">works.saboteur.getwrite</string>
+</resources>
