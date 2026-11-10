@@ -39,6 +39,7 @@ import {
 } from "../../src/store/projectsSlice";
 import type { RootState } from "../../src/store/store";
 import { findStoredByDirectoryId } from "./stored-project-inbox";
+import { useRefreshOpenProjectTree } from "./useRefreshOpenProjectTree";
 import type {
   ShareListenerOptions,
   ShareListenerSession,
@@ -119,6 +120,7 @@ function ShareFlow({ share, state, dispatch, run }: FlowProps): JSX.Element {
   const store = useStore<RootState>();
   const openProjectId = useAppSelector(selectActiveProjectDirectoryId);
   const choice = useCaptureProjectChoice(true, openProjectId);
+  const refreshOpenProjectTree = useRefreshOpenProjectTree();
   const [pendingChoice, setPendingChoice] =
     React.useState<PendingChoice | null>(null);
 
@@ -157,6 +159,7 @@ function ShareFlow({ share, state, dispatch, run }: FlowProps): JSX.Element {
     if (result.capturedCount > 0) {
       writeLastCapturedProjectId(projectId);
       refreshStoredInbox(projectId, result);
+      void refreshOpenProjectTree(projectId);
     }
     dispatch({ type: "finished", result });
   }

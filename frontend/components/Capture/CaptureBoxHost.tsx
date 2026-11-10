@@ -47,10 +47,10 @@ import { isLockedAccessError } from "../../src/lib/models/crypto/locked-errors";
 import {
   selectActiveProjectDirectoryId,
   setProject,
-  type StoredProject,
 } from "../../src/store/projectsSlice";
 import type { RootState } from "../../src/store/store";
 import { findStoredByDirectoryId } from "./stored-project-inbox";
+import { useRefreshOpenProjectTree } from "./useRefreshOpenProjectTree";
 
 export interface CaptureBoxHostProps {
   /** Whether the Capture box is open. */
@@ -140,6 +140,7 @@ export default function CaptureBoxHost({
   const dispatch = useAppDispatch();
   const openProjectId = useAppSelector(selectActiveProjectDirectoryId);
   const choice = useCaptureProjectChoice(isOpen, openProjectId);
+  const refreshOpenProjectTree = useRefreshOpenProjectTree();
   const {
     state: limitsState,
     hasDesktopBridge,
@@ -203,6 +204,7 @@ export default function CaptureBoxHost({
   ): void {
     writeLastCapturedProjectId(project.id);
     refreshStoredInbox(result, project.id);
+    void refreshOpenProjectTree(project.id);
     const noticeIssues = result.notices
       .map((n) => NOTICE_ISSUES[n.code])
       .filter((i): i is CaptureBoxIssue => i !== undefined);

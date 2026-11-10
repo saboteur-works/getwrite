@@ -14,7 +14,12 @@ import projectsReducer, {
   setSelectedProjectId,
   type StoredProject,
 } from "../../src/store/projectsSlice";
+import resourcesReducer from "../../src/store/resourcesSlice";
+import { toastService } from "../../src/lib/toast-service";
 import CaptureBoxHost from "../../components/Capture/CaptureBoxHost";
+import TrashRefreshProvider, {
+  useTrashRefresh,
+} from "../../components/Layout/TrashRefreshContext";
 import {
   StaticSharingLimitsProvider,
   type StaticSharingLimitsValue,
@@ -34,8 +39,10 @@ import type {
 } from "../../src/lib/api/inbox-capture-types";
 
 const listProjects = vi.fn();
+const openProject = vi.fn();
 vi.mock("../../src/lib/api/projects", () => ({
   listProjects: (...args: unknown[]) => listProjects(...args),
+  openProject: (...args: unknown[]) => openProject(...args),
 }));
 
 const ID_A = "11111111-1111-4111-8111-111111111111";
@@ -57,8 +64,19 @@ const created = (
   notices,
 });
 
+/** Shows the shared refresh token, so a test can see the project was re-read. */
+function TokenProbe(): JSX.Element {
+  return (
+    <output data-testid="refresh-token">
+      {useTrashRefresh().refreshToken}
+    </output>
+  );
+}
+
 function makeStore(project?: Partial<StoredProject>) {
-  const store = configureStore({ reducer: { projects: projectsReducer } });
+  const store = configureStore({
+    reducer: { projects: projectsReducer, resources: resourcesReducer },
+  });
   if (project) {
     store.dispatch(
       setProject({
@@ -90,14 +108,17 @@ function renderHost(
   const onClose = vi.fn();
   render(
     <Provider store={store}>
-      <StaticSharingLimitsProvider value={limits}>
-        <CaptureBoxHost
-          isOpen
-          onClose={onClose}
-          capture={capture}
-          unlock={unlock}
-        />
-      </StaticSharingLimitsProvider>
+      <TrashRefreshProvider>
+        <TokenProbe />
+        <StaticSharingLimitsProvider value={limits}>
+          <CaptureBoxHost
+            isOpen
+            onClose={onClose}
+            capture={capture}
+            unlock={unlock}
+          />
+        </StaticSharingLimitsProvider>
+      </TrashRefreshProvider>
     </Provider>,
   );
   return { onClose, store };
@@ -124,6 +145,7 @@ function submit(): void {
 describe("CaptureBoxHost", () => {
   beforeEach(() => {
     listProjects.mockReset();
+    openProject.mockReset();
     listProjects.mockResolvedValue([entry(ID_A, "Alpha"), entry(ID_B, "Beta")]);
     window.localStorage.clear();
   });
@@ -185,6 +207,85 @@ describe("CaptureBoxHost", () => {
       expect(
         (screen.getByLabelText("Project") as HTMLSelectElement).value,
       ).toBe(DIR_B);
+    });
+
+    describe("refreshing the open project's tree", () => {
+      const INBOX_FOLDER = {
+        id: "new-inbox",
+        name: "Inbox",
+        parentId: null,
+        orderIndex: 0,
+      };
+      const CAPTURED = { id: "r1", name: "a thought", type: "text" };
+
+      function openA() {
+        const store = makeStore();
+        store.dispatch(setProject(storedWithRoot(DIR_A, ID_A)));
+        store.dispatch(setProject(storedWithRoot(DIR_B, ID_B)));
+        store.dispatch(setSelectedProjectId(ID_A));
+        return store;
+      }
+
+      it("re-reads the open project into the store and signals the page", async () => {
+        openProject.mockResolvedValue({
+          project: { id: ID_A },
+          folders: [INBOX_FOLDER],
+          resources: [CAPTURED],
+        });
+        const store = openA();
+        store.dispatch({
+          type: "resources/setSelectedResourceId",
+          payload: "keep",
+        });
+        const capture = vi
+          .fn<CaptureFn>()
+          .mockResolvedValue(created([], "new-inbox"));
+        const { onClose } = await setup(capture, { store });
+        type("a thought");
+        submit();
+        await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+        await waitFor(() =>
+          expect(store.getState().resources.folders).toEqual([INBOX_FOLDER]),
+        );
+        expect(openProject).toHaveBeenCalledWith(DIR_A);
+        expect(store.getState().resources.resources).toEqual([CAPTURED]);
+        expect(store.getState().resources.selectedResourceId).toBe("keep");
+        expect(screen.getByTestId("refresh-token").textContent).toBe("1");
+      });
+
+      it("does not re-read a project that is not the open one", async () => {
+        const store = openA();
+        const capture = vi.fn<CaptureFn>().mockResolvedValue(created());
+        const { onClose } = await setup(capture, { store });
+        fireEvent.change(screen.getByLabelText("Project"), {
+          target: { value: DIR_B },
+        });
+        type("a thought");
+        submit();
+        await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+
+        expect(openProject).not.toHaveBeenCalled();
+        expect(store.getState().resources.folders).toEqual([]);
+        expect(screen.getByTestId("refresh-token").textContent).toBe("0");
+      });
+
+      it("keeps the capture reported as done when the re-read fails, and says so", async () => {
+        openProject.mockRejectedValue(new Error("read failed"));
+        const error = vi.spyOn(console, "error").mockImplementation(() => {});
+        const toast = vi.spyOn(toastService, "error").mockReturnValue("t");
+        const store = openA();
+        const capture = vi.fn<CaptureFn>().mockResolvedValue(created());
+        const { onClose } = await setup(capture, { store });
+        type("a thought");
+        submit();
+
+        await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(toast).toHaveBeenCalledTimes(1));
+        expect(error).toHaveBeenCalled();
+        expect(store.getState().resources.folders).toEqual([]);
+        expect(screen.getByTestId("refresh-token").textContent).toBe("0");
+      });
     });
 
     it("lands the new inboxFolderId on the open project's store entry", async () => {
