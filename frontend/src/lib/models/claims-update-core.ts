@@ -28,7 +28,7 @@
 import { mutateSidecar, readSidecar } from "./sidecar";
 import { UUID as UuidSchema } from "./schemas";
 import { resolveProjectRoot } from "./project-root-resolver";
-import { InvalidProjectIdCoreError } from "./project-crud-core";
+import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { validateUpdateClaim } from "./annotation-validation";
 import {
   AnnotationNotFoundError,

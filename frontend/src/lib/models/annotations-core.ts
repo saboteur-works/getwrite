@@ -22,7 +22,7 @@
 import { mutateSidecar, readSidecar, SIDECAR_UNCHANGED } from "./sidecar";
 import { UUID as UuidSchema } from "./schemas";
 import { resolveProjectRoot } from "./project-root-resolver";
-import { InvalidProjectIdCoreError } from "./project-crud-core";
+import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import {
   validateAnnotationBody,
   validateAnnotationQuote,

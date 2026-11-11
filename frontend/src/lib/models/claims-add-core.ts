@@ -30,7 +30,7 @@ import {
   InvalidAnnotationResourceIdError,
 } from "./annotations-core";
 import { validateNewClaim } from "./annotation-validation";
-import { InvalidProjectIdCoreError } from "./project-crud-core";
+import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { UUID as UuidSchema } from "./schemas";
 import { mutateSidecar } from "./sidecar";

@@ -19,11 +19,10 @@
  * Reachable from `core.ts`, the CLI and the Electron workers: no React, JSX or
  * JSON.
  */
-import path from "node:path";
 import { readFile } from "./io";
 import { isLockedAccessError } from "./locked-access";
 import { listResourceIdsStrict } from "./list-resource-ids-strict";
-import { InvalidProjectIdCoreError } from "./project-crud-core";
+import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { PROJECT_FILENAME } from "./project-config";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { readSidecar } from "./sidecar";
@@ -69,7 +68,7 @@ function isClaim(value: unknown): value is Annotation {
 
 async function assertProjectExists(projectRoot: string): Promise<void> {
   try {
-    await readFile(path.join(projectRoot, PROJECT_FILENAME), "utf8");
+    await readFile(`${projectRoot}/${PROJECT_FILENAME}`, "utf8");
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       throw new ClaimProjectNotFoundError();
