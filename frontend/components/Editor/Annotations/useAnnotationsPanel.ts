@@ -13,7 +13,20 @@ import type {
   AnnotationTarget,
   AnyResource,
 } from "../../../src/lib/models/types";
-import { selectActiveProjectDirectoryId } from "../../../src/store/projectsSlice";
+import {
+  selectActiveProjectDirectoryId,
+  selectActiveProjectModules,
+} from "../../../src/store/projectsSlice";
+import { isModuleEnabled } from "../../../src/lib/models/modules/registry";
+import { ModulesOverrideContext } from "../../Modules/ModulesContext";
+import {
+  updateClaimStatementFlow,
+  updateClaimStatusFlow,
+  updateClaimTargetFlow,
+  type ClaimFlowApi,
+  type UpdateClaimResult,
+} from "../../../src/lib/claim-flows";
+import type { ClaimStatus } from "../../../src/lib/models/claim-types";
 
 /** DOM id of the annotations panel region. */
 export const ANNOTATIONS_PANEL_ID = "editor-annotations-panel";
@@ -128,7 +141,7 @@ export interface CitationFactsDeps {
 }
 
 /** A Source in the loaded project, from the resources in the store. */
-interface LoadedSourceRef {
+export interface LoadedSourceRef {
   id: string;
   name: string;
 }
@@ -292,4 +305,170 @@ export function useCitationFacts(
       ]),
     );
   }, [targeted, projectId, settled, key]);
+}
+
+/** The store reads the panel's claim wiring needs; each is absent without a store. */
+export interface PanelScope {
+  projectId: string | null;
+  /** The resource open in the work area; the fallback when no id is passed. */
+  selectedResourceId: string | null;
+  /** Sources in the loaded project, for the Source picker. */
+  sources: readonly LoadedSourceRef[];
+}
+
+/**
+ * The active project id, the selected resource id and the loaded Sources.
+ * Like `useCitationFacts` it tolerates a missing store (Storybook, tests).
+ */
+export function usePanelScope(): PanelScope {
+  const store = React.useContext(ReactReduxContext)?.store;
+  const subscribe = store ? store.subscribe : noopSubscribe;
+  const projectId = React.useSyncExternalStore(
+    subscribe,
+    () => (store ? selectActiveProjectDirectoryId(store.getState()) : null),
+    () => null,
+  );
+  const selectedResourceId = React.useSyncExternalStore(
+    subscribe,
+    () =>
+      (
+        store?.getState() as
+          | { resources?: { selectedResourceId?: string | null } }
+          | undefined
+      )?.resources?.selectedResourceId ?? null,
+    () => null,
+  );
+  const resources = React.useSyncExternalStore(
+    subscribe,
+    () =>
+      (
+        store?.getState() as
+          | { resources?: { resources?: readonly AnyResource[] } }
+          | undefined
+      )?.resources?.resources ?? NO_SOURCES,
+    () => NO_SOURCES,
+  );
+  const sources = React.useMemo<LoadedSourceRef[]>(
+    () =>
+      resources
+        .filter((r) => r.type === "source")
+        .map((r) => ({ id: r.id, name: r.name })),
+    [resources],
+  );
+  return { projectId, selectedResourceId, sources };
+}
+
+/**
+ * Whether a module is on for the active project: the same rule and the same
+ * `ModulesOverrideContext` as `useModuleEnabled`, but tolerant of a missing
+ * store (the panel's existing tests mount it without a Provider). With no
+ * store and no override the module's own default applies.
+ */
+export function useModuleSwitch(moduleId: string): boolean {
+  const override = React.useContext(ModulesOverrideContext);
+  const store = React.useContext(ReactReduxContext)?.store;
+  const subscribe = store ? store.subscribe : noopSubscribe;
+  const stored = React.useSyncExternalStore(
+    subscribe,
+    () => (store ? selectActiveProjectModules(store.getState()) : undefined),
+    () => undefined,
+  );
+  return isModuleEnabled({ modules: override ?? stored }, moduleId);
+}
+
+/** The result of one claim write, as the row and the panel read it. */
+export type ClaimActionResult = { ok: true } | { ok: false; message: string };
+
+export interface ClaimActions {
+  /** The list with each stored write laid over the entry it replaced. */
+  annotations: Annotation[];
+  setStatus: (id: string, status: ClaimStatus) => Promise<ClaimActionResult>;
+  setStatement: (id: string, statement: string) => Promise<ClaimActionResult>;
+  /** A `null` target clears the Source link. */
+  setTarget: (
+    id: string,
+    target: AnnotationTarget | null,
+  ) => Promise<ClaimActionResult>;
+}
+
+interface StoredOverride {
+  /** The list entry the write was made against. */
+  base: Annotation;
+  stored: Annotation;
+}
+
+const UNAVAILABLE: ClaimActionResult = {
+  ok: false,
+  message: "Claims cannot be changed here.",
+};
+
+/**
+ * Non-optimistic claim writes through the injected `ClaimFlowApi` (Feature
+ * 108, FR-11, FR-15). The annotations handle has no claim update, so a stored
+ * result is laid over the entry it was written against; once the handle
+ * replaces that entry (a reload, a re-attach) the override is dropped and the
+ * handle's value, which is the later read, shows. A failed write changes
+ * nothing and returns its message.
+ */
+export function useClaimActions(
+  annotations: readonly Annotation[],
+  scope: {
+    projectId: string | null;
+    resourceId: string | undefined;
+    api: ClaimFlowApi;
+  },
+): ClaimActions {
+  const { projectId, resourceId, api } = scope;
+  const [overrides, setOverrides] = React.useState<
+    ReadonlyMap<string, StoredOverride>
+  >(new Map());
+  const listRef = React.useRef(annotations);
+  listRef.current = annotations;
+
+  const run = React.useCallback(
+    async (
+      id: string,
+      write: (base: {
+        projectId: string;
+        resourceId: string;
+        annotationId: string;
+      }) => Promise<UpdateClaimResult>,
+    ): Promise<ClaimActionResult> => {
+      if (projectId === null || resourceId === undefined) return UNAVAILABLE;
+      const base = listRef.current.find((a) => a.id === id);
+      if (!base) return UNAVAILABLE;
+      const result = await write({ projectId, resourceId, annotationId: id });
+      if (!result.ok) return { ok: false, message: result.message };
+      const stored = result.annotation;
+      setOverrides((prev) => new Map(prev).set(id, { base, stored }));
+      return { ok: true };
+    },
+    [projectId, resourceId],
+  );
+
+  const setStatus = React.useCallback(
+    (id: string, status: ClaimStatus) =>
+      run(id, (base) => updateClaimStatusFlow(api, { ...base, status })),
+    [run, api],
+  );
+  const setStatement = React.useCallback(
+    (id: string, statement: string) =>
+      run(id, (base) => updateClaimStatementFlow(api, { ...base, statement })),
+    [run, api],
+  );
+  const setTarget = React.useCallback(
+    (id: string, target: AnnotationTarget | null) =>
+      run(id, (base) => updateClaimTargetFlow(api, { ...base, target })),
+    [run, api],
+  );
+
+  const merged = React.useMemo(
+    () =>
+      annotations.map((a) => {
+        const hit = overrides.get(a.id);
+        return hit && hit.base === a ? hit.stored : a;
+      }),
+    [annotations, overrides],
+  );
+  return { annotations: merged, setStatus, setStatement, setTarget };
 }

@@ -18,6 +18,8 @@ import {
   StaticSharingLimitsProvider,
   type StaticSharingLimitsValue,
 } from "../../components/Sharing/SharingLimitsContext";
+import { StaticModulesProvider } from "../../components/Modules/ModulesContext";
+import type { ClaimFlowApi } from "../../src/lib/claim-flows";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -73,6 +75,12 @@ const STORY_FACTS: CitationFactsDeps = {
   listAnnotations: () => Promise.resolve([]),
 };
 
+/** Claim writes in stories return the claim unchanged; nothing is stored. */
+const STORY_CLAIM_API: ClaimFlowApi = {
+  add: () => Promise.reject(new Error("Not used in stories.")),
+  update: () => Promise.reject(new Error("Not stored in Storybook.")),
+};
+
 function storyStore(): ReturnType<typeof makeStore> {
   const store = makeStore();
   store.dispatch(
@@ -96,10 +104,13 @@ function storyStore(): ReturnType<typeof makeStore> {
 function PanelStory({
   state,
   limits,
+  modules,
 }: {
   state: AnnotationsState;
   /** The sharing-limits answer; the window (exempt) when omitted. */
   limits?: StaticSharingLimitsValue;
+  /** Module switches (`config.modules`); absent entries use each module's default. */
+  modules?: Record<string, boolean>;
 }): JSX.Element {
   const editor = useEditor();
   const [store] = React.useState(storyStore);
@@ -113,17 +124,21 @@ function PanelStory({
   };
   return (
     <Provider store={store}>
-      <StaticSharingLimitsProvider value={limits}>
-        <div style={{ maxWidth: 480 }}>
-          <AnnotationsPanel
-            editor={editor}
-            handle={handle}
-            panelId={ANNOTATIONS_PANEL_ID}
-            onClose={fn()}
-            citationFactsDeps={STORY_FACTS}
-          />
-        </div>
-      </StaticSharingLimitsProvider>
+      <StaticModulesProvider value={modules}>
+        <StaticSharingLimitsProvider value={limits}>
+          <div style={{ maxWidth: 480 }}>
+            <AnnotationsPanel
+              editor={editor}
+              handle={handle}
+              panelId={ANNOTATIONS_PANEL_ID}
+              onClose={fn()}
+              citationFactsDeps={STORY_FACTS}
+              resourceId="story-resource"
+              claimApi={STORY_CLAIM_API}
+            />
+          </div>
+        </StaticSharingLimitsProvider>
+      </StaticModulesProvider>
     </Provider>
   );
 }
@@ -221,6 +236,78 @@ export const MissingTarget: Story = {
         },
       ],
     },
+  },
+};
+
+function claimNote(overrides: Partial<Annotation> = {}): Annotation {
+  return {
+    ...note("a", "The harbour opened in 1902.", "Harbour"),
+    claim: {
+      status: "unverified",
+      statusChangedAt: "2026-11-05T12:00:00.000Z",
+    },
+    ...overrides,
+  };
+}
+
+/** A claim with the claims module on: marker, status, "unsourced" and a Link Source control. */
+export const Claim: Story = {
+  args: {
+    modules: { claims: true },
+    state: { status: "ok", annotations: [claimNote()] },
+  },
+};
+
+/** A claim linked to a Source, with the Source line and Change Source. */
+export const ClaimSourced: Story = {
+  args: {
+    modules: { claims: true },
+    state: {
+      status: "ok",
+      annotations: [
+        claimNote({
+          claim: {
+            status: "verified",
+            statusChangedAt: "2026-11-09T12:00:00.000Z",
+          },
+          target: { sourceId: SOURCE_ID, sourceName: "Interview with Ada" },
+        }),
+      ],
+    },
+  },
+};
+
+/** Sources off: the Source line stays, the link control is not offered. */
+export const ClaimSourcesOff: Story = {
+  args: {
+    modules: { claims: true, sources: false },
+    state: {
+      status: "ok",
+      annotations: [
+        claimNote({
+          target: { sourceId: SOURCE_ID, sourceName: "Interview with Ada" },
+        }),
+      ],
+    },
+  },
+};
+
+/** A claim with its passage gone: listed as detached, still a claim. */
+export const ClaimDetached: Story = {
+  args: {
+    modules: { claims: true },
+    state: {
+      status: "ok",
+      annotations: [claimNote({ id: "d", quote: "The lighthouse keeper" })],
+    },
+  },
+};
+
+/** The claims module off: the same claim reads as an ordinary note. */
+export const ClaimModuleOff: Story = {
+  args: {
+    modules: { claims: false },
+    state: { status: "ok", annotations: [claimNote()] },
   },
 };
 

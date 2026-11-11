@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import { baseSchemaExtensions } from "../../components/Editor/editorExtensions";
 import { useAnnotations } from "../../src/hooks/useAnnotations";
+import { useClaimActions } from "../../components/Editor/Annotations/useAnnotationsPanel";
 import * as client from "../../src/lib/api/annotations";
 import * as revisionTransport from "../../src/store/revision-transport-service";
 import { ProjectLockedError } from "../../src/lib/models/locked-access";
@@ -264,5 +265,88 @@ describe("useAnnotations", () => {
     );
     expect(fns.length).toBeGreaterThan(0);
     for (const fn of fns) expect(fn).not.toHaveBeenCalled();
+  });
+});
+
+describe("useClaimActions (Feature 108, FR-11, FR-15)", () => {
+  const C: Annotation = {
+    ...A,
+    id: "c",
+    claim: {
+      status: "unverified",
+      statusChangedAt: "2026-11-05T12:00:00.000Z",
+    },
+  };
+  const verified: Annotation = {
+    ...C,
+    claim: { status: "verified", statusChangedAt: "2026-11-11T09:00:00.000Z" },
+  };
+
+  function setup(list: Annotation[], hasResource = true) {
+    const resourceId = hasResource ? "r" : undefined;
+    const api = { add: vi.fn(), update: vi.fn() };
+    const hook = renderHook(
+      ({ items }: { items: Annotation[] }) =>
+        useClaimActions(items, { projectId: "p", resourceId, api }),
+      { initialProps: { items: list } },
+    );
+    return { api, ...hook };
+  }
+
+  it("lays a stored write over the entry it replaced, after the write", async () => {
+    const { api, result } = setup([C]);
+    api.update.mockResolvedValue(verified);
+    expect(result.current.annotations[0]).toBe(C);
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.setStatus("c", "verified");
+    });
+    expect(outcome).toEqual({ ok: true });
+    expect(api.update).toHaveBeenCalledWith("p", "r", "c", {
+      status: "verified",
+    });
+    expect(result.current.annotations[0]).toBe(verified);
+  });
+
+  it("returns the failure message and leaves the entry as it was", async () => {
+    const { api, result } = setup([C]);
+    api.update.mockRejectedValue(new Error("no"));
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.setStatement("c", "text");
+    });
+    expect(outcome).toEqual({ ok: false, message: "no" });
+    expect(result.current.annotations[0]).toBe(C);
+  });
+
+  it("drops the override once the list replaces that entry", async () => {
+    const { api, result, rerender } = setup([C]);
+    api.update.mockResolvedValue(verified);
+    await act(async () => {
+      await result.current.setStatus("c", "verified");
+    });
+    const reloaded: Annotation = { ...C, body: "reloaded" };
+    rerender({ items: [reloaded] });
+    expect(result.current.annotations[0]).toBe(reloaded);
+  });
+
+  it("refuses without a resource id and makes no write", async () => {
+    const { api, result } = setup([C], false);
+    let outcome: { ok: boolean } | undefined;
+    await act(async () => {
+      outcome = await result.current.setTarget("c", null);
+    });
+    expect(outcome?.ok).toBe(false);
+    expect(api.update).not.toHaveBeenCalled();
+  });
+
+  it("refuses an invalid status before any write", async () => {
+    const { api, result } = setup([C]);
+    let outcome: { ok: boolean } | undefined;
+    await act(async () => {
+      outcome = await result.current.setStatus("c", "bogus" as never);
+    });
+    expect(outcome?.ok).toBe(false);
+    expect(api.update).not.toHaveBeenCalled();
   });
 });

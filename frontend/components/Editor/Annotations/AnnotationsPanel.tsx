@@ -38,7 +38,10 @@ import { isLimitOn } from "../../Sharing/limit-gate";
 import LimitReason from "../../Sharing/LimitReason";
 import { PERMANENT_DELETION_LIMITED_REASON } from "../../Sharing/sharing-copy";
 import type { AnnotationsHandle } from "../../../src/hooks/useAnnotations";
-import type { Annotation } from "../../../src/lib/models/types";
+import type {
+  Annotation,
+  AnnotationTarget,
+} from "../../../src/lib/models/types";
 import {
   canReattachAnnotation,
   isDetachedAnnotation,
@@ -50,10 +53,20 @@ import {
 } from "../../../src/lib/models/citation-target-state";
 import { ANNOTATION_LIMITS } from "../../../src/lib/models/annotation-validation";
 import { setAnnotationHighlight } from "../Extensions/AnnotationHighlightExtension";
+import Select from "../../common/UI/Select/Select";
+import { addClaim, updateClaim } from "../../../src/lib/api/claims";
+import type { ClaimFlowApi } from "../../../src/lib/claim-flows";
+import type { ClaimSourceFacts } from "../../../src/lib/claim-display";
+import ClaimRow, { type ClaimRowSaveResult } from "./ClaimRow";
+import type { ClaimStatus } from "../../../src/lib/models/claim-types";
 import {
   useCitationFacts,
+  useClaimActions,
+  useModuleSwitch,
+  usePanelScope,
   type CitationFactsDeps,
   type CitationFactsResult,
+  type LoadedSourceRef,
   type PendingAnnotationAdd,
 } from "./useAnnotationsPanel";
 import {
@@ -78,6 +91,120 @@ export interface AnnotationsPanelProps {
    * attachment and annotation reads. Pass a stable object (Storybook, tests).
    */
   citationFactsDeps?: CitationFactsDeps;
+  /**
+   * The open text resource, for claim writes. Defaults to the resource
+   * selected in the store; claim controls are absent when neither is known.
+   */
+  resourceId?: string;
+  /** The update-claim client; defaults to the live transport. */
+  claimApi?: ClaimFlowApi;
+}
+
+const LIVE_CLAIM_API: ClaimFlowApi = { add: addClaim, update: updateClaim };
+const NO_ANNOTATIONS: Annotation[] = [];
+const CLAIMS_MODULE_ID = "claims";
+const SOURCES_MODULE_ID = "sources";
+
+/** What `ClaimRow` is told about a claim's Source; absent while checking. */
+function toSourceFacts(
+  result: CitationFactsResult | undefined,
+): ClaimSourceFacts | undefined {
+  if (!result || result.status === "checking") return undefined;
+  return result.status === "unknown" ? "unreadable" : result.facts;
+}
+
+/**
+ * The Source picker of a claim row: a list of the project's Sources with a
+ * "No Source" choice that clears the link. Nothing is written until Save; a
+ * failure is shown as text and the picker stays open.
+ */
+function SourcePicker({
+  inputId,
+  annotation,
+  sources,
+  isBusy,
+  onSave,
+  onCancel,
+}: {
+  inputId: string;
+  annotation: Annotation;
+  sources: readonly LoadedSourceRef[];
+  isBusy: boolean;
+  onSave: (target: AnnotationTarget | null) => Promise<string | null>;
+  onCancel: () => void;
+}): JSX.Element {
+  const current = annotation.target;
+  const [choice, setChoice] = React.useState(current?.sourceId ?? "");
+  const [error, setError] = React.useState<string | null>(null);
+  const isCurrentListed =
+    current === undefined || sources.some((s) => s.id === current.sourceId);
+  const save = async (): Promise<void> => {
+    setError(null);
+    if (choice === "") {
+      const failure = await onSave(null);
+      if (failure !== null) setError(failure);
+      return;
+    }
+    if (current?.sourceId === choice) {
+      onCancel();
+      return;
+    }
+    const source = sources.find((s) => s.id === choice);
+    if (!source) {
+      setError("Choose a Source from the list.");
+      return;
+    }
+    const failure = await onSave({
+      sourceId: source.id,
+      sourceName: source.name,
+    });
+    if (failure !== null) setError(failure);
+  };
+  return (
+    <div
+      data-testid="claim-source-picker"
+      className="mt-2 flex flex-col gap-2 border-t border-gw-border pt-2"
+    >
+      <label htmlFor={inputId} className="text-gw-small text-gw-primary">
+        Source
+      </label>
+      <Select
+        id={inputId}
+        value={choice}
+        onChange={(e) => setChoice(e.target.value)}
+      >
+        <option value="">No Source</option>
+        {isCurrentListed || current === undefined ? null : (
+          <option value={current.sourceId}>
+            {current.sourceName ?? "Name not saved"} (removed)
+          </option>
+        )}
+        {sources.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </Select>
+      {error !== null ? (
+        <p role="alert" className="text-gw-small text-gw-primary">
+          {error}
+        </p>
+      ) : null}
+      <div className="flex gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={isBusy}
+          onClick={() => void save()}
+        >
+          Save Source
+        </Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 interface DocView {
@@ -196,6 +323,8 @@ export default function AnnotationsPanel({
   pendingAdd = null,
   onAddDone,
   citationFactsDeps,
+  resourceId,
+  claimApi = LIVE_CLAIM_API,
 }: AnnotationsPanelProps): JSX.Element {
   const headingId = `${panelId}-heading`;
   const headingRef = React.useRef<HTMLHeadingElement>(null);
@@ -247,7 +376,46 @@ export default function AnnotationsPanel({
   );
 
   const state = handle.state;
-  const annotations = state.status === "ok" ? state.annotations : [];
+  const listed = state.status === "ok" ? state.annotations : NO_ANNOTATIONS;
+  const scope = usePanelScope();
+  const isClaimsOn = useModuleSwitch(CLAIMS_MODULE_ID);
+  const isSourcesOn = useModuleSwitch(SOURCES_MODULE_ID);
+  const claimResourceId = resourceId ?? scope.selectedResourceId ?? undefined;
+  const claimActions = useClaimActions(listed, {
+    projectId: scope.projectId,
+    resourceId: claimResourceId,
+    api: claimApi,
+  });
+  const annotations = claimActions.annotations;
+  const [relinkId, setRelinkId] = React.useState<string | null>(null);
+  const [pendingFocus, setPendingFocus] = React.useState<{
+    id: string;
+    labels: readonly string[];
+  } | null>(null);
+  const isDeletingClaim =
+    isClaimsOn &&
+    annotations.some((a) => a.id === pendingDeleteId && a.claim !== undefined);
+  const canWriteClaims =
+    scope.projectId !== null && claimResourceId !== undefined;
+
+  React.useEffect(() => {
+    if (pendingFocus === null) return;
+    const timer = setTimeout(() => {
+      rootRef.current
+        ?.querySelectorAll<HTMLElement>(
+          `[data-annotation-id="${CSS.escape(pendingFocus.id)}"] button`,
+        )
+        .forEach((button) => {
+          const label = button.getAttribute("aria-label");
+          if (label !== null && pendingFocus.labels.includes(label)) {
+            button.focus();
+          }
+        });
+      setPendingFocus(null);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [pendingFocus]);
+
   const citationFacts = useCitationFacts(annotations, citationFactsDeps);
   const isDetached = (a: Annotation): boolean =>
     isDetachedAnnotation(a, docView.ranges.has(a.id));
@@ -398,7 +566,116 @@ export default function AnnotationsPanel({
     );
   };
 
+  const changeStatus = async (
+    id: string,
+    status: ClaimStatus,
+  ): Promise<void> => {
+    setIsBusy(true);
+    const result = await claimActions.setStatus(id, status);
+    setIsBusy(false);
+    setActionError(result.ok ? null : result.message);
+  };
+
+  const saveStatement = async (
+    id: string,
+    text: string,
+  ): Promise<ClaimRowSaveResult> => {
+    setIsBusy(true);
+    const result = await claimActions.setStatement(id, text);
+    setIsBusy(false);
+    if (result.ok) {
+      setActionError(null);
+      setPendingFocus({ id, labels: ["Edit statement"] });
+    }
+    return result;
+  };
+
+  /** Resolves null on success, else the failure text for the picker. */
+  const saveTarget = async (
+    id: string,
+    target: AnnotationTarget | null,
+  ): Promise<string | null> => {
+    setIsBusy(true);
+    const result = await claimActions.setTarget(id, target);
+    setIsBusy(false);
+    if (!result.ok) return result.message;
+    setActionError(null);
+    setRelinkId(null);
+    setPendingFocus({ id, labels: ["Link Source", "Change Source"] });
+    return null;
+  };
+
+  const renderClaimItem = (
+    annotation: Annotation,
+    isDetached: boolean,
+  ): JSX.Element => {
+    const id = annotation.id;
+    const deleteReasonText = isDeleteLimited
+      ? PERMANENT_DELETION_LIMITED_REASON
+      : undefined;
+    return (
+      <li
+        key={id}
+        data-testid="annotation-item"
+        data-annotation-id={id}
+        data-detached={isDetached ? "true" : "false"}
+      >
+        <ClaimRow
+          annotation={annotation}
+          moduleEnabled
+          sourcesEnabled={isSourcesOn}
+          isDetached={isDetached}
+          sourceFacts={toSourceFacts(citationFacts.get(id))}
+          hasSelection={docView.selection.from !== docView.selection.to}
+          isAtCaret={docView.caretIds.includes(id)}
+          isBusy={isBusy}
+          deleteDisabledReason={deleteReasonText}
+          onStatusChange={
+            canWriteClaims
+              ? (status) => void changeStatus(id, status)
+              : undefined
+          }
+          onSaveStatement={
+            canWriteClaims ? (text) => saveStatement(id, text) : undefined
+          }
+          onRelink={
+            canWriteClaims
+              ? () => {
+                  setActionError(null);
+                  setRelinkId(id);
+                }
+              : undefined
+          }
+          onReattach={() => void reattach(annotation)}
+          onShow={
+            isMarkLessByDesign(annotation) ? undefined : () => show(annotation)
+          }
+          onDelete={() => {
+            setActionError(null);
+            setPendingDeleteId(id);
+          }}
+        />
+        {relinkId === id ? (
+          <SourcePicker
+            inputId={`${panelId}-source-${id}`}
+            annotation={annotation}
+            sources={scope.sources}
+            isBusy={isBusy}
+            onSave={(target) => saveTarget(id, target)}
+            onCancel={() => {
+              setRelinkId(null);
+              setPendingFocus({ id, labels: ["Link Source", "Change Source"] });
+            }}
+          />
+        ) : null}
+      </li>
+    );
+  };
+
   const renderItem = (annotation: Annotation, isDetached: boolean) => {
+    if (isClaimsOn && annotation.claim !== undefined) {
+      return renderClaimItem(annotation, isDetached);
+    }
     const isEditing = editingId === annotation.id;
     const isAtCaret = docView.caretIds.includes(annotation.id);
     const isMarkLess = isMarkLessByDesign(annotation);
@@ -634,9 +911,9 @@ export default function AnnotationsPanel({
 
       <ConfirmDialog
         isOpen={pendingDeleteId !== null}
-        title="Delete this note?"
-        description="The note and its highlight are removed. The text itself is not changed."
-        confirmLabel="Delete note"
+        title={isDeletingClaim ? "Delete this claim?" : "Delete this note?"}
+        description={`The ${isDeletingClaim ? "claim" : "note"} and its highlight are removed. The text itself is not changed.`}
+        confirmLabel={isDeletingClaim ? "Delete claim" : "Delete note"}
         isConfirmDisabled={isBusy}
         onConfirm={() => void confirmDelete()}
         onCancel={() => setPendingDeleteId(null)}
