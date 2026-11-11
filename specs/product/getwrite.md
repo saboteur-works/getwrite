@@ -358,6 +358,19 @@ with the app without hand-rewriting it (see OQ-90).
   2026-11-04, note_a0e40319; Run D of note_31c82491's batching, which depends on
   the saved defaults of FR-81 and FR-82. Read 2026-11-09, not run: no capture
   path exists today; see FR-151.)
+- US-49: As a writer gathering evidence for nonfiction, true crime or folklore, I
+  want to mark a statement in my text as a claim, tie it to the sources that
+  support it, and record whether I have verified it, and to see all my claims
+  and their status in one place, so that I know which statements in my
+  manuscript are backed by evidence and which are not before I publish. [Next]
+  (Added 2026-11-10; FR-163 to FR-175. Owner direction, 2026-11-04, note_31c82491,
+  build-order item 10, "Claim ledger" (runway item 12, note_a6991b90): "claims
+  tied to sources, verification status", a Module, "claims anchored by
+  annotations, linked to sources, with a verification status". It depends on
+  Annotations (Feature 101) and Sources (Features 102 and 103), both shipped.
+  The shape questions, OQ-188 to OQ-201, were resolved by the owner at Gate 1,
+  2026-11-10. Citation formatting at compile (runway 11) and folklore variants
+  (runway 14) are not this: see Out of Scope.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -2237,6 +2250,134 @@ with the app without hand-rewriting it (see OQ-90).
   time" item. Trash carries a folder with its contents and can
   restore it with the same id; restoring the trashed Inbox is offered before a new one is made, so the two
   do not both exist by default.)
+
+- FR-163: The claim ledger MUST ship as a first-party module with its own module
+  id and its own on/off switch in Project Settings > Modules (`config.modules`),
+  declared at build time in the module manifest and registered through the
+  contribution seam (FR-125 to FR-132), with no runtime loading and no
+  third-party plugin. The claims module MUST be off by default: a project with
+  no entry for it in `config.modules` has it off. This is a deliberate change to
+  the rule that an absent entry means on (`isModuleEnabled`, OQ-13) for this
+  module only, so a module needs a per-module default; Sources stays on by
+  default. Existing projects therefore do not show the Claims tab until the
+  writer switches the module on. Switching the module off keeps the data: claims
+  stay annotations and stay visible as ordinary notes in the annotations panel.
+  A project type, built-in or writer-made, set in the Project Type Manager, MUST
+  be able to declare which modules a new project starts with on or off,
+  including switching the claims module on; a project type change does not
+  affect an existing project. [US-49] (Added 2026-11-10. Owner decision, Gate 1,
+  2026-11-10, OQ-193, option (a), and OQ-201, option (c). Owner direction,
+  2026-11-04, note_31c82491: a Module, built after Sources, whose seam is
+  built. Read 2026-11-10: the manifest today lists one module, `sources`, with a
+  view slot and an empty `indexSteps`
+  (`frontend/src/lib/models/modules/manifest.ts`); `isModuleEnabled` treats an
+  absent entry as on. Seeding the claim status list from a project type, option
+  (b) of OQ-201, is deferred until the list is writer-editable: see Out of
+  Scope.)
+- FR-164: A writer MUST be able to mark a statement in a text resource as a
+  claim, anchored to a passage of that resource by an annotation, so that the
+  claim is found at its passage in the editor as an annotation is. A claim is
+  an annotation carrying a claim marker, not a new record kind. Its note body
+  (1 to 5000 characters) is the claim statement, and the annotation's saved
+  quote stays the passage. A claim is always on a passage in a text resource:
+  there are no claims on Source attachments, on image or audio resources, or as
+  freestanding ledger entries in this cut, and a claim has no link to an entity.
+  [US-49] (Added 2026-11-10. Owner decision, Gate 1, 2026-11-10, OQ-188, option
+  (a); OQ-199, option (a); OQ-200, option (a). Owner direction, 2026-11-04,
+  "claims anchored by annotations". Read 2026-11-10: an annotation's body is
+  plain text in the sidecar, its passage is an id-only mark, and it may carry an
+  optional `target` `{ sourceId, attachmentId?, excerptId?, locator?,
+  sourceName? }` (`docs/features/annotations.md`); the glossary says Excerpt and
+  Citation are annotations with a `target`, not new record kinds. Attachment
+  claims may come later by the mark-less pattern: see Out of Scope.)
+- FR-165: A writer MUST be able to link a claim to a Source, and MAY be able to
+  link it to a particular excerpt of that Source or a locator in it, the way
+  a Citation points. A claim MUST have at most one Source link, which fits the
+  annotation's single `sourceId` in its `target`; a claim backed by two sources
+  is two claims. A link carries no stance (supports, disputes, mentions).
+  [US-49] (Added 2026-11-10. Owner decision, Gate 1, 2026-11-10, OQ-190, option
+  (a). Owner direction, 2026-11-04, "linked to sources". Several Sources per
+  claim and a stance are deferred: see Out of Scope.)
+- FR-166: Every claim MUST carry a verification status that the writer can read
+  and change. The statuses are a fixed list in this cut: Unverified, Verified,
+  Disputed and Needs review. Every new claim starts as Unverified. The list is
+  not writer-editable and is not seeded by a project type in this cut; it is
+  separate from Document status (`config.statuses`). [US-49] (Added 2026-11-10.
+  Owner decision, Gate 1, 2026-11-10, OQ-189, option (d). Owner direction,
+  2026-11-04, "with a verification status". A writer-editable list, with
+  project-type seeding, is a later feature: see Out of Scope.)
+- FR-167: A claim with no Source linked MUST be allowed. "Unsourced" MUST be
+  derived from the claim having no Source link; it is not a status the writer
+  can set. An unsourced claim MUST be shown distinctly from a sourced one in
+  every place a claim is listed, and a claim MUST NOT read as verified because
+  it has no Source. [US-49] (Added 2026-11-10.
+  Owner decision, Gate 1, 2026-11-10, OQ-191, option (c). The "unsourced" state
+  is the case a writer most needs to see.)
+- FR-168: The writer MUST be able to see every claim in the project in one place:
+  a project-scope "Claims" Work Area tab beside Sources, registered as a module
+  view slot and absent while the claims module is off. It MUST list, for each
+  claim, its statement, its passage and resource, its status, its Source or
+  "unsourced", and any detached or removed-Source state (FR-169), and MUST let
+  the writer open a claim at its passage. It MUST offer filters by at least
+  status and sourced or unsourced. [US-49] (Added 2026-11-10. Owner decision,
+  Gate 1, 2026-11-10, OQ-192, option (a). The Sources view, the Entities roster
+  and the Graph tab are the existing Work Area precedents.)
+- FR-169: A claim whose passage is gone from the open document MUST be shown
+  detached, with its saved quote kept and a Re-attach action, as annotations are
+  today. A claim whose Source is in Trash or purged MUST be shown with a removed
+  Source, with its saved Source name, and the writer MUST be able to relink it
+  to another Source. In both cases the status stays as the writer set it and
+  the product MUST NOT change it. A claim MUST NOT be silently dropped, hidden
+  or counted as verified, and a failure to check the Source MUST read as "could
+  not be checked", never as absence. Deleting only the passage text MUST NOT
+  delete the claim. A claim is deleted with its passage only when the writer
+  explicitly deletes both together; this includes deleting the whole document,
+  which sends its annotations, claims among them, to Trash with it. A claim
+  MUST NOT be silently deleted with its passage. [US-49] (Added 2026-11-10.
+  Owner decision, Gate 1, 2026-11-10, OQ-196, option (a) plus the deletion rule;
+  option (c) remains excluded and option (b), a status fallback, was not chosen.
+  `docs/standards/failure-visibility.md` and the existing annotation
+  behaviour.)
+- FR-170: Claims MUST survive the operations annotations survive today (copy,
+  duplicate, paste, cut-paste, revision restore, Trash and restore of a
+  resource, encrypting and unlocking a project) without losing the claim's
+  marker, Source link, status or status date, and a case where a claim cannot be
+  carried MUST be reported, not dropped. A test MUST pin each. [US-49] (Added
+  2026-11-10. Read 2026-11-10: `docs/features/annotations.md` records that
+  `target` survives these operations; a claim must not be the weaker record.)
+- FR-171: A claim's statement MUST be searchable like an annotation body, a hit
+  reading "Note: ". Status and Source as query or smart-folder fields are not
+  part of this cut. [US-49] (Added 2026-11-10. Owner decision, Gate 1,
+  2026-11-10, OQ-195, option (a). An annotation body is searchable today.
+  Status and Source as query fields are deferred: see Out of Scope.)
+- FR-172: Nothing about claims (a mark, a footnote, a list, a status) MUST
+  appear in compile or export output, as for annotations; compile and export
+  output MUST be unchanged by the presence of claims. [US-49] (Added 2026-11-10.
+  Owner decision, Gate 1, 2026-11-10, OQ-194, option (a). Annotations are never
+  compiled or exported. A compile report of claims is deferred: see Out of
+  Scope.)
+- FR-173: The claim ledger MUST work on each runtime the product covers: the
+  desktop app, hosted web, a paired device and Android, with parity. On hosted
+  web a claim MUST be written only into a project of the signed-in tenant. For a
+  paired device every claim route MUST be classified and checked as any other
+  route is, and a claim write into a locked or encrypted project MUST fail
+  closed with the existing locked behaviour and never write claim content
+  unencrypted. No new paired-device limit switch is added; deleting a claim is
+  already under `permanentDeletion`. Android and paired-device support MUST NOT
+  be claimed until a recorded device run showed it. [US-49] (Added 2026-11-10.
+  Owner decision, Gate 1, 2026-11-10, OQ-197, option (a). The pattern is FR-160,
+  FR-161 and FR-150; precedent for no new switch is OQ-161 and OQ-181.)
+- FR-174: Each claim MUST record the date its status last changed, so that the
+  writer can see when a claim was last verified. No history of earlier statuses
+  is kept. [US-49] (Added 2026-11-10. Owner decision, Gate 1, 2026-11-10, OQ-198,
+  option (b).)
+- FR-175: This feature MUST NOT include citation formatting, a bibliography or
+  a compile option that renders citations (runway 11), folklore variants,
+  motif or tale-type tagging, or spread over place and time (runway 14 to 16),
+  a web clipper or PDF excerpt import (runway 13), or collaboration or
+  assignment of a claim to another person. [US-49] (Added 2026-11-10. Owner
+  batching, 2026-11-04, note_31c82491: run F pairs the claim ledger with
+  folklore variants; run G holds citations at compile.)
 
 ### Later Requirements
 
@@ -5245,6 +5386,118 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 (Raised 2026-11-09 for FR-152.)
 
+**OQ-188 (resolved): Is a claim a new record kind, or an annotation with a claim marker or `target` like an Excerpt and a Citation? Is a claim's statement its own text or the annotation body or the passage's quote?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a). A claim is an annotation carrying a claim marker; its note body (1 to 5000 characters) is the claim statement, and the annotation quote stays the passage. Not a new record kind. Applied in FR-164.
+**Options:** (a) An annotation whose `target` or marker says it is a claim; consequence: the anchor, detached state, copy and revision survival, search and the panel already exist, and the annotation `target` shape changes or grows. (b) A new record kind in its own store that points at an annotation id; consequence: a claim can carry its own fields and a status history without touching the annotation, with a second store to keep in step with Trash, revisions and encryption. (c) A claim on a Source's own annotation as well; consequence: covers a claim made inside a Source, with more cases.
+**Impact:** FR-164, FR-170; US-49; every other claim requirement.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-163 to FR-175.)
+
+**OQ-189 (resolved): What are the verification statuses, who sets them, and may the writer edit the list?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (d). A fixed status list in the first cut, made writer-editable in a later feature: Unverified (the status every new claim starts with), Verified, Disputed, Needs review. Applied in FR-166.
+**Options:** (a) A fixed list the product defines; consequence: nothing to configure and one meaning everywhere, but it may not fit true crime, folklore or oral accounts. (b) The existing per-project status list (`config.statuses`) shared with Document status; consequence: no new machinery, but the two meanings (draft state and evidence state) share a list. (c) A separate per-project claim status list, writer-edited and seedable by a project type; consequence: fits each kind of work, with a settings tab and a seed to define. (d) A fixed set at launch and writer-editable later; consequence: smallest first cut.
+**Impact:** FR-166, FR-168; US-49. Also the status a new claim starts with, and what a stored status not in the list shows.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-166. From note_31c82491's open question on the claim statuses.)
+
+**OQ-190 (resolved): Can one claim link to several Sources or excerpts, and does a link say whether the Source supports or disputes the claim?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a). At most one Source link per claim, fitting the single `sourceId` in the annotation `target`; two sources are two claims. Applied in FR-165.
+**Options:** (a) Exactly one Source link per claim; consequence: simplest, and a claim backed by two sources needs two claims. (b) Several links, no stance; consequence: matches how evidence is gathered, the ledger must show several Sources per row. (c) Several links, each with a stance (supports, disputes, mentions); consequence: records conflicting sources, a larger set of states to define and show.
+**Impact:** FR-165, FR-168; US-49.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-165.)
+
+**OQ-191 (resolved): Is a claim with no Source allowed, and is that its own state?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (c). A claim with no Source is allowed; "unsourced" is derived from having no Source link, is not a settable status, is shown distinctly everywhere a claim is listed, and never reads as verified. Applied in FR-167.
+**Options:** (a) Allowed, and shown as "unsourced"; consequence: a writer can note a claim first and find the evidence later. (b) Not allowed: a claim needs at least one Source at creation; consequence: no unsourced claim exists, and a writer who has no Source yet must make one first. (c) Allowed, with "unsourced" derived from having no link rather than set as a status; consequence: it cannot be mis-set, and it is not a status the writer can choose.
+**Impact:** FR-167, FR-166, FR-168; US-49.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-167.)
+
+**OQ-192 (resolved): Is there a ledger view, and what does it list, filter and group by?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a). A project-scope "Claims" Work Area tab beside Sources, listing every claim with statement, passage and resource, status, Source or unsourced, and detached or removed-Source state, with filters by at least status and sourced or unsourced. Applied in FR-168.
+**Options:** (a) A project-scope "Claims" Work Area tab beside Sources, listing every claim with status and Sources, filtered by status, Source and resource; consequence: the headline of the feature, a new view slot. (b) The claims listed in the existing annotations panel of one resource only; consequence: no project-wide view, so unsourced claims across the book cannot be found. (c) Both; consequence: most useful, most to build. (d) A view of claims inside the Sources view; consequence: groups claims by Source and hides claims with no Source.
+**Impact:** FR-168; US-49.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-168.)
+
+**OQ-193 (resolved): Is the claim ledger its own switchable module in `config.modules`, or part of the `sources` module?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a), with a per-module default. The claims module has its own module id and its own switch in Project Settings > Modules. Off keeps the data: claims stay annotations and stay visible as ordinary notes in the panel. From OQ-201 the claims module is off by default (a project with no entry has it off), a deliberate change to the rule that an absent entry means on (`isModuleEnabled`, OQ-13) for this module only; Sources stays on by default. Existing projects do not show the Claims tab until it is switched on. Applied in FR-163.
+**Options:** (a) Its own module id with its own switch; consequence: a writer can have Sources without claims, and the claim ledger depends on `sources` being on, which the module system does not express today. (b) Part of `sources`, one switch; consequence: nothing new to switch, and a writer who wants Sources only cannot hide claims. (c) Its own module that is on only while `sources` is on; consequence: needs a dependency rule between modules. What switching it off does to stored claims is part of this question; today an off module keeps its data and stops its indexing.
+**Impact:** FR-163; US-49; `config.modules`; the module registry.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-163.)
+
+**OQ-194 (resolved): Does anything about claims appear in compile or export?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a). Nothing about claims appears in compile or export output. A compile report is deferred. Applied in FR-172.
+**Options:** (a) Nothing, as for annotations; consequence: no change to compile. (b) A compile-dialog option that lists unverified claims as a report or marks them in the output; consequence: a pre-publication check, and a new compile target. (c) Nothing in compile, and a separate export of the ledger itself (a table of claims, status and Sources); consequence: it reaches the writer's editor or fact-checker, and a new export kind. (d) Defer until citations at compile (runway 11) are specified; consequence: no conflict between two compile features.
+**Impact:** FR-172; US-49; FR-81, FR-82.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-172.)
+
+**OQ-195 (resolved): Are claims searchable, and can a query or smart folder select them by status or Source?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a). The claim statement is searchable like an annotation body (the existing "Note: " hit). Status and Source as query fields are deferred. Applied in FR-171.
+**Options:** (a) The claim statement is searchable like an annotation body and nothing more; consequence: smallest. (b) Searchable, plus status and Source as query fields; consequence: a smart folder of unverified claims, with query model changes. (c) Not searchable at launch; consequence: the ledger view is the only way to find one.
+**Impact:** FR-171, FR-168; US-49. The shared derived-index rebuild (`reindex`) is affected if claims are indexed.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-171.)
+
+**OQ-196 (resolved): What does the writer see and do when a claim's passage or Source is removed?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a), plus a deletion rule. A claim whose passage is removed is shown detached (quote kept) with Re-attach; a claim whose Source is removed is shown with a removed Source and can be relinked; the status stays as set. Deleting only the passage text never deletes the claim. A claim is deleted with its passage only when the writer explicitly deletes both together, including deleting the whole document, which sends its annotations to Trash with it. Option (c) (claim silently deleted with its passage) remains excluded. Applied in FR-169.
+**Options:** (a) The claim is shown detached or with a removed Source, as annotations and Citations are, with Re-attach and relink available; consequence: consistent, and the status of a claim whose Source is gone is still the one the writer set. (b) As (a), and the status falls back to a "needs review" state when a Source is removed or a passage changes; consequence: a stale verification cannot stand, and the product changes the writer's data. (c) The claim is deleted with the passage; consequence: no detached claims, and a lost mark loses a verification.
+**Impact:** FR-169, FR-170; US-49.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-169.)
+
+**OQ-197 (resolved): What do paired devices and Android do with claims, and does a claim action need a paired-device limit switch?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a). Parity on desktop, hosted web, paired device and Android; no new paired-device limit switch (claim delete is already under `permanentDeletion`, precedent OQ-161 and OQ-181). Android and paired-device support may not be claimed until a recorded device run. Applied in FR-173.
+**Options:** (a) Full parity on all four runtimes and no new limit switch; consequence: as for Capture (OQ-181), claims are allowed wherever creating or editing an annotation is. (b) Desktop and hosted web first, and Android and paired devices stated as not supported until a device run; consequence: smaller first cut, an unequal feature. (c) Parity, with a limit switch for deleting a claim or overwriting its status; consequence: matches the limits' purpose, and adds a sixth limit. Which runtime is verified on a device (Android needs a run outside the sandbox) is part of this question.
+**Impact:** FR-173; US-49; paired-device limits (Feature 77).
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-173.)
+
+**OQ-198 (resolved): Is a status change recorded with a date, or a history?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (b). Each claim records the date its status last changed; no full history. Applied in FR-174.
+**Options:** (a) Nothing recorded: the current status only; consequence: simplest. (b) The date of the last change only ("verified on"); consequence: the writer can see staleness, one more field. (c) A full history of status changes with date; consequence: an audit trail, a record to keep through Trash, revisions and encryption. (d) A date and a free-text note on each change; consequence: records how it was verified, and a larger form.
+**Impact:** FR-174, FR-166; US-49.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-174.)
+
+**OQ-199 (resolved): Can a claim exist without a passage in a text resource, for example on an image or audio resource, on a Source attachment, or as a freestanding entry in the ledger?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a). A claim is always on a passage in a text resource: no claims on Source attachments, image or audio resources, or freestanding entries in this cut. Attachment claims may come later via the mark-less pattern. Applied in FR-164.
+**Options:** (a) A claim always has a passage in a text resource; consequence: matches "anchored by annotations", and annotations on image and audio resources are deferred (FR-90). (b) A claim may also sit on a Source attachment by locator, as an attachment excerpt does; consequence: covers audio and image evidence, a mark-less claim by design. (c) A claim may be freestanding, typed into the ledger with no passage; consequence: a writer can list claims before drafting, with a claim that is anchored to nothing.
+**Impact:** FR-164, FR-169; US-49.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-164.)
+
+**OQ-200 (resolved): Can a claim link to an entity (a person, a place), and can an entity's page list its claims?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (a). No entity link. Applied in FR-164.
+**Options:** (a) No link to entities at launch; consequence: smallest, and a claim about a person is found by its passage's Mention. (b) A claim may name one or more entities; consequence: "all unverified claims about this person", with a typed link to define, as OQ-162 did for Sources (deferred). (c) Derive it from the entities mentioned in the claim's passage; consequence: nothing authored, with the noise-prone matches that Mentions already have.
+**Impact:** FR-164, FR-168; US-49; OQ-162.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-164.)
+
+**OQ-201 (resolved): Does a project type seed claim statuses or switch the claim ledger on, and do true crime and folklore project types exist for that?**
+**Resolution:** Resolved (2026-11-10, Owner decision, Gate 1): option (c) now, option (b) later. A project type, built-in or writer-made and set in the Project Type Manager, can declare which modules a new project starts with on or off, including switching the claims module on. Seeding the claim status list from a project type is deferred until the status list becomes writer-editable (OQ-189). Existing projects are unaffected by a type change. Applied in FR-163.
+**Options:** (a) No: the module is switched on by the writer in Project Settings > Modules; consequence: nothing to add. (b) Project types may seed the status list, as they seed `statuses`; consequence: a "True crime" or "Research" project starts with a fitting set, and the project-type format grows. (c) Project types for these audiences that switch modules on; consequence: a new project-type capability, raised in note_31c82491's open questions.
+**Impact:** FR-163, FR-166; US-49; the project-type format.
+**Owner:** Product owner.
+
+(Raised 2026-11-10 for FR-166. From note_31c82491.)
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -5440,3 +5693,26 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   conversion does not exist today.
 - Combine several Inbox fragments into one (FR-158; Owner decision, 2026-11-04,
   note_a0e40319): later, after merge (runway 2).
+- Citation formatting and a bibliography at compile (FR-175; note_31c82491,
+  runway 11, build-order item 12): later, a compile-dialog option. Not part of the
+  claim ledger.
+- Folklore variants, motif and tale-type tagging, and spread over place and
+  time (FR-175; note_31c82491, runway 14 to 16, build-order item 11): later. They
+  are batched with the claim ledger in run F but are their own features, built
+  on Sources.
+- Web clipper and PDF excerpt import (FR-175; runway 13): later.
+- Assigning a claim to a reviewer, comments on a claim, or claims shared
+  between writers (FR-175): later. Annotations are notes to self, not
+  collaboration.
+- Writer-editable claim statuses, and seeding the claim status list from a project
+  type (FR-166; Owner decision, Gate 1, 2026-11-10, OQ-189 and OQ-201): later.
+  The first cut has the fixed list Unverified, Verified, Disputed and Needs
+  review; project-type seeding waits for the editable list.
+- Status and Source as query or smart-folder fields for claims (FR-171; OQ-195):
+  later. Only the claim statement is searchable.
+- Claims on Source attachments (FR-164; OQ-199): later, by the mark-less pattern
+  attachment excerpts use.
+- Several Sources per claim, and a supports, disputes or mentions stance on a link
+  (FR-165; OQ-190): later. Today two sources are two claims.
+- A compile report of unverified claims, or an export of the ledger (FR-172;
+  OQ-194): later. Nothing about claims appears in compile or export.
