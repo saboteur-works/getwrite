@@ -8,8 +8,9 @@ import { ModulesOverrideContext } from "./ModulesContext";
 
 /**
  * Whether a module is on for the active project (Feature 103, FR-3, FR-31).
- * Reads the live `config.modules` from the store: true when the entry is
- * absent (OQ-13), false only for an explicit `false`. Under
+ * Reads the live `config.modules` from the store: an absent entry takes the
+ * module's manifest default (on for Sources, OQ-13; off for Claims, Feature
+ * 108 FR-3), an explicit value wins. Under
  * `StaticModulesProvider` (Storybook, tests) the supplied map wins.
  */
 export function useModuleEnabled(moduleId: string): boolean {
