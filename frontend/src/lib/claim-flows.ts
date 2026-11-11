@@ -42,7 +42,7 @@ export interface ClaimFlowApi {
   ): Promise<Annotation>;
 }
 
-export interface ClaimRange {
+interface ClaimRange {
   from: number;
   to: number;
 }

@@ -416,7 +416,7 @@ export function useModuleSwitch(moduleId: string): boolean {
 }
 
 /** The result of one claim write, as the row and the panel read it. */
-export type ClaimActionResult = { ok: true } | { ok: false; message: string };
+type ClaimActionResult = { ok: true } | { ok: false; message: string };
 
 export interface ClaimActions {
   /** The list with each stored write laid over the entry it replaced. */

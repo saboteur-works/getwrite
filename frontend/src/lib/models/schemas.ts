@@ -557,7 +557,7 @@ export const AnnotationTargetSchema = z.object({
  * status is any string here so a stored sidecar is never made unreadable by a
  * value from a newer build; the status list is enforced at the write boundary.
  */
-export const ClaimMarkerSchema = z.object({
+const ClaimMarkerSchema = z.object({
   status: z.string(),
   statusChangedAt: IsoDateString,
 });

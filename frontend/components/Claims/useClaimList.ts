@@ -61,8 +61,6 @@ import {
 } from "../Sharing/unlock-prompt-gate";
 import { UNLOCK_AT_DESKTOP_MESSAGE } from "../Sharing/sharing-copy";
 
-export type { ClaimPassageState };
-
 /** What the hook asks the shell to do when a claim is opened. */
 export interface OpenClaimRequest {
   resourceId: string;
@@ -101,7 +99,7 @@ export interface ClaimRow {
   passage: ClaimPassageState;
 }
 
-export type ClaimListState =
+type ClaimListState =
   | { status: "loading" }
   | { status: "failed"; isLocked: boolean; message: string }
   | {
@@ -116,7 +114,7 @@ export type ClaimListState =
       isTrashChecked: boolean;
     };
 
-export interface ClaimUnlockPrompt {
+interface ClaimUnlockPrompt {
   isPromptShown: boolean;
   /** Set when unlocking is limited for this device; shown as text. */
   refusal: string | null;

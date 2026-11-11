@@ -35,7 +35,7 @@ import { reportTransportValidationFailure } from "./transport-validation";
 export type { ClaimListResult, ClaimRecord, NewClaimInput, UpdateClaimInput };
 
 /** The claim operations both platforms implement. */
-export interface ClaimsTransport {
+interface ClaimsTransport {
   /** Every claim in the project, plus the resources that could not be read. */
   list(projectId: string): Promise<ClaimListResult>;
   /** Stores a new claim (status `unverified`); resolves the stored annotation. */
@@ -120,7 +120,7 @@ async function write(
 }
 
 /** HTTP transport: the hosted/desktop path. */
-export const httpClaimsTransport: ClaimsTransport = {
+const httpClaimsTransport: ClaimsTransport = {
   async list(projectId) {
     const response = await fetch(
       `${ENDPOINT}?projectId=${encodeURIComponent(projectId)}`,

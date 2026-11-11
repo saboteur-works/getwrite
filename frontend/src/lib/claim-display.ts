@@ -27,7 +27,7 @@ import {
 import type { Annotation } from "./models/types";
 
 /** Where a claim's Source is, as shown to the writer. */
-export type ClaimSourceState =
+type ClaimSourceState =
   | "none"
   | "present"
   | "removed"
@@ -65,7 +65,7 @@ export interface ClaimDisplayModel {
   sourcePartRemoved: boolean;
 }
 
-export interface NoteDisplayModel {
+interface NoteDisplayModel {
   kind: "note";
   body: string;
 }

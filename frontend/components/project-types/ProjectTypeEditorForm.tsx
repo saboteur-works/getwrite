@@ -117,7 +117,7 @@ export interface ProjectTypeEditorFormProps {
 }
 
 /** The two reasons a module declaration is shown read-only. */
-export type ModulesReadOnlyReason = "built-in" | "saving-unavailable";
+type ModulesReadOnlyReason = "built-in" | "saving-unavailable";
 
 const MODULES_READ_ONLY_TEXT: Record<ModulesReadOnlyReason, string> = {
   "built-in":
