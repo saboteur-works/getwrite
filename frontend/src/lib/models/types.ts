@@ -262,7 +262,10 @@ export type ViewName =
   | "trash"
   // The Sources module's view id (Feature 103, FR-15). Pinned equal to the
   // manifest's view id by tests/work-area-view-gating.test.tsx.
-  | "sources";
+  | "sources"
+  // The Claims module's view id (Feature 108, FR-3), pinned equal to the
+  // manifest's view id like "sources".
+  | "claims";
 
 /** Input types for metadata collection. */
 export type MetadataInputType = "text" | "multiselect" | "autocomplete";
