@@ -81,3 +81,28 @@ Commands (from `frontend/`):
 - The 10 s request expiry and the 3 s poll for the editor were exercised with fake timers or a stub, not with a real editor load.
 - Electron and CLI typecheck: `claims-list-core.ts` imports `excerpts.ts` and the new `annotation-mark-ids.ts` (lib/models, no node or React); the core-import-graph test passed, the workspace typechecks were not run.
 - `MarkExcerptControl` on a Source remains expanded.
+
+## Keep your place at phone width (2026-11-11)
+
+### Observed on device
+
+On the Pixel 7 Pro (owner, 2026-11-11) the editor did not restore the scroll position at phone width when returning to a document (Feature 100, `specs/features/editor-position-memory.md`).
+
+### Measured in code
+
+`useEditorPositionMemory.ts` read and wrote `scrollTop` of `.tiptap-editor-content` only. Since D6 (16b4dbd1), at `max-width: 767px` that element is `overflow-y: visible` and `.tiptap-editor-shell` is the scroller, so the recorded scroll was 0 and a restore wrote to an element that does not scroll. That the device failure comes from this is a hypothesis consistent with the code; the device re-run settles it.
+
+### What changed
+
+- New `frontend/components/Editor/editorScrollContainer.ts`: `resolveEditorScroller` returns the first of the content wrapper and its shell whose computed `overflow-y` is auto/scroll/overlay, else the content wrapper. It is resolved at each save and restore, so no width is repeated in code; the CSS stays the single source. `resolveEditorScrollListenerRoot` returns the shell (else the content wrapper).
+- `useEditorPositionMemory.ts`: `findScroller` uses the resolver; the scroll listener sits on the listener root in the capture phase (scroll does not bubble), so a width change needs no re-subscription. The old `SCROLLER_SELECTOR` constant is removed. Desktop: the content wrapper still scrolls and is still resolved.
+
+### Tests
+
+- New `tests/unit/editorScrollContainer.test.ts`: content wrapper at desktop, shell at phone, fallback, null outside the editor, listener root.
+- `tests/unit/useEditorPositionMemory.test.tsx`: new phone-width case records the shell's `scrollTop` and restores it into a new editor (content wrapper stays 0); the existing desktop cases pass unchanged.
+- `pnpm typecheck` clean; `pnpm lint` 0 errors; `pnpm test:ci`: only `tests/proseDiagnosticsBenchmark.test.ts` failed (timing comparison); see the final report for its re-run.
+
+### Not verified
+
+Real-device behaviour: jsdom has no layout, so computed `overflow-y` is set inline in tests. The lead re-runs it on the phone.

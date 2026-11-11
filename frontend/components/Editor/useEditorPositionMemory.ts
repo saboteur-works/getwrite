@@ -6,13 +6,10 @@ import {
   recordEditorPosition,
 } from "./editorPositionMemory";
 import { settleCreatedEditor } from "./loadDocumentIntoEditor";
-
-/**
- * Class of the rich editor's scrolling element (`EditorContent`'s wrapper in
- * `TipTapEditor.tsx`; rule in `styles/getwrite-utilities.css`). OQ-1 of
- * `specs/features/editor-position-memory.md`.
- */
-const SCROLLER_SELECTOR = ".tiptap-editor-content";
+import {
+  resolveEditorScroller,
+  resolveEditorScrollListenerRoot,
+} from "./editorScrollContainer";
 
 /**
  * Frames to keep trying to put the scroll offset back. The scrolling element
@@ -37,7 +34,7 @@ export interface EditorPositionMemory {
 
 function findScroller(editor: Editor): HTMLElement | null {
   const dom = editor.isDestroyed ? null : editor.view?.dom;
-  return (dom?.closest?.(SCROLLER_SELECTOR) as HTMLElement | null) ?? null;
+  return resolveEditorScroller(dom);
 }
 
 /**
@@ -153,11 +150,14 @@ export function useEditorPositionMemory(
   // replaced when the editor toggles between rich and source mode.
   useEffect(() => {
     if (!editor || !isRichMode) return;
-    const scroller = findScroller(editor);
-    if (!scroller) return;
+    const root = resolveEditorScrollListenerRoot(editor.view?.dom);
+    if (!root) return;
     const onScroll = () => record(editor);
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    return () => scroller.removeEventListener("scroll", onScroll);
+    // Capture: scroll does not bubble, and which element scrolls depends on
+    // the width (`resolveEditorScroller`).
+    const options = { passive: true, capture: true } as const;
+    root.addEventListener("scroll", onScroll, options);
+    return () => root.removeEventListener("scroll", onScroll, options);
   }, [editor, isRichMode, record]);
 
   useEffect(() => cancelScrollRestore, [cancelScrollRestore]);
