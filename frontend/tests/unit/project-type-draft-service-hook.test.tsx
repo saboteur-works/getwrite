@@ -126,3 +126,129 @@ describe("useProjectTypeDraftService writes", () => {
     expect(result.current.items.map((i) => i.definition.id)).toEqual(["novel"]);
   });
 });
+
+describe("useProjectTypeDraftService module declaration (Feature 108, FR-5)", () => {
+  const withModules: ProjectTypeTemplateFile[] = [
+    { fileName: "novel.json", definition: def("novel", "Novel") },
+    {
+      fileName: "mine.json",
+      definition: { ...def("mine", "Mine"), modules: { claims: true } },
+      source: "saved",
+    },
+  ];
+
+  it("exposes one not-set state per manifest module for a type with no declaration", () => {
+    const { result } = renderHook(() => useProjectTypeDraftService(templates));
+    expect(result.current.moduleStates).toEqual({
+      sources: "not-set",
+      claims: "not-set",
+    });
+  });
+
+  it("loads an existing type's declaration into the draft", () => {
+    const { result } = renderHook(() =>
+      useProjectTypeDraftService(withModules),
+    );
+    act(() => result.current.setSelectedKey("file:mine.json"));
+    expect(result.current.moduleStates).toEqual({
+      sources: "not-set",
+      claims: "on",
+    });
+    expect(result.current.canEditModules).toBe(true);
+  });
+
+  it("a built-in's declaration is read-only: a change is ignored", () => {
+    const { result } = renderHook(() =>
+      useProjectTypeDraftService(withModules),
+    );
+    expect(result.current.canEditModules).toBe(false);
+    act(() => result.current.handleModuleStateChange("claims", "on"));
+    expect(result.current.selectedItem?.hasChanges).toBe(false);
+    expect(result.current.moduleStates.claims).toBe("not-set");
+  });
+
+  it("changing a saved type's state marks it edited and sends exactly that entry", async () => {
+    const update = vi.fn(async (_id: string, spec: ProjectTypeDefinition) => ({
+      ok: true as const,
+      fileName: "mine.json",
+      spec,
+    }));
+    const transport: ProjectTypesTransport = {
+      list: vi.fn(),
+      create: vi.fn(),
+      update,
+      remove: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useProjectTypeDraftService(withModules, async () => transport),
+    );
+    act(() => result.current.setSelectedKey("file:mine.json"));
+    act(() => result.current.handleModuleStateChange("sources", "off"));
+    act(() => result.current.handleModuleStateChange("claims", "not-set"));
+    expect(result.current.selectedItem?.hasChanges).toBe(true);
+    await act(async () => {
+      await result.current.handleSave();
+    });
+    expect(update.mock.calls[0]?.[1].modules).toEqual({ sources: false });
+  });
+
+  it("a failed save keeps the draft and returns an error text", async () => {
+    const update = vi.fn(async () => {
+      throw new Error("disk full");
+    });
+    const transport: ProjectTypesTransport = {
+      list: vi.fn(),
+      create: vi.fn(),
+      update,
+      remove: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useProjectTypeDraftService(withModules, async () => transport),
+    );
+    act(() => result.current.setSelectedKey("file:mine.json"));
+    act(() => result.current.handleModuleStateChange("claims", "off"));
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.handleSave();
+    });
+    expect(outcome).toMatchObject({
+      ok: false,
+      kind: "failed",
+      message: "disk full",
+    });
+    expect(result.current.selectedItem?.hasChanges).toBe(true);
+    expect(result.current.moduleStates.claims).toBe("off");
+  });
+
+  it("where saving is unavailable (hosted) no save is offered and nothing is sent", async () => {
+    const transport = transportWith(async () => {
+      throw new Error("unused");
+    });
+    const { result } = renderHook(() =>
+      useProjectTypeDraftService(withModules, async () => transport, {
+        savingAvailable: false,
+      }),
+    );
+    act(() => result.current.setSelectedKey("file:mine.json"));
+    expect(result.current.canSave).toBe(false);
+    expect(result.current.canEditModules).toBe(false);
+    act(() => result.current.handleModuleStateChange("claims", "off"));
+    expect(result.current.moduleStates.claims).toBe("on");
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.handleSave();
+    });
+    expect(outcome).toMatchObject({
+      ok: false,
+      kind: "refused",
+      reason: "saving-unavailable",
+    });
+    expect(transport.create).not.toHaveBeenCalled();
+    expect(transport.update).not.toHaveBeenCalled();
+  });
+
+  it("saving is offered by default", () => {
+    const { result } = renderHook(() => useProjectTypeDraftService(templates));
+    expect(result.current.canSave).toBe(true);
+  });
+});

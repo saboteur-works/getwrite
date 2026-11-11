@@ -34,6 +34,7 @@ import {
 import { flushIndexer } from "../../src/lib/models/indexer-queue";
 import { generateUUID } from "../../src/lib/models/uuid";
 import type { Annotation, MetadataValue } from "../../src/lib/models/types";
+import { httpAnnotationsTransport } from "../../src/lib/api/annotations";
 import { removeDirRetry } from "./helpers/fs-utils";
 
 const T0 = "1970-01-01T00:00:00.000Z";
@@ -424,5 +425,173 @@ describe("the pasted body", () => {
     expect(target.add).not.toHaveBeenCalled();
     expect(annotationIds(target.editor)).toEqual([]);
     expect(target.editor.getText()).toContain("noted");
+  });
+});
+
+const SRC = "33333333-3333-4333-8333-333333333333";
+const CLAIM_DATE = "2026-01-02T03:04:05.000Z";
+
+/** Writes a claim (status, date and Source link set) straight into res1's sidecar. */
+async function seedClaim(status: string, date: string): Promise<void> {
+  const sidecar = JSON.parse(await fs.readFile(sidecarPath(res1), "utf8"));
+  sidecar.annotations = [
+    {
+      ...sidecar.annotations[0],
+      target: { sourceId: SRC, sourceName: "Interview" },
+      claim: { status, statusChangedAt: date },
+    },
+  ];
+  await fs.writeFile(sidecarPath(res1), JSON.stringify(sidecar), "utf8");
+}
+
+describe("addAnnotationCore with a carried claim (Feature 108, FR-18)", () => {
+  const base = { body: "stmt", quote: "q" };
+
+  it("stores a valid carried claim unchanged", async () => {
+    const claim = { status: "disputed", statusChangedAt: CLAIM_DATE };
+    const added = await addAnnotationCore(projectId, res2, {
+      id: B,
+      ...base,
+      target: { sourceId: SRC },
+      claim,
+    });
+    expect(added.claim).toEqual(claim);
+    const [read] = await stored(res2);
+    expect(read.claim).toEqual(claim);
+    expect(read.target).toEqual({ sourceId: SRC });
+  });
+
+  it("refuses an invalid carried claim and writes nothing", async () => {
+    const bad: unknown[] = [
+      { status: "verified" },
+      { status: "", statusChangedAt: CLAIM_DATE },
+      { status: 5, statusChangedAt: CLAIM_DATE },
+      { status: "x".repeat(65), statusChangedAt: CLAIM_DATE },
+      { status: "verified", statusChangedAt: "yesterday" },
+      { status: "verified", statusChangedAt: CLAIM_DATE, extra: 1 },
+      "verified",
+    ];
+    for (const claim of bad) {
+      await expect(
+        addAnnotationCore(projectId, res2, { id: B, ...base, claim }),
+      ).rejects.toThrow();
+    }
+    expect(await stored(res2)).toEqual([]);
+  });
+
+  it("refuses a claim with an empty statement and still refuses unknown keys", async () => {
+    const claim = { status: "verified", statusChangedAt: CLAIM_DATE };
+    await expect(
+      addAnnotationCore(projectId, res2, {
+        id: B,
+        body: "",
+        quote: "q",
+        claim,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      addAnnotationCore(projectId, res2, { id: B, ...base, other: 1 }),
+    ).rejects.toThrow();
+    expect(await stored(res2)).toEqual([]);
+  });
+
+  it("adds an annotation with no claim exactly as before", async () => {
+    const added = await addAnnotationCore(projectId, res2, { id: B, ...base });
+    expect("claim" in added).toBe(false);
+  });
+});
+
+describe("paste of a claim (Feature 108, FR-18)", () => {
+  it("keeps status, status date and Source link in the stored sidecar", async () => {
+    await seedClaim("verified", CLAIM_DATE);
+    const m = source(res1);
+    const target = plainTarget(res2);
+    paste(target, takeNoted(m, "copy"));
+    expect(await target.settled()).toEqual({ ok: true });
+
+    expect(target.add).toHaveBeenCalledTimes(1);
+    expect(target.add.mock.calls[0][2].claim).toEqual({
+      status: "verified",
+      statusChangedAt: CLAIM_DATE,
+    });
+    const [copy] = await stored(res2);
+    expect(copy.id).not.toBe(A);
+    expect(copy.body).toBe(BODY);
+    expect(copy.claim).toEqual({
+      status: "verified",
+      statusChangedAt: CLAIM_DATE,
+    });
+    expect(copy.target).toEqual({ sourceId: SRC, sourceName: "Interview" });
+  });
+
+  it("sends no claim key for a plain annotation", async () => {
+    const m = source(res1);
+    const target = plainTarget(res2);
+    paste(target, takeNoted(m, "copy"));
+    await target.settled();
+    expect("claim" in target.add.mock.calls[0][2]).toBe(false);
+    expect("claim" in (await stored(res2))[0]).toBe(false);
+  });
+
+  it("carries a stored status that is off the list as stored (OQ-11); the source keeps it too", async () => {
+    await seedClaim("from-a-newer-build", CLAIM_DATE);
+    const m = source(res1);
+    const target = plainTarget(res2);
+    paste(target, takeNoted(m, "copy"));
+    const result = await target.settled();
+
+    expect(result.ok).toBe(true);
+    expect(annotationIds(target.editor)).toHaveLength(1);
+    expect((await stored(res2))[0].claim).toEqual({
+      status: "from-a-newer-build",
+      statusChangedAt: CLAIM_DATE,
+    });
+    expect((await stored(res1))[0].claim?.status).toBe("from-a-newer-build");
+  });
+});
+
+describe("client annotation parse (Feature 108, FR-18)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("returns the claim key from add and list, and nothing extra for a plain note", async () => {
+    const claim = { status: "needs-review", statusChangedAt: CLAIM_DATE };
+    const withClaim = {
+      id: A,
+      body: "b",
+      quote: "q",
+      claim,
+      createdAt: T0,
+      updatedAt: T0,
+    };
+    const plain = {
+      id: B,
+      body: "b",
+      quote: "q",
+      createdAt: T0,
+      updatedAt: T0,
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              annotation: withClaim,
+              annotations: [withClaim, plain],
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    const added = await httpAnnotationsTransport.add("p", "r", {
+      id: A,
+      body: "b",
+      quote: "q",
+      claim,
+    });
+    expect(added.claim).toEqual(claim);
+    const listed = await httpAnnotationsTransport.list("p", "r");
+    expect(listed[0].claim).toEqual(claim);
+    expect(JSON.stringify(listed[1])).toBe(JSON.stringify(plain));
   });
 });

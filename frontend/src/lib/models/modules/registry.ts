@@ -12,6 +12,7 @@
  * project-type keys (FR-11).
  */
 import type { ProjectConfig } from "../types";
+import { MODULE_MANIFEST } from "./manifest";
 
 /** The slot kinds the registry declares. Later waves add theirs with a consumer. */
 export const MODULE_SLOT_KINDS = ["view"] as const;
@@ -35,21 +36,41 @@ export interface ModuleManifestEntry {
   view?: ModuleViewSlot;
   /** Derived-index steps this module owns; empty when it owns no index. */
   indexSteps: readonly ModuleIndexStep[];
+  /**
+   * State of the module for a project whose `config.modules` has no own entry
+   * for it (Feature 108, FR-2). When the field is omitted the module is
+   * on; only an explicit `false` makes it off until the writer turns it on.
+   */
+  defaultEnabled?: boolean;
 }
 
 type ModulesConfig = Pick<ProjectConfig, "modules">;
 
 /**
- * Whether a module is on for a project. An absent entry means on (OQ-13);
- * only an explicit `false` turns it off. Unknown ids are handled the same way.
+ * The one lookup for a module's default state: the manifest entry's
+ * `defaultEnabled`, or on when the entry omits it or the id is unknown.
+ */
+function moduleDefaultEnabled(
+  id: string,
+  manifest: readonly ModuleManifestEntry[],
+): boolean {
+  return manifest.find((m) => m.id === id)?.defaultEnabled !== false;
+}
+
+/**
+ * Whether a module is on for a project. An explicit entry wins; an absent
+ * entry means the module's default (on unless its manifest entry says
+ * `defaultEnabled: false`), and an unknown id is on (OQ-13). `manifest`
+ * defaults to the build's `MODULE_MANIFEST`.
  */
 export function isModuleEnabled(
   config: ModulesConfig | undefined,
   id: string,
+  manifest: readonly ModuleManifestEntry[] = MODULE_MANIFEST,
 ): boolean {
   const modules = config?.modules;
   if (!modules || !Object.prototype.hasOwnProperty.call(modules, id))
-    return true;
+    return moduleDefaultEnabled(id, manifest);
   return modules[id] !== false;
 }
 
@@ -76,7 +97,7 @@ export function createModuleRegistry(
     byId.set(entry.id, entry);
   }
   const enabled = (config: ModulesConfig | undefined): ModuleManifestEntry[] =>
-    modules.filter((m) => isModuleEnabled(config, m.id));
+    modules.filter((m) => isModuleEnabled(config, m.id, modules));
   return {
     modules,
     getModule: (id) => byId.get(id),

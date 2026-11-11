@@ -1600,7 +1600,8 @@ export default function AppShell({
                       view === "entityGraph" ||
                       view === "timeline" ||
                       view === "trash" ||
-                      view === "sources"
+                      view === "sources" ||
+                      view === "claims"
                         ? (() => {
                             if (view === "data") {
                               const queryResources =
@@ -1767,7 +1768,11 @@ export default function AppShell({
                             // through the module registry; like the views above
                             // they render before the `!selectedResource` guard.
                             // Trash is always enabled (FR-1), never gated.
-                            if (view === "trash" || view === "sources") {
+                            if (
+                              view === "trash" ||
+                              view === "sources" ||
+                              view === "claims"
+                            ) {
                               const slot = moduleViews.enabled.find(
                                 (s) => s.id === view,
                               );

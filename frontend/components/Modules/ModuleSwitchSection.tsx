@@ -9,8 +9,8 @@
  * stored `modules` map is replaced in the store so `useModuleEnabled`
  * readers update, and a `role="status"` message says so. A failed save shows
  * a `role="alert"` message and the switch keeps showing the writer's choice,
- * not a silent revert. A project with no `config.modules` entry shows the
- * module on (OQ-13).
+ * not a silent revert. A module with no `config.modules` entry shows
+ * its default state (on for Sources, off for Claims, OQ-13, Feature 108).
  *
  * The module write is not paired-device limited (FR-13 inventory in
  * `specs/features/sources-module-seam/experiments.md`), so the switch is
@@ -77,13 +77,16 @@ function ModuleSwitchRow({
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={inputId} className="inline-flex items-center gap-2">
+      <label
+        htmlFor={inputId}
+        className="inline-flex items-center gap-2 text-gw-primary"
+      >
         <input
           id={inputId}
           type="checkbox"
           checked={isChecked}
           onChange={(event) => void handleChange(event.target.checked)}
-          className="h-4 w-4 rounded border-gw-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gw-primary"
+          className="h-4 w-4 rounded border-gw-border accent-current focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gw-primary"
         />
         <span className="text-sm font-medium text-gw-primary">
           Enable {label}

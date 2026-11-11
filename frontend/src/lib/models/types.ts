@@ -262,7 +262,10 @@ export type ViewName =
   | "trash"
   // The Sources module's view id (Feature 103, FR-15). Pinned equal to the
   // manifest's view id by tests/work-area-view-gating.test.tsx.
-  | "sources";
+  | "sources"
+  // The Claims module's view id (Feature 108, FR-3), pinned equal to the
+  // manifest's view id like "sources".
+  | "claims";
 
 /** Input types for metadata collection. */
 export type MetadataInputType = "text" | "multiselect" | "autocomplete";
@@ -411,6 +414,17 @@ export interface AnnotationTarget {
 }
 
 /**
+ * The claim marker on an annotation (Feature 108, FR-7, FR-10); its presence
+ * makes the annotation a claim. `status` is a `ClaimStatus` when written by
+ * this build; a stored value from elsewhere is read as stored, so it is typed
+ * `string`. `statusChangedAt` is a full ISO timestamp set by the core.
+ */
+export interface ClaimMarker {
+  status: string;
+  statusChangedAt: string;
+}
+
+/**
  * A writer's note on a passage of a text resource (Feature 101, FR-10).
  * Stored in the sidecar `annotations` array and written only by the
  * annotation core through `mutateSidecar`. The passage is found by the
@@ -423,6 +437,8 @@ export interface Annotation {
   body: string;
   quote: string;
   target?: AnnotationTarget;
+  /** Present only on a claim (Feature 108); absent on every other annotation. */
+  claim?: ClaimMarker;
   createdAt: string;
   updatedAt: string;
 }

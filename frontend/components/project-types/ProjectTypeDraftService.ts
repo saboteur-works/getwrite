@@ -19,6 +19,7 @@
  */
 
 import { useState, useMemo, useRef } from "react";
+import { MODULE_MANIFEST } from "../../src/lib/models/modules/manifest";
 import {
   projectTypeFieldErrors,
   validateProjectType,
@@ -121,14 +122,14 @@ export type DraftValidationResult =
 
 /**
  * Paths the editor form has an input for, and so can show an error beside:
- * the type name, a status label, a folder name, a subfolder name and parent,
- * and a starter document name. Any other path (the id, the folders list
- * itself, relationship types, subtypes, editor settings, folder-level starter
- * documents) has no such input, or is shown elsewhere, and goes to the action
- * bar.
+ * the type name, a status label, a module declaration, a folder name, a
+ * subfolder name and parent, and a starter document name. Any other path (the
+ * id, the folders list itself, relationship types, subtypes, editor settings,
+ * folder-level starter documents) has no such input, or is shown elsewhere,
+ * and goes to the action bar.
  */
 const FORM_FIELD_KEY =
-  /^(name|statuses\.\d+|folders\.\d+\.name|defaultFolders\.\d+\.(name|folder)|defaultResources\.\d+\.name)$/;
+  /^(name|statuses\.\d+|modules(\..+)?|folders\.\d+\.name|defaultFolders\.\d+\.(name|folder)|defaultResources\.\d+\.name)$/;
 
 /** True when the form shows an error for this schema-path key beside an input. */
 export function isFormFieldKey(key: string): boolean {
@@ -248,6 +249,65 @@ export function validateDraft(
 
   return { valid: true };
 }
+
+/** What a type says about one module: on, off, or nothing (not set). */
+export type ModuleDeclarationState = "on" | "off" | "not-set";
+
+/** The one state per `MODULE_MANIFEST` module for a definition. */
+export type ModuleStates = Record<string, ModuleDeclarationState>;
+
+function declaredState(
+  modules: Record<string, boolean> | undefined,
+  moduleId: string,
+): ModuleDeclarationState {
+  if (modules === undefined) return "not-set";
+  if (!Object.prototype.hasOwnProperty.call(modules, moduleId)) {
+    return "not-set";
+  }
+  return modules[moduleId] === true ? "on" : "off";
+}
+
+/**
+ * One declaration state per manifest module (claims and sources), "not-set"
+ * when the definition has no own entry for it. Ids the manifest does not
+ * list are not shown here but are kept in the definition.
+ */
+export function moduleStatesOf(
+  definition: ProjectTypeDefinition,
+): ModuleStates {
+  const states: ModuleStates = {};
+  for (const entry of MODULE_MANIFEST) {
+    states[entry.id] = declaredState(definition.modules, entry.id);
+  }
+  return states;
+}
+
+/**
+ * Returns the definition with one module's declaration set. "on" and "off"
+ * write exactly that entry; "not-set" removes it, and the `modules` key goes
+ * with the last entry. An id outside the manifest returns the definition
+ * unchanged.
+ */
+export function withModuleState(
+  definition: ProjectTypeDefinition,
+  moduleId: string,
+  state: ModuleDeclarationState,
+): ProjectTypeDefinition {
+  if (!MODULE_MANIFEST.some((entry) => entry.id === moduleId)) {
+    return definition;
+  }
+  const { modules, ...rest } = definition;
+  const next: Record<string, boolean> = { ...modules };
+  if (state === "not-set") {
+    delete next[moduleId];
+  } else {
+    next[moduleId] = state === "on";
+  }
+  return Object.keys(next).length === 0 ? rest : { ...rest, modules: next };
+}
+
+const SAVING_UNAVAILABLE_MESSAGE =
+  "Saving project types is not available here.";
 
 const BUILT_IN_DELETE_MESSAGE =
   "Built-in project types cannot be changed or deleted.";
@@ -562,6 +622,20 @@ export interface ProjectTypeDraftServiceState {
   handleUpdateStatus: (index: number, value: string) => void;
   handleAddDefaultFolder: () => void;
   handleRemoveDefaultFolder: (index: number) => void;
+  /** One declaration state per manifest module for the selected item. */
+  moduleStates: ModuleStates;
+  /**
+   * True when the selected item's declaration can be changed: a draft or
+   * saved type, and saving is available. A built-in's is read-only.
+   */
+  canEditModules: boolean;
+  /** Sets one module's declaration; ignored when not editable. */
+  handleModuleStateChange: (
+    moduleId: string,
+    state: ModuleDeclarationState,
+  ) => void;
+  /** False where every save is refused (hosted): no save is offered. */
+  canSave: boolean;
   /** True while a save or delete request is in flight. */
   isWriting: boolean;
   /** Saves the selected item (a built-in is saved as a copy). */
@@ -586,7 +660,9 @@ export interface ProjectTypeDraftServiceState {
 export function useProjectTypeDraftService(
   initialTemplates: ProjectTypeTemplateFile[],
   resolveTransport: () => Promise<ProjectTypesTransport> = resolveProjectTypesTransport,
+  options: { savingAvailable?: boolean } = {},
 ): ProjectTypeDraftServiceState {
+  const canSave = options.savingAvailable !== false;
   const initialItems = useMemo<ProjectTypeListItem[]>(() => {
     return initialTemplates.map((template) => {
       const normalized = normalizeDefinition(template.definition);
@@ -742,6 +818,19 @@ export function useProjectTypeDraftService(
     }));
   };
 
+  const canEditModules =
+    selectedItem !== null && canSave && !isBuiltInItem(selectedItem);
+
+  const handleModuleStateChange = (
+    moduleId: string,
+    state: ModuleDeclarationState,
+  ): void => {
+    if (!canEditModules) return;
+    updateSelectedDefinition((current) =>
+      withModuleState(current, moduleId, state),
+    );
+  };
+
   /** Runs one write at a time; a second call while one is in flight is ignored. */
   const runWrite = async <T>(
     operation: (
@@ -750,6 +839,14 @@ export function useProjectTypeDraftService(
     ) => Promise<T>,
   ): Promise<T | null> => {
     if (!selectedItem || writingRef.current) return null;
+    if (!canSave) {
+      return {
+        ok: false,
+        kind: "refused",
+        reason: "saving-unavailable",
+        message: SAVING_UNAVAILABLE_MESSAGE,
+      } as T;
+    }
     writingRef.current = true;
     setIsWriting(true);
     try {
@@ -828,5 +925,11 @@ export function useProjectTypeDraftService(
     handleUpdateStatus,
     handleAddDefaultFolder,
     handleRemoveDefaultFolder,
+    moduleStates: moduleStatesOf(
+      selectedItem?.definition ?? createEmptyProjectType(),
+    ),
+    canEditModules,
+    handleModuleStateChange,
+    canSave,
   };
 }

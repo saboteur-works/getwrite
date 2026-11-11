@@ -14,19 +14,41 @@
 /** Why the project was refused. */
 export type EncryptedProjectRefusalReason = "encrypted" | "marker-unreadable";
 
+/** What the refused write was for; picks the message's wording. */
+export type EncryptedProjectRefusalSubject = "capture" | "claims";
+
 const ERROR_NAME = "EncryptedProjectCaptureRefusedError";
 
-/** Nothing was captured because the project is encrypted-marked. */
+const MESSAGES: Record<
+  EncryptedProjectRefusalSubject,
+  Record<EncryptedProjectRefusalReason, string>
+> = {
+  capture: {
+    encrypted:
+      "Nothing was captured: this project is encrypted, and this device cannot yet encrypt what it writes. Capture into an unencrypted project instead.",
+    "marker-unreadable":
+      "Nothing was captured: this project's encryption marker could not be read, so the project was treated as encrypted. Try again, or choose another project.",
+  },
+  claims: {
+    encrypted:
+      "Claims can't be changed in an encrypted project on this device. It cannot yet encrypt what it writes, so nothing was saved.",
+    "marker-unreadable":
+      "Claims can't be changed right now: this project's encryption marker could not be read, so the project was treated as encrypted. Nothing was saved. Try again.",
+  },
+};
+
+/**
+ * The write was refused because the project is encrypted-marked (or its
+ * marker is unreadable). The wording follows `subject`, default "capture".
+ */
 export class EncryptedProjectCaptureRefusedError extends Error {
   readonly reason: EncryptedProjectRefusalReason;
 
-  constructor(reason: EncryptedProjectRefusalReason, options?: ErrorOptions) {
-    super(
-      reason === "encrypted"
-        ? "Nothing was captured: this project is encrypted, and this device cannot yet encrypt what it writes. Capture into an unencrypted project instead."
-        : "Nothing was captured: this project's encryption marker could not be read, so the project was treated as encrypted. Try again, or choose another project.",
-      options,
-    );
+  constructor(
+    reason: EncryptedProjectRefusalReason,
+    options?: ErrorOptions & { subject?: EncryptedProjectRefusalSubject },
+  ) {
+    super(MESSAGES[options?.subject ?? "capture"][reason], options);
     this.name = ERROR_NAME;
     this.reason = reason;
   }

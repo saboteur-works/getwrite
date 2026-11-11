@@ -10,6 +10,8 @@ import {
   describeItemOrigin,
   mergeListIntoItems,
   discardAllEdits,
+  moduleStatesOf,
+  withModuleState,
   type ProjectTypeListItem,
 } from "../../components/project-types/ProjectTypeDraftService";
 import type {
@@ -718,5 +720,154 @@ describe("discardAllEdits", () => {
     const input = [edited];
     discardAllEdits(input);
     expect(input[0].definition.name).toBe("Mine edited");
+  });
+});
+
+describe("module declaration in the draft (Feature 108, FR-5)", () => {
+  const base: ProjectTypeDefinition = {
+    id: "mod-type",
+    name: "Mod type",
+    description: "",
+    folders: [{ name: "Workspace" }],
+    defaultFolders: [],
+    defaultResources: [],
+    statuses: [],
+  };
+
+  function transportOf(
+    overrides: Partial<ProjectTypesTransport>,
+  ): ProjectTypesTransport {
+    return {
+      list: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
+      ...overrides,
+    };
+  }
+
+  it("exposes one state per manifest module, not set by default", () => {
+    const expected = { sources: "not-set", claims: "not-set" };
+    expect(moduleStatesOf(base)).toEqual(expected);
+    expect(moduleStatesOf(createEmptyProjectType())).toEqual(expected);
+  });
+
+  it("loads an existing declaration into the states", () => {
+    expect(
+      moduleStatesOf({ ...base, modules: { claims: true, sources: false } }),
+    ).toEqual({ sources: "off", claims: "on" });
+  });
+
+  it("does not read a prototype name as a declaration", () => {
+    const states = moduleStatesOf({ ...base, modules: {} });
+    expect(Object.keys(states)).toEqual(["sources", "claims"]);
+    expect(states.claims).toBe("not-set");
+  });
+
+  it("setting on or off puts exactly that entry in the definition", () => {
+    const on = withModuleState(base, "claims", "on");
+    expect(on.modules).toEqual({ claims: true });
+    const off = withModuleState(on, "sources", "off");
+    expect(off.modules).toEqual({ claims: true, sources: false });
+    expect(base).not.toHaveProperty("modules");
+  });
+
+  it("not set removes the entry, and the last removal drops the key", () => {
+    const both = withModuleState(
+      withModuleState(base, "claims", "on"),
+      "sources",
+      "off",
+    );
+    expect(withModuleState(both, "claims", "not-set").modules).toEqual({
+      sources: false,
+    });
+    const single = withModuleState(base, "claims", "on");
+    expect(withModuleState(single, "claims", "not-set")).not.toHaveProperty(
+      "modules",
+    );
+  });
+
+  it("keeps an unknown module id declared in a loaded type", () => {
+    const next = withModuleState(
+      { ...base, modules: { future: true } },
+      "claims",
+      "on",
+    );
+    expect(next.modules).toEqual({ future: true, claims: true });
+  });
+
+  it("ignores a module id that is not in the manifest", () => {
+    expect(withModuleState(base, "nope", "on")).toBe(base);
+  });
+
+  it("puts the declaration in the save payload and leaves it out when not set", async () => {
+    const create = vi.fn(async (spec: ProjectTypeDefinition) => ({
+      ok: true as const,
+      fileName: `${spec.id}.json`,
+      spec,
+    }));
+    const transport = transportOf({ create });
+    const item: ProjectTypeListItem = {
+      key: "draft:mod-type",
+      definition: withModuleState(base, "claims", "on"),
+      hasChanges: true,
+    };
+    await saveDraftItem(item, [item], transport);
+    expect(create.mock.calls[0]?.[0].modules).toEqual({ claims: true });
+
+    const cleared: ProjectTypeListItem = {
+      ...item,
+      definition: withModuleState(item.definition, "claims", "not-set"),
+    };
+    await saveDraftItem(cleared, [cleared], transport);
+    expect(create.mock.calls[1]?.[0]).not.toHaveProperty("modules");
+  });
+
+  it("a saved type's declaration is sent on update and kept in the result", async () => {
+    const update = vi.fn(async (_id: string, spec: ProjectTypeDefinition) => ({
+      ok: true as const,
+      fileName: "mod-type.json",
+      spec,
+    }));
+    const loadedDefinition = { ...base, modules: { claims: true } };
+    const edited: ProjectTypeListItem = {
+      key: "file:mod-type.json",
+      fileName: "mod-type.json",
+      definition: withModuleState(loadedDefinition, "claims", "off"),
+      baseline: loadedDefinition,
+      source: "saved",
+      hasChanges: true,
+    };
+    const result = await saveDraftItem(
+      edited,
+      [edited],
+      transportOf({ update }),
+    );
+    expect(update.mock.calls[0]?.[1].modules).toEqual({ claims: false });
+    expect(result.ok && moduleStatesOf(result.item.definition).claims).toBe(
+      "off",
+    );
+  });
+
+  it("refuses an invalid declaration before sending, keyed under modules", async () => {
+    const bad = {
+      ...base,
+      modules: { claims: "yes" },
+    } as unknown as ProjectTypeDefinition;
+    const result = validateDraft(bad);
+    if (result.valid) throw new Error("expected a refusal");
+    expect(Object.keys(result.fieldErrors)[0]).toMatch(/^modules/);
+    expect(result.unplacedErrors).toEqual([]);
+    expect(isFormFieldKey("modules.claims")).toBe(true);
+    expect(isFormFieldKey("modules")).toBe(true);
+    const create = vi.fn();
+    const item: ProjectTypeListItem = {
+      key: "draft:mod-type",
+      definition: bad,
+      hasChanges: true,
+    };
+    const saved = await saveDraftItem(item, [item], transportOf({ create }));
+    expect(saved).toMatchObject({ ok: false, kind: "validation" });
+    expect(create).not.toHaveBeenCalled();
   });
 });

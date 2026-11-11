@@ -24,6 +24,7 @@ summary: Contents of the GetWrite handbook, grouped by part.
 - [Headings](write/headings.md) — Apply heading levels in the editor and set how each level looks for a project.
 - [Editor Appearance](write/editor-appearance.md) — What sets the look of the writing surface and the body text and heading settings you can change in a project.
 - [Annotations](write/annotations.md) — Attach private notes to passages of a document, edit or delete them, re-attach detached ones, and find them in search.
+- [Claims](write/claims.md) — Mark a statement in your text as a claim, record whether you have checked it, tie it to a Source, and review every claim in the project.
 - [Search](write/search.md) — Open search with a keyboard shortcut and jump to a document by name.
 
 ## Story

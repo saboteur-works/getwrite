@@ -27,6 +27,7 @@ import type {
   AnnotationTarget,
 } from "./models/types";
 import type { NewAnnotation } from "./api/annotations";
+import { generateUUID } from "./models/uuid";
 import {
   buildAttachmentExcerptInput,
   buildTextExcerptInput,
@@ -158,7 +159,7 @@ export async function addAnnotationFlow(
       message: "Select some text to add a note.",
     };
   }
-  const id = input.id ?? crypto.randomUUID();
+  const id = input.id ?? generateUUID();
   let annotation: Annotation;
   try {
     annotation = await api.add(projectId, resourceId, {
@@ -304,7 +305,7 @@ export async function addTextExcerptFlow(
   input: AddTextExcerptInput,
 ): Promise<AddTextExcerptResult> {
   const { editor, range } = input;
-  const id = input.id ?? crypto.randomUUID();
+  const id = input.id ?? generateUUID();
   const built = buildTextExcerptInput({
     id,
     body: input.body,
@@ -354,7 +355,7 @@ export async function addAttachmentExcerptFlow(
   input: AddAttachmentExcerptInput,
 ): Promise<AddAttachmentExcerptResult> {
   const built = buildAttachmentExcerptInput({
-    id: input.id ?? crypto.randomUUID(),
+    id: input.id ?? generateUUID(),
     sourceId: input.sourceId,
     attachmentId: input.attachmentId,
     locator: input.locator,

@@ -13,8 +13,12 @@
  */
 import { z } from "zod";
 import { createTransport } from "../../store/transport/create-transport";
-import { AnnotationTargetSchema } from "../models/schemas";
-import type { Annotation, AnnotationTarget } from "../models/types";
+import type {
+  Annotation,
+  AnnotationTarget,
+  ClaimMarker,
+} from "../models/types";
+import { AnnotationResponseSchema } from "./schemas";
 import { reportTransportValidationFailure } from "./transport-validation";
 
 export type { Annotation };
@@ -25,6 +29,8 @@ export interface NewAnnotation {
   body: string;
   quote: string;
   target?: AnnotationTarget;
+  /** Feature 108: carried by paste so a claim keeps its status and date. */
+  claim?: ClaimMarker;
 }
 
 /** The annotation operations both platforms implement. */
@@ -55,14 +61,6 @@ export interface AnnotationsTransport {
   ): Promise<void>;
 }
 
-const AnnotationResponseSchema = z.object({
-  id: z.string(),
-  body: z.string(),
-  quote: z.string(),
-  target: AnnotationTargetSchema.optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
 const ListResponseSchema = z.object({
   annotations: z.array(AnnotationResponseSchema),
 });

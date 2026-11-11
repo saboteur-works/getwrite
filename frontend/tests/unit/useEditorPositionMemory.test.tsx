@@ -60,6 +60,40 @@ interface Mounted {
   scroller: HTMLElement;
 }
 
+function backScrollTop(element: HTMLElement): void {
+  let scrollTop = 0;
+  Object.defineProperty(element, "scrollTop", {
+    configurable: true,
+    get: () => scrollTop,
+    set: (value: number) => {
+      scrollTop = value;
+    },
+  });
+}
+
+/** Phone width: the shell scrolls, the content wrapper does not. */
+function mountPhoneEditor(): Mounted & { shell: HTMLElement } {
+  const shell = document.createElement("div");
+  shell.className = "tiptap-editor-shell";
+  shell.style.overflowY = "auto";
+  const content = document.createElement("div");
+  content.className = "tiptap tiptap-editor-content";
+  content.style.overflowY = "visible";
+  backScrollTop(shell);
+  backScrollTop(content);
+  const host = document.createElement("div");
+  content.appendChild(host);
+  shell.appendChild(content);
+  document.body.appendChild(shell);
+  const editor = new Editor({
+    element: host,
+    extensions: baseSchemaExtensions,
+    content: chapter,
+  });
+  editors.push(editor);
+  return { editor, scroller: shell, shell };
+}
+
 function mountEditor(content: Content = chapter): Mounted {
   const scroller = document.createElement("div");
   scroller.className = "tiptap tiptap-editor-content";
@@ -127,6 +161,44 @@ afterEach(() => {
   vi.unstubAllGlobals();
   while (editors.length > 0) editors.pop()?.destroy();
   document.body.innerHTML = "";
+});
+
+describe("useEditorPositionMemory at phone width", () => {
+  it("records and restores the shell's scroll when the shell is the scroller", () => {
+    const key = uniqueKey();
+    const first = mountPhoneEditor();
+    const firstHook = renderMemory({
+      editor: first.editor,
+      positionKey: key,
+      isRichMode: true,
+    });
+    act(() => {
+      firstHook.memory().restore(first.editor);
+      flushFrames();
+    });
+    act(() => {
+      scrollTo(first.shell, 640);
+    });
+    expect(getEditorPosition(key)?.scrollTop).toBe(640);
+
+    firstHook.unmount();
+    first.editor.destroy();
+    const second = mountPhoneEditor();
+    const secondHook = renderMemory({
+      editor: second.editor,
+      positionKey: key,
+      isRichMode: true,
+    });
+    act(() => {
+      secondHook.memory().restore(second.editor);
+      flushFrames();
+    });
+    expect(second.shell.scrollTop).toBe(640);
+    expect(
+      second.shell.querySelector<HTMLElement>(".tiptap-editor-content")
+        ?.scrollTop,
+    ).toBe(0);
+  });
 });
 
 describe("useEditorPositionMemory", () => {

@@ -7,8 +7,14 @@
  * refused, never truncated; an unknown key is refused, never stored. Lengths
  * are counted in UTF-16 code units (`String.length`).
  */
+import { CLAIM_STATUSES } from "./claim-types";
+import type {
+  ClaimStatus,
+  NewClaimInput,
+  UpdateClaimInput,
+} from "./claim-types";
 import { UUID } from "./schemas";
-import type { Annotation, AnnotationTarget } from "./types";
+import type { Annotation, AnnotationTarget, ClaimMarker } from "./types";
 
 /** Owner-approved limits (OQ-7, Gate 3, 2026-11-04). */
 export const ANNOTATION_LIMITS = {
@@ -232,4 +238,175 @@ export function validateNewAnnotation(
   };
   if (target !== undefined) value.target = target;
   return { ok: true, value };
+}
+
+const NEW_CLAIM_KEYS: readonly string[] = [
+  "id",
+  "statement",
+  "quote",
+  "target",
+];
+const UPDATE_CLAIM_KEYS: readonly string[] = ["status", "statement", "target"];
+/** Longest status identifier a carried claim may bring with it. */
+const MAX_CARRIED_STATUS_LENGTH = 64;
+const CARRIED_CLAIM_KEYS: readonly string[] = ["status", "statusChangedAt"];
+const ISO_DATE_SHAPE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+function isClaimStatus(value: unknown): value is ClaimStatus {
+  return (
+    typeof value === "string" &&
+    (CLAIM_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Validate a claim statement (Feature 108, FR-8): 1 to 5000 UTF-16 code
+ * units, refused rather than truncated. Unlike a note, it is never allowed
+ * to be empty, even when the claim has a Source link.
+ */
+export function validateClaimStatement(
+  statement: unknown,
+): AnnotationValidation<string> {
+  if (
+    typeof statement !== "string" ||
+    statement.length < ANNOTATION_LIMITS.bodyMin ||
+    statement.length > ANNOTATION_LIMITS.bodyMax
+  ) {
+    return refuse(
+      `A claim statement must be ${ANNOTATION_LIMITS.bodyMin} to ${ANNOTATION_LIMITS.bodyMax} characters.`,
+    );
+  }
+  return { ok: true, value: statement };
+}
+
+/**
+ * Validate a new claim against the resource's stored annotations (FR-8):
+ * a plain object with only `id`, `statement`, `quote` and an optional
+ * `target`. A status or a status date is never accepted from the client
+ * (FR-10); the core starts every claim as `unverified`. The message never
+ * echoes the input.
+ */
+export function validateNewClaim(
+  input: unknown,
+  existing: readonly Annotation[],
+): AnnotationValidation<NewClaimInput> {
+  if (!isPlainObject(input)) return refuse("A claim must be an object.");
+  if (Object.keys(input).some((key) => !NEW_CLAIM_KEYS.includes(key))) {
+    return refuse("A claim has a field that is not allowed.");
+  }
+  if (!UUID.safeParse(input.id).success) {
+    return refuse("A claim id must be a valid id.");
+  }
+  const id = input.id as string;
+  if (existing.some((a) => a.id === id)) {
+    return refuse("An annotation with this id already exists.");
+  }
+  if (existing.length >= ANNOTATION_LIMITS.maxPerResource) {
+    return refuse(
+      `A resource can't have more than ${ANNOTATION_LIMITS.maxPerResource} annotations.`,
+    );
+  }
+  const statement = validateClaimStatement(input.statement);
+  if (!statement.ok) return statement;
+  const quote = validateAnnotationQuote(input.quote);
+  if (!quote.ok) return quote;
+  const value: NewClaimInput = {
+    id,
+    statement: statement.value,
+    quote: quote.value,
+  };
+  if (input.target !== undefined) {
+    const target = validateAnnotationTarget(input.target);
+    if (!target.ok) return target;
+    value.target = target.value;
+  }
+  return { ok: true, value };
+}
+
+/**
+ * Validate the "update claim" operation (FR-9, FR-11, FR-12): only `status`,
+ * `statement` and `target` (`null` removes the Source link), at least one
+ * present. A status must be one of the four identifiers, so `unsourced`
+ * (derived, never stored) is refused. A client-supplied `statusChangedAt` is
+ * an unknown key. The message never echoes the input.
+ */
+export function validateUpdateClaim(
+  input: unknown,
+): AnnotationValidation<UpdateClaimInput> {
+  if (!isPlainObject(input)) return refuse("A claim update must be an object.");
+  if (Object.keys(input).some((key) => !UPDATE_CLAIM_KEYS.includes(key))) {
+    return refuse("A claim update has a field that is not allowed.");
+  }
+  const value: UpdateClaimInput = {};
+  if (input.status !== undefined) {
+    if (!isClaimStatus(input.status)) {
+      return refuse(
+        "A claim status must be unverified, verified, disputed or needs-review.",
+      );
+    }
+    value.status = input.status;
+  }
+  if (input.statement !== undefined) {
+    const statement = validateClaimStatement(input.statement);
+    if (!statement.ok) return statement;
+    value.statement = statement.value;
+  }
+  if (input.target !== undefined) {
+    if (input.target === null) {
+      value.target = null;
+    } else {
+      const target = validateAnnotationTarget(input.target);
+      if (!target.ok) return target;
+      value.target = target.value;
+    }
+  }
+  if (Object.keys(value).length === 0) {
+    return refuse(
+      "A claim update needs a status, a statement or a Source link.",
+    );
+  }
+  return { ok: true, value };
+}
+
+/**
+ * Validate a claim marker carried by paste (FR-18): exactly a status and a
+ * valid ISO `statusChangedAt`. The status is carried as stored, so one off the
+ * fixed list (written by a newer build or by hand) is accepted if it is
+ * non-empty text within a length bound (OQ-11: shown as stored, never
+ * rewritten); only the date is checked for shape. Only the paste path may
+ * accept it; mark-as-claim creation and the update operation stay on the four
+ * known statuses. The message never echoes the input.
+ */
+export function validateCarriedClaim(
+  input: unknown,
+): AnnotationValidation<ClaimMarker> {
+  if (!isPlainObject(input)) {
+    return refuse("A carried claim must be an object.");
+  }
+  if (
+    Object.keys(input).some((key) => !CARRIED_CLAIM_KEYS.includes(key)) ||
+    !CARRIED_CLAIM_KEYS.every((key) => key in input)
+  ) {
+    return refuse("A carried claim needs exactly a status and a status date.");
+  }
+  const status = input.status;
+  if (
+    typeof status !== "string" ||
+    status.length === 0 ||
+    status.length > MAX_CARRIED_STATUS_LENGTH
+  ) {
+    return refuse(
+      `A carried claim status must be text of 1 to ${MAX_CARRIED_STATUS_LENGTH} characters.`,
+    );
+  }
+  const date = input.statusChangedAt;
+  if (
+    typeof date !== "string" ||
+    !ISO_DATE_SHAPE.test(date) ||
+    Number.isNaN(Date.parse(date))
+  ) {
+    return refuse("A claim status date must be a valid ISO date.");
+  }
+  return { ok: true, value: { status, statusChangedAt: date } };
 }

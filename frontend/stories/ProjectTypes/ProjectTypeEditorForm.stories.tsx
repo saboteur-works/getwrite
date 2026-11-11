@@ -175,3 +175,58 @@ export const RefusedDraftFieldErrors: Story = {
   },
   parameters: { a11y: { test: "error" } },
 };
+
+/**
+ * The module declaration (Feature 108, FR-5) of a saved or draft type: one
+ * on/off/not-set control per module, operable with Tab and the arrow keys.
+ */
+export const ModuleDeclarationEditable: Story = {
+  render: Interactive.render,
+  args: {
+    ...Interactive.args,
+    definition: { ...baseDefinition, modules: { sources: true } },
+    modulesEditable: true,
+  },
+  parameters: { a11y: { test: "error" } },
+};
+
+/** A built-in type: the declaration is written out as text, with no control. */
+export const ModuleDeclarationBuiltInReadOnly: Story = {
+  args: {
+    ...Interactive.args,
+    definition: {
+      ...baseDefinition,
+      modules: { sources: true, claims: false },
+    },
+    idReadOnly: true,
+    modulesEditable: false,
+    modulesReadOnlyReason: "built-in",
+  },
+  parameters: { a11y: { test: "error" } },
+};
+
+/**
+ * A hosted deployment, where writer-made types cannot be saved: the
+ * declaration is shown as text and no control is offered.
+ */
+export const ModuleDeclarationHostedReadOnly: Story = {
+  args: {
+    ...Interactive.args,
+    definition: { ...baseDefinition, modules: { claims: true } },
+    modulesEditable: false,
+    modulesReadOnlyReason: "saving-unavailable",
+  },
+  parameters: { a11y: { test: "error" } },
+};
+
+/** A refused declaration: the message is text beside its control. */
+export const ModuleDeclarationError: Story = {
+  render: Interactive.render,
+  args: {
+    ...Interactive.args,
+    definition: baseDefinition,
+    modulesEditable: true,
+    fieldErrors: { "modules.claims": "Claims must be declared on or off." },
+  },
+  parameters: { a11y: { test: "error" } },
+};

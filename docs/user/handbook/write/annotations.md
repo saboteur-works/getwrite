@@ -30,7 +30,7 @@ If the notes can't be read, the panel says so and offers **Try again**. That is 
 
 ## Cite a Source
 
-You can tie a passage in a document to one of your [Sources](../protect-and-finish/resources.md#sources-and-attachments). Select the passage, choose a Source under **Cite a Source**, and choose **Cite selection**. You can also pick one of the Source's attachments and say where in it the passage sits: a **Page**, **Timestamp**, **Paragraph** or **Line**, with a free-text value. A citation can have no note text. A note on any other passage needs 1 to 5000 characters.
+You can tie a passage in a document to one of your [Sources](../protect-and-finish/resources.md#sources-and-attachments). Select the passage and choose **Cite selection** below the text to open the form (it starts closed). Choose a Source under **Cite a Source**, then choose **Cite selection** in the form. You can also pick one of the Source's attachments and say where in it the passage sits: a **Page**, **Timestamp**, **Paragraph** or **Line**, with a free-text value. A citation can have no note text. A note on any other passage needs 1 to 5000 characters.
 
 The panel shows each citation with the Source's name as it was when you cited it. Renaming the Source later does not change that name. If the Source is deleted, the citation stays and shows the Source as removed. If GetWrite cannot check the Source, the citation says so. It does not show the Source as removed or as present.
 
@@ -46,6 +46,10 @@ An excerpt is a passage of a Source's own text that you want to keep track of. T
 The passage is highlighted in the Source. To see all of a Source's excerpts, open the **Sources** tab and choose **Excerpts** on its row. The **Sources** tab can't mark a text excerpt, because you select the text in the editor. **Mark as excerpt** appears only for a Source, and it is hidden if you clear **Enable Sources** in **Project Settings**, **Modules** tab. Excerpts you already made stay listed.
 
 An excerpt of an image or audio attachment has no passage in the text. It is listed with the other notes and is never marked as detached.
+
+## Claims
+
+A **claim** is a note that records a statement you want to back up, with a status and an optional Source. With Claims switched on, a claim appears in the panel with a **Claim** label instead of as a plain note. With Claims off, it appears as an ordinary note. See [Claims](claims.md). This page's steps for editing, re-attaching, copying and deleting also apply to claims.
 
 ## Detached notes
 
@@ -69,7 +73,7 @@ When you copy or duplicate a whole document, its notes are copied too. A templat
 
 ## Search
 
-Search finds text inside notes. See [Search](search.md).
+Search finds text inside notes, including the statement of a claim. See [Search](search.md).
 
 ## Good to know
 

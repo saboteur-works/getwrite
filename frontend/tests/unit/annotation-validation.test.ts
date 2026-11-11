@@ -9,7 +9,11 @@ import {
   ANNOTATION_LIMITS,
   validateAnnotationBody,
   validateAnnotationQuote,
+  validateCarriedClaim,
+  validateClaimStatement,
   validateNewAnnotation,
+  validateNewClaim,
+  validateUpdateClaim,
 } from "../../src/lib/models/annotation-validation";
 import { CLIENT_WRITABLE_SIDECAR_KEYS } from "../../src/lib/models/resource-crud-core";
 import {
@@ -214,5 +218,203 @@ describe("client-writable sidecar keys (FR-10)", () => {
       ].sort(),
     );
     expect(CLIENT_WRITABLE_SIDECAR_KEYS).not.toContain("annotations");
+  });
+});
+
+describe("claim validators (Feature 108, FR-8, FR-9, FR-11, FR-12)", () => {
+  const SRC = "550e8400-e29b-41d4-a716-446655440020";
+  const target = { sourceId: SRC, sourceName: "A Source" };
+  const validNew = { id: ID_A, statement: "Water boils at 100C", quote: "q" };
+
+  it("accepts a statement of 1 and 5000 code units and refuses 0 and 5001, never truncating", () => {
+    expect(validateClaimStatement("a")).toEqual({ ok: true, value: "a" });
+    const max = "x".repeat(5000);
+    expect(validateClaimStatement(max)).toEqual({ ok: true, value: max });
+    expect(validateClaimStatement("").ok).toBe(false);
+    expect(validateClaimStatement("x".repeat(5001)).ok).toBe(false);
+    expect(validateClaimStatement(5).ok).toBe(false);
+  });
+
+  it("counts UTF-16 code units, not characters", () => {
+    expect(validateClaimStatement("\u{1F600}".repeat(2500)).ok).toBe(true);
+    expect(validateClaimStatement("\u{1F600}".repeat(2501)).ok).toBe(false);
+  });
+
+  it("refuses an empty statement for a new claim with and without a Source link", () => {
+    expect(validateNewClaim({ ...validNew, statement: "" }, []).ok).toBe(false);
+    expect(
+      validateNewClaim({ ...validNew, statement: "", target }, []).ok,
+    ).toBe(false);
+  });
+
+  it("accepts a well-formed new claim, with or without a target", () => {
+    expect(validateNewClaim(validNew, [])).toEqual({
+      ok: true,
+      value: validNew,
+    });
+    expect(validateNewClaim({ ...validNew, target }, [])).toEqual({
+      ok: true,
+      value: { ...validNew, target },
+    });
+  });
+
+  it("refuses a new claim with a client status, a client date, a claim key or any unknown key, without echoing it", () => {
+    for (const key of [
+      "status",
+      "statusChangedAt",
+      "claimMarker",
+      "body",
+      "zzz",
+    ]) {
+      const r = validateNewClaim({ ...validNew, [key]: "unverified" }, []);
+      expect(r.ok).toBe(false);
+      expect(!r.ok && r.message).not.toContain(key);
+    }
+  });
+
+  it("refuses a new claim with a bad id, a collision, a long quote, a bad target, a full resource or a non-object", () => {
+    expect(validateNewClaim({ ...validNew, id: "x" }, []).ok).toBe(false);
+    expect(validateNewClaim(validNew, [stored(ID_A)]).ok).toBe(false);
+    expect(
+      validateNewClaim({ ...validNew, quote: "q".repeat(501) }, []).ok,
+    ).toBe(false);
+    expect(
+      validateNewClaim({ ...validNew, target: { sourceId: "x" } }, []).ok,
+    ).toBe(false);
+    const many = Array.from(
+      { length: ANNOTATION_LIMITS.maxPerResource },
+      (_, i) =>
+        stored(`550e8400-e29b-41d4-a716-${String(i).padStart(12, "0")}`),
+    );
+    expect(validateNewClaim(validNew, many).ok).toBe(false);
+    expect(validateNewClaim("x", []).ok).toBe(false);
+    expect(validateNewClaim(null, []).ok).toBe(false);
+    expect(validateNewClaim([validNew], []).ok).toBe(false);
+  });
+
+  it("accepts an update with each of status, statement and target, alone or together", () => {
+    expect(validateUpdateClaim({ status: "verified" })).toEqual({
+      ok: true,
+      value: { status: "verified" },
+    });
+    expect(validateUpdateClaim({ statement: "new" }).ok).toBe(true);
+    expect(validateUpdateClaim({ target }).ok).toBe(true);
+    expect(validateUpdateClaim({ target: null })).toEqual({
+      ok: true,
+      value: { target: null },
+    });
+    const all = { status: "needs-review", statement: "s", target };
+    expect(validateUpdateClaim(all)).toEqual({ ok: true, value: all });
+  });
+
+  it("accepts all four status identifiers on update", () => {
+    for (const status of [
+      "unverified",
+      "verified",
+      "disputed",
+      "needs-review",
+    ]) {
+      expect(validateUpdateClaim({ status }).ok).toBe(true);
+    }
+  });
+
+  it("refuses a status not among the four, including unsourced", () => {
+    for (const status of ["unsourced", "Verified", "", "other", 1, null]) {
+      expect(validateUpdateClaim({ status }).ok).toBe(false);
+    }
+  });
+
+  it("refuses a Source link failing validateAnnotationTarget", () => {
+    expect(validateUpdateClaim({ target: { sourceId: "x" } }).ok).toBe(false);
+    expect(validateUpdateClaim({ target: { ...target, extra: 1 } }).ok).toBe(
+      false,
+    );
+    expect(validateUpdateClaim({ target: "s" }).ok).toBe(false);
+  });
+
+  it("refuses an empty or over-long statement on update", () => {
+    expect(validateUpdateClaim({ statement: "" }).ok).toBe(false);
+    expect(validateUpdateClaim({ statement: "x".repeat(5001) }).ok).toBe(false);
+    expect(validateUpdateClaim({ statement: 3 }).ok).toBe(false);
+  });
+
+  it("refuses an unknown key and a client-supplied statusChangedAt, without echoing it", () => {
+    for (const key of [
+      "statusChangedAt",
+      "claimMarker",
+      "body",
+      "updatedAt",
+      "zzz",
+    ]) {
+      const r = validateUpdateClaim({ status: "verified", [key]: NOW });
+      expect(r.ok).toBe(false);
+      expect(!r.ok && r.message).not.toContain(key);
+    }
+  });
+
+  it("refuses a call with none of status, link, statement, and a non-object", () => {
+    expect(validateUpdateClaim({}).ok).toBe(false);
+    expect(validateUpdateClaim({ status: undefined }).ok).toBe(false);
+    expect(validateUpdateClaim(null).ok).toBe(false);
+    expect(validateUpdateClaim("x").ok).toBe(false);
+    expect(validateUpdateClaim([]).ok).toBe(false);
+  });
+
+  it("accepts a carried claim with a known status and an ISO date", () => {
+    const claim = { status: "disputed", statusChangedAt: NOW };
+    expect(validateCarriedClaim(claim)).toEqual({ ok: true, value: claim });
+  });
+
+  it("carries a stored status that is off the list as stored, within a length bound", () => {
+    const odd = { status: "unsourced", statusChangedAt: NOW };
+    expect(validateCarriedClaim(odd)).toEqual({ ok: true, value: odd });
+    expect(
+      validateCarriedClaim({ status: "x".repeat(64), statusChangedAt: NOW }).ok,
+    ).toBe(true);
+    expect(
+      validateCarriedClaim({ status: "x".repeat(65), statusChangedAt: NOW }).ok,
+    ).toBe(false);
+    expect(validateCarriedClaim({ status: "", statusChangedAt: NOW }).ok).toBe(
+      false,
+    );
+    expect(validateCarriedClaim({ status: 3, statusChangedAt: NOW }).ok).toBe(
+      false,
+    );
+  });
+
+  it("still refuses an unknown status at creation and update", () => {
+    expect(validateUpdateClaim({ status: "unsourced" }).ok).toBe(false);
+  });
+
+  it("refuses a carried claim with a bad or missing date, an unknown key or a non-object", () => {
+    expect(
+      validateCarriedClaim({ status: "verified", statusChangedAt: "yesterday" })
+        .ok,
+    ).toBe(false);
+    expect(
+      validateCarriedClaim({
+        status: "verified",
+        statusChangedAt: "2026-13-45T00:00:00.000Z",
+      }).ok,
+    ).toBe(false);
+    expect(validateCarriedClaim({ status: "verified" }).ok).toBe(false);
+    expect(validateCarriedClaim({ statusChangedAt: NOW }).ok).toBe(false);
+    expect(
+      validateCarriedClaim({ status: "verified", statusChangedAt: NOW, x: 1 })
+        .ok,
+    ).toBe(false);
+    expect(validateCarriedClaim(null).ok).toBe(false);
+    expect(validateCarriedClaim("x").ok).toBe(false);
+  });
+
+  it("leaves validateAnnotationBody and validateNewAnnotation unchanged for a non-claim", () => {
+    expect(validateAnnotationBody("", true).ok).toBe(true);
+    expect(validateAnnotationBody("", false).ok).toBe(false);
+    expect(
+      validateNewAnnotation({ id: ID_A, body: "", quote: "q", target }, []).ok,
+    ).toBe(true);
+    expect(
+      validateNewAnnotation({ ...validNew, body: "b", claim: {} }, []).ok,
+    ).toBe(false);
   });
 });

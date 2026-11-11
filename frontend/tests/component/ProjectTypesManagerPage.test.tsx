@@ -1302,3 +1302,45 @@ describe("ProjectTypesManagerPage when saving is not available", () => {
     await runAxe(container);
   }, 15000);
 });
+
+describe("ProjectTypesManagerPage module declaration wiring", () => {
+  it("offers the Modules control on a saved type and a new draft", () => {
+    renderManager(makeTransport());
+    select("Mine");
+    expect(
+      screen.getByRole("group", { name: "Claims module" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "New Project Type" }));
+    expect(
+      screen.getByRole("group", { name: "Claims module" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a built-in type's declaration as text with the built-in reason", () => {
+    renderManager(makeTransport());
+    select("Novel");
+    expect(screen.queryByRole("group", { name: "Claims module" })).toBeNull();
+    expect(screen.getByText(/Claims module: /)).toBeInTheDocument();
+    expect(
+      screen.getByText(/A built-in project type cannot be changed/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the declaration as text with the saving-unavailable reason when saving is unavailable", () => {
+    renderManager(makeTransport(), { savedStatus: "not-configured" });
+    select("Mine");
+    expect(screen.queryByRole("group", { name: "Claims module" })).toBeNull();
+    expect(
+      screen.getByText(/Saving project types is not available here/),
+    ).toBeInTheDocument();
+  });
+
+  it("writes a module choice made on a saved type into its draft", () => {
+    renderManager(makeTransport());
+    select("Mine");
+    const group = screen.getByRole("group", { name: "Claims module" });
+    fireEvent.click(within(group).getByRole("radio", { name: "On" }));
+    expect(within(group).getByRole("radio", { name: "On" })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+});

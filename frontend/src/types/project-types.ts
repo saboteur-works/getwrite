@@ -127,6 +127,11 @@ export interface ProjectTypeDefinition {
    * Target word count goal for the project (e.g. 80000 for a novel).
    */
   wordCountGoal?: number;
+  /**
+   * Optional module declaration (Feature 108): module id to on (true) or off
+   * (false). An id with no entry is not set.
+   */
+  modules?: Record<string, boolean>;
   editorConfig?: {
     headings?: Record<string, EditorHeading>;
     body?: EditorBodyConfig;

@@ -8,7 +8,11 @@ import {
 } from "../../src/lib/models/schemas";
 import { validateProject } from "../../src/lib/models/project";
 import { createProject } from "../../src/lib/models/project";
-import { ApiEditorConfigSchema } from "../../src/lib/api/schemas";
+import {
+  ApiEditorConfigSchema,
+  ProjectTypeListResponseSchema,
+  ProjectTypeWriteSuccessSchema,
+} from "../../src/lib/api/schemas";
 
 describe("project-type validation (T016)", () => {
   it("accepts a minimal valid spec", () => {
@@ -93,16 +97,14 @@ describe("project-type validation (T016)", () => {
     expect(JSON.stringify(res.errors)).toContain("extra");
   });
 
-  it("rejects a module key in a project-type spec like any unknown field", () => {
+  it("accepts a modules record (Feature 108, FR-4 replaces the earlier refusal of the key)", () => {
     const spec = {
       id: "with-modules",
       name: "With Modules",
       folders: [{ name: "Workspace" }],
       modules: { sources: true },
     };
-    const res = validateProjectType(spec);
-    expect(res.success).toBe(false);
-    expect(JSON.stringify(res.errors)).toContain("modules");
+    expect(validateProjectType(spec).success).toBe(true);
   });
 
   it("accepts an optional relationshipTypes string array", () => {
@@ -738,6 +740,107 @@ describe("project-type blank and duplicate entries (Feature 90, FR-28)", () => {
         true,
       );
     });
+  });
+});
+
+describe("project-type modules declaration (Feature 108, FR-4)", () => {
+  const MODULES_MESSAGE =
+    "Modules must list each module as on (true) or off (false).";
+
+  it("accepts a modules record with boolean values", () => {
+    expect(
+      issuesOf(base({ modules: { claims: true, sources: false } })),
+    ).toEqual([]);
+  });
+
+  it("accepts an unknown module id as given", () => {
+    const parsed = ProjectTypeSchema.safeParse(
+      base({ modules: { "future-module": true } }),
+    );
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.modules).toEqual({ "future-module": true });
+    }
+  });
+
+  it("accepts an empty record and a type with no modules key unchanged", () => {
+    expect(issuesOf(base({ modules: {} }))).toEqual([]);
+    const parsed = ProjectTypeSchema.safeParse(base());
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect("modules" in parsed.data).toBe(false);
+    }
+  });
+
+  it.each([
+    ["a string value", { claims: "yes" }],
+    ["a number value", { claims: 1 }],
+    ["a null value", { claims: null }],
+    ["an object value", { claims: { on: true } }],
+    ["an array", [true]],
+    ["a string", "claims"],
+    ["null", null],
+  ])("refuses %s with the modules message", (_label, modules) => {
+    const result = validateProjectType(base({ modules }));
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.issues.map((i) => i.message)).toEqual([MODULES_MESSAGE]);
+    }
+  });
+
+  it("refuses with the same message from ProjectTypeSchema directly", () => {
+    expect(issuesOf(base({ modules: { claims: "yes" } }))).toEqual([
+      { path: ["modules", "claims"], message: MODULES_MESSAGE },
+    ]);
+  });
+
+  it("does not echo the client's value or module id in the message", () => {
+    const result = validateProjectType(
+      base({ modules: { "secret-module-id": "secret-value-xyz" } }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const text = JSON.stringify(result.issues.map((i) => i.message));
+      expect(text).not.toContain("secret-value-xyz");
+      expect(text).not.toContain("secret-module-id");
+    }
+  });
+
+  it("no built-in type declares the claims module on", () => {
+    const dir = path.resolve(
+      __dirname,
+      "../../../getwrite-config/templates/project-types",
+    );
+    const files = fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith(".json") && f !== "project-type.schema.json");
+    for (const f of files) {
+      const parsed = ProjectTypeSchema.parse(
+        JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")),
+      );
+      expect(parsed.modules?.claims, f).not.toBe(true);
+    }
+  });
+
+  it("the list, write-success and client-parse schemas carry modules", () => {
+    const spec = base({ modules: { claims: true } });
+    expect(
+      ProjectTypeWriteSuccessSchema.safeParse({ fileName: "t.json", spec })
+        .success,
+    ).toBe(true);
+    expect(
+      ProjectTypeListResponseSchema.safeParse({
+        entries: [{ spec, fileName: "t.json", source: "saved" }],
+        unusable: [],
+        savedStatus: "ok",
+      }).success,
+    ).toBe(true);
+    expect(
+      ProjectTypeWriteSuccessSchema.safeParse({
+        fileName: "t.json",
+        spec: base({ modules: { claims: "yes" } }),
+      }).success,
+    ).toBe(false);
   });
 });
 

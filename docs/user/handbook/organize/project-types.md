@@ -27,7 +27,7 @@ GetWrite comes with these types. The description is the text shown when you crea
 
 ## Make your own types
 
-Open the **Project Type Manager** from the settings menu (the gear icon). It lists the built-in types and any you have saved. Select a type to see its ID, name, word count goal, description, statuses, folders, subfolders, starter documents and editor settings.
+Open the **Project Type Manager** from the settings menu (the gear icon). It lists the built-in types and any you have saved. Select a type to see its ID, name, word count goal, description, statuses, folders, subfolders, starter documents, editor settings and modules.
 
 - A built-in type offers **Save as copy** only. Built-in types never change.
 - **Save as copy** saves your edits as a new type with its own ID and a name ending in "copy". The original stays as it was.
@@ -35,6 +35,20 @@ Open the **Project Type Manager** from the settings menu (the gear icon). It lis
 - **New Project Type** starts a new type with **Save**. You can change its ID until you first save it. After that, the ID is fixed.
 
 Your saved types appear with "(Saved)" in the list of types when you create a project or import a Word document.
+
+### Start new projects with modules on
+
+_Coming in the next release._
+
+Some features, such as [Claims](../write/claims.md), are switched on per project in **Project Settings**, **Modules**. A type can set whether a new project starts with each of them on or off.
+
+In the **Project Type Manager**, the **Modules** section has one choice for each module: **On**, **Off** or **Not set**. **Not set** declares nothing for that module, so the module follows its usual setting for a new project. Claims is off unless a type turns it on. Sources is on.
+
+- A built-in type's modules are shown for reading only. No built-in type turns Claims on.
+- Where saving types isn't available, the modules of every type are shown for reading only, with a message saying so.
+- A type sets modules only for projects created from it afterward. Changing or deleting a type never changes a project that already exists.
+- A type that lists a module with anything other than on or off is refused with a message and not saved.
+- An older version of GetWrite can't use a saved type that sets modules. It lists the file as one that could not be used.
 
 ### Unsaved changes
 

@@ -184,4 +184,11 @@ describe("worker import graph (FR-4)", () => {
       expect(offenders).toEqual([]);
     },
   );
+
+  it("registry.ts value-imports manifest.ts and manifest.ts does not value-import registry.ts (no runtime cycle, Feature 108 FR-2)", () => {
+    const registry = path.join(LIB_DIR, "models/modules/registry.ts");
+    const manifest = path.join(LIB_DIR, "models/modules/manifest.ts");
+    expect(walk(registry).visited).toContain(manifest);
+    expect(walk(manifest).visited).not.toContain(registry);
+  });
 });

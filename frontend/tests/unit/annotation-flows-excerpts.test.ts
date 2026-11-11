@@ -64,6 +64,7 @@ function recordingApi(): { api: AnnotationFlowApi; added: NewAnnotation[] } {
 }
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   while (editors.length) editors.pop()?.destroy();
 });
 
@@ -226,5 +227,62 @@ describe("no new Trash kind, no excerpt index (FR-21, FR-22)", () => {
     ).toEqual([]);
     const src = await fs.readFile(path.join(dir, "excerpts.ts"), "utf8");
     expect(src).not.toMatch(/meta\/index|writeFile|mutateSidecar|node:fs/);
+  });
+});
+
+describe("insecure context: no crypto.randomUUID (paired device over HTTP)", () => {
+  const V4 =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+  function stubNoRandomUUID(): void {
+    vi.stubGlobal("crypto", {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(
+        globalThis.crypto,
+      ),
+    });
+  }
+
+  it("addAnnotationFlow makes a v4 id and calls the transport", async () => {
+    stubNoRandomUUID();
+    const editor = mount("Hello brave world");
+    const { api, added } = recordingApi();
+    const r = await addAnnotationFlow(api, {
+      editor,
+      projectId: "p",
+      resourceId: "r",
+      body: "note",
+      range: { from: 7, to: 12 },
+    });
+    expect(r.ok).toBe(true);
+    expect(added).toHaveLength(1);
+    expect(added[0].id).toMatch(V4);
+  });
+
+  it("addTextExcerptFlow makes a v4 id and calls the transport", async () => {
+    stubNoRandomUUID();
+    const editor = mount("Hello brave world");
+    const { api, added } = recordingApi();
+    const r = await addTextExcerptFlow(api, {
+      editor,
+      projectId: "p",
+      resourceId: SOURCE,
+      range: { from: 7, to: 12 },
+      body: "",
+      sourceName: "Diary",
+    });
+    expect(r.ok).toBe(true);
+    expect(added[0].id).toMatch(V4);
+  });
+
+  it("addAttachmentExcerptFlow makes a v4 id and calls the transport", async () => {
+    stubNoRandomUUID();
+    const { api, added } = recordingApi();
+    const r = await addAttachmentExcerptFlow(api, {
+      projectId: "p",
+      sourceId: SOURCE,
+      attachmentId: ATT,
+      locator: { type: "timestamp", value: "00:42" },
+    });
+    expect(r.ok).toBe(true);
+    expect(added[0].id).toMatch(V4);
   });
 });

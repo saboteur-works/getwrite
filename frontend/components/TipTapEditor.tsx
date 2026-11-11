@@ -946,6 +946,8 @@ export default function TipTapEditor({
                 onClose={annotationsPanel.close}
                 pendingAdd={annotationsPanel.pendingAdd}
                 onAddDone={annotationsPanel.clearAdd}
+                focus={annotationsPanel.focus}
+                onFocusHandled={annotationsPanel.clearFocus}
               />
             ) : null}
           </>

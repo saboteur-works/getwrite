@@ -215,6 +215,10 @@ export default function ProjectTypesManagerPage({
     setIsDarkMode(resolvePreferredColorMode(metadata) === "dark");
   }, [selectedProject?.id, selectedProject?.metadata]);
 
+  const [refreshedStatus, setRefreshedStatus] =
+    useState<SavedProjectTypesStatus | null>(null);
+  const canSave = isSavingAvailable(refreshedStatus ?? savedStatus);
+
   const {
     items,
     selectedKey,
@@ -238,7 +242,9 @@ export default function ProjectTypesManagerPage({
     handleDelete,
     refreshFromList,
     discardChanges,
-  } = useProjectTypeDraftService(initialTemplates, resolveTransport);
+  } = useProjectTypeDraftService(initialTemplates, resolveTransport, {
+    savingAvailable: canSave,
+  });
 
   const { isBlocked: hasRefusedField, report: reportRefusedField } =
     useRefusedFields();
@@ -248,12 +254,9 @@ export default function ProjectTypesManagerPage({
     value: string | null;
   } | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
-  const [refreshedStatus, setRefreshedStatus] =
-    useState<SavedProjectTypesStatus | null>(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const shownNotice = refreshNotice ? refreshNotice.value : listNotice;
-  const canSave = isSavingAvailable(refreshedStatus ?? savedStatus);
   const unavailableNoteId = canSave
     ? undefined
     : "project-types-saving-unavailable";
@@ -669,6 +672,10 @@ export default function ProjectTypesManagerPage({
                 onUpdateStatus={handleUpdateStatus}
                 onAddDefaultFolder={handleAddDefaultFolder}
                 onRemoveDefaultFolder={handleRemoveDefaultFolder}
+                modulesEditable={origin !== "Built-in" && canSave}
+                modulesReadOnlyReason={
+                  origin === "Built-in" ? "built-in" : "saving-unavailable"
+                }
               />
             </>
           ) : (

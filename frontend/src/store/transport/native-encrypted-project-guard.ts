@@ -20,7 +20,10 @@ import {
 } from "../../lib/models/io";
 import { isProjectEncrypted } from "../../lib/models/crypto/project-marker";
 import { resolveProjectRoot } from "../../lib/models/project-root-resolver";
-import { EncryptedProjectCaptureRefusedError } from "../../lib/api/encrypted-project-refusal";
+import {
+  EncryptedProjectCaptureRefusedError,
+  type EncryptedProjectRefusalSubject,
+} from "../../lib/api/encrypted-project-refusal";
 
 function isAbsent(err: unknown): boolean {
   return (
@@ -36,9 +39,11 @@ function isAbsent(err: unknown): boolean {
  * returns without a check so the core raises its own typed error.
  *
  * @param projectId - The on-disk project directory id.
+ * @param subject - What the write is for; picks the refusal's wording.
  */
 export async function assertProjectNotEncrypted(
   projectId: string,
+  subject: EncryptedProjectRefusalSubject = "capture",
 ): Promise<void> {
   const projectRoot = resolveProjectRoot(projectId);
   if (projectRoot === null) return;
@@ -63,12 +68,15 @@ export async function assertProjectNotEncrypted(
   } catch (err: unknown) {
     throw new EncryptedProjectCaptureRefusedError("marker-unreadable", {
       cause: err,
+      subject,
     });
   }
-  if (isEncrypted) throw new EncryptedProjectCaptureRefusedError("encrypted");
+  if (isEncrypted)
+    throw new EncryptedProjectCaptureRefusedError("encrypted", { subject });
   if (readFailure !== undefined) {
     throw new EncryptedProjectCaptureRefusedError("marker-unreadable", {
       cause: readFailure,
+      subject,
     });
   }
 }
