@@ -38,6 +38,7 @@ import {
 import { z } from "zod";
 import { QueryASTSchema } from "../models/query-ast";
 import {
+  AnnotationTargetSchema,
   AnyResourceSchema,
   ProjectTypeSchema,
   TipTapDocumentSchema,
@@ -1081,4 +1082,21 @@ export const UserWordListRefusalSchema = z.object({
 export const UserWordListErrorResponseSchema = z.object({
   error: z.string(),
   reason: z.string().optional(),
+});
+
+/**
+ * One annotation in an API response (Feature 101; `claim` added by Feature
+ * 108, FR-21). Declared here so a client parse keeps the optional `claim`
+ * key; `lib/api/annotations.ts` keeps its own local copy until Task 14.
+ */
+export const AnnotationResponseSchema = z.object({
+  id: z.string(),
+  body: z.string(),
+  quote: z.string(),
+  target: AnnotationTargetSchema.optional(),
+  claim: z
+    .object({ status: z.string(), statusChangedAt: z.string() })
+    .optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });

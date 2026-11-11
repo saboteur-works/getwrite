@@ -553,6 +553,16 @@ export const AnnotationTargetSchema = z.object({
 });
 
 /**
+ * An annotation's optional `claim` marker (Feature 108, FR-7, FR-10). The
+ * status is any string here so a stored sidecar is never made unreadable by a
+ * value from a newer build; the status list is enforced at the write boundary.
+ */
+export const ClaimMarkerSchema = z.object({
+  status: z.string(),
+  statusChangedAt: IsoDateString,
+});
+
+/**
  * One annotation in a text resource's sidecar (Feature 101, FR-10). The
  * passage is the `annotation` mark with the same id; an optional `target`
  * ties it to a Source (Feature 103, FR-24). Length limits and the per-resource count are enforced by
@@ -564,6 +574,7 @@ export const AnnotationSchema = z.object({
   body: z.string(),
   quote: z.string(),
   target: AnnotationTargetSchema.optional(),
+  claim: ClaimMarkerSchema.optional(),
   createdAt: IsoDateString,
   updatedAt: IsoDateString,
 });
