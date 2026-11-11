@@ -1,6 +1,6 @@
 # Modules and the contribution seam (developer)
 
-Feature 103, first cut. Spec: [specs/features/sources-module-seam.md](../../specs/features/sources-module-seam.md) (FR-1 to FR-14). Measurements: [experiments.md](../../specs/features/sources-module-seam/experiments.md). The one module built on it is Sources ([sources.md](sources.md)).
+Feature 103, first cut. Spec: [specs/features/sources-module-seam.md](../../specs/features/sources-module-seam.md) (FR-1 to FR-14). Measurements: [experiments.md](../../specs/features/sources-module-seam/experiments.md). The modules built on it are Sources ([sources.md](sources.md)) and, from Feature 108, Claims ([claims.md](claims.md)).
 
 A module is a first-party unit that adds interface or background work to the app and can be switched on or off per project. The registry is the single place a module declares what it adds. It is internal: modules are plain objects declared in this repository, collected at build time. It is not a plugin system.
 
@@ -12,23 +12,23 @@ A module is a first-party unit that adds interface or background work to the app
 
 ## Model registry
 
-- `frontend/src/lib/models/modules/manifest.ts`: `MODULE_MANIFEST`, the modules this build ships. One entry today: `{ id: "sources", view: { id: "sources", label: "Sources" }, indexSteps: [] }`.
-- `frontend/src/lib/models/modules/registry.ts`: `createModuleRegistry(modules)` (a duplicate id throws), `ModuleManifestEntry` (`id`, optional `view`, `indexSteps`), `ModuleIndexStep` (`{ id, run(projectRoot) }`), `isModuleEnabled(config, id)`, and the registry's `views()`, `enabledViews(config)` and `indexSteps(config)`.
+- `frontend/src/lib/models/modules/manifest.ts`: `MODULE_MANIFEST`, the modules this build ships. Two entries: `{ id: "sources", view: { id: "sources", label: "Sources" }, indexSteps: [] }` and `{ id: "claims", view: { id: "claims", label: "Claims" }, defaultEnabled: false, indexSteps: [] }` (Feature 108).
+- `frontend/src/lib/models/modules/registry.ts`: `createModuleRegistry(modules)` (a duplicate id throws), `ModuleManifestEntry` (`id`, optional `view`, `indexSteps`, optional `defaultEnabled`), `ModuleIndexStep` (`{ id, run(projectRoot) }`), `isModuleEnabled(config, id, manifest?)`, and the registry's `views()`, `enabledViews(config)` and `indexSteps(config)`.
 - The model-side entry has no field for resource types, Trash kinds, importers, permissions or project-type keys.
 
 ## UI registry
 
 `frontend/components/Modules/uiRegistry.ts` (`UI_MODULE_VIEWS`, `uiModuleRegistry`, `createUiModuleRegistry`). Each `UiModuleEntry` has an `id` matching the manifest, a `view` slot and optional slots. The slot kinds as built (`UI_SLOT_KINDS`):
 
-| Slot kind            | What it is                                                                                                                                                                                                                      | Consumer                                                                              |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `view`               | A project-scope Work Area tab: `id`, `label`, `render(context)`, optional `icon`, optional `alwaysEnabled`                                                                                                                      | `ViewSwitcher` and `AppShell.tsx`, through `useModuleViews` / `useEnabledModuleViews` |
-| `attachmentsSection` | The attachments panel for one Source (`render({ resource })`)                                                                                                                                                                   | The Sources view, as a prop (the view does not import the registry)                   |
-| `citationControl`    | The editor controls for the selected passage, **Cite selection** and **Mark as excerpt** (`render({ editor, resourceId, onStored })`; the Sources module's slot renders both, and `MarkExcerptControl` shows only for a Source) | The editor, through `CitationControlSlot.tsx`, rendered only while the module is on   |
+| Slot kind            | What it is                                                                                                                                                                                                                                                                                                                                   | Consumer                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `view`               | A project-scope Work Area tab: `id`, `label`, `render(context)`, optional `icon`, optional `alwaysEnabled`                                                                                                                                                                                                                                   | `ViewSwitcher` and `AppShell.tsx`, through `useModuleViews` / `useEnabledModuleViews` |
+| `attachmentsSection` | The attachments panel for one Source (`render({ resource })`)                                                                                                                                                                                                                                                                                | The Sources view, as a prop (the view does not import the registry)                   |
+| `citationControl`    | The editor controls for the selected passage (`render({ editor, resourceId, onStored })`). The Sources module's slot renders **Cite selection** and **Mark as excerpt** (`MarkExcerptControl` shows only for a Source); the claims module's slot renders **Mark as claim** (`MarkClaimControl`, text resources only, works with Sources off) | The editor, through `CitationControlSlot.tsx`, rendered only while the module is on   |
 
 Other pieces: `useModuleEnabled(moduleId)` reads the active project's flag; `ModulesContext.tsx` lets stories and tests override it.
 
-A view tab for a module that is off is absent, not disabled (the slot feeds neither `disabledViews` nor `disabledReasons`). When the module is switched off with its view open, the shell falls back to a view enabled for the current selection, using its view-reset logic, and to the Data view when nothing is selected. `"sources"` is a member of the closed `ViewName` union (`lib/models/types.ts`), pinned equal to the manifest's view id by a test.
+A view tab for a module that is off is absent, not disabled (the slot feeds neither `disabledViews` nor `disabledReasons`). When the module is switched off with its view open, the shell falls back to a view enabled for the current selection, using its view-reset logic, and to the Data view when nothing is selected. `"sources"` and `"claims"` are members of the closed `ViewName` union (`lib/models/types.ts`), each pinned equal to the manifest's view id by a test. `AppShell.tsx` names `trash`, `sources` and `claims` in two conditions that render a module view, so a new module view id is added there too.
 
 ### Trash
 
@@ -38,7 +38,9 @@ The Trash tab is registered as a view slot with `alwaysEnabled: true` (id `trash
 
 - `ProjectConfig.modules?: Record<string, boolean>` (`types.ts`; `z.record(z.string(), z.boolean()).optional()` in `ProjectConfigSchema`). `config.features` is unchanged.
 - An id this build does not know is kept on write, so a flag written by a newer build survives.
-- Absent record or absent entry means on. Only an explicit `false` turns a module off. `isModuleEnabled` implements this for known and unknown ids alike.
+- An explicit entry wins: `true` is on and `false` is off. With no entry, the module's default applies (Feature 108). The default is its manifest entry's `defaultEnabled`: `false` makes the module off until the writer turns it on, and an entry that omits the field is on. Today only `claims` sets `defaultEnabled: false`. Sources, and an id this build does not know, are on when absent, as before; a flag written by a newer build for an unknown id still survives. This replaces "an absent entry means on" for the claims module only.
+- One lookup, `moduleDefaultEnabled` in `registry.ts`, is used by `isModuleEnabled`, and every reader reaches the decision through `isModuleEnabled`: the registry's `enabledViews` and `indexSteps`, `useModuleEnabled`, `useModuleViews`, the Project Settings > Modules screen and the annotations panel's `useModuleSwitch`. `registry.ts` imports `MODULE_MANIFEST` as a value and `manifest.ts` imports the registry types only, so there is no runtime cycle (`core-import-graph.test.ts`).
+- Nothing writes a `claims` entry automatically. A project type may declare entries that are written once at creation (see [project-types.md](project-types.md)). The Modules screen shows only on or off, not whether off is the default or the writer's choice.
 - Switching a module off keeps its data and stops its background indexing. It does not delete anything.
 
 ## Switch write path
@@ -60,7 +62,7 @@ The Sources module owns no index (`indexSteps: []`). The step mechanism is exerc
 
 ## Adding a module
 
-1. Add a manifest entry in `manifest.ts` (no React, JSX or JSON imports).
+1. Add a manifest entry in `manifest.ts` (no React, JSX or JSON imports). Set `defaultEnabled: false` if the module should be off for a project with no entry.
 2. Add its UI entry in `uiRegistry.ts` with a view slot, and any other slot kind that has a real consumer. A new slot kind is added only with its consumer.
 3. If it is a view, add its id to `ViewName`.
 4. If it owns derived data, add an `indexSteps` entry and a test that runs it on and off.
@@ -68,6 +70,6 @@ The Sources module owns no index (`indexSteps: []`). The step mechanism is exerc
 
 ## What the first cut does not do
 
-By spec (FR-11, FR-12, FR-14): load code at runtime; let a module add a resource type; add a Trash kind or purge step beyond a hook; move the existing views other than Trash, the seven flags or the four compile formats into the registry; let a project type switch modules on (no project-type key names modules, and `ProjectTypeSchema` is unchanged); extract the `@gw/core` package; add an importer contribution kind; add a permission model for modules; add a resource-type scope for custom fields (`appliesToTypes`); build a generic module storage channel.
+By spec (FR-11, FR-12, FR-14): load code at runtime; let a module add a resource type; add a Trash kind or purge step beyond a hook; move the existing views other than Trash, the seven flags or the four compile formats into the registry; let a project type switch modules on (as built in the first cut; Feature 108 later added the optional `modules` record to `ProjectTypeSchema`); extract the `@gw/core` package; add an importer contribution kind; add a permission model for modules; add a resource-type scope for custom fields (`appliesToTypes`); build a generic module storage channel.
 
 Open: OQ-170, whether the first cut must switch editor schema extensions per project, is not decided. Nothing here depends on it: `AnnotationMark` stays registered unconditionally in `baseSchemaExtensions`.

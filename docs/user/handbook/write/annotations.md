@@ -47,6 +47,10 @@ The passage is highlighted in the Source. To see all of a Source's excerpts, ope
 
 An excerpt of an image or audio attachment has no passage in the text. It is listed with the other notes and is never marked as detached.
 
+## Claims
+
+A **claim** is a note that records a statement you want to back up, with a status and an optional Source. With Claims switched on, a claim appears in the panel with a **Claim** label instead of as a plain note. With Claims off, it appears as an ordinary note. See [Claims](claims.md). This page's steps for editing, re-attaching, copying and deleting also apply to claims.
+
 ## Detached notes
 
 A note is **detached** when its passage is no longer in the document, for example because you deleted the text. Detached notes are not lost. They are listed under **Detached** with the passage as it was ("Saved quote") and are kept until you delete them.
@@ -69,7 +73,7 @@ When you copy or duplicate a whole document, its notes are copied too. A templat
 
 ## Search
 
-Search finds text inside notes. See [Search](search.md).
+Search finds text inside notes, including the statement of a claim. See [Search](search.md).
 
 ## Good to know
 

@@ -1,0 +1,63 @@
+# Claims (developer)
+
+Feature 108. Spec: [specs/features/claim-ledger.md](../../specs/features/claim-ledger.md) (FR-1 to FR-24). Records: `specs/features/claim-ledger/experiments/task-<n>.md`, including `task-fixes-a-e.md`. Device and paired-device runs are recorded in `specs/features/claim-ledger/experiments/task-29.md`; nothing on this page states a result from them. Related: [annotations.md](annotations.md), [sources.md](sources.md), [modules.md](modules.md), [project-types.md](project-types.md).
+
+A claim is an annotation that carries an optional `claim` marker. It is not a new record kind: it has no store, no Trash kind and no index of its own. The note body is the statement and the saved `quote` is the passage. The Source link is the annotation's existing `target`.
+
+## Storage
+
+- `Annotation.claim?: ClaimMarker` (`types.ts`, `ClaimMarkerSchema` in `models/schemas.ts`): `{ status: string, statusChangedAt: string }`. Its presence is the marker. `status` is typed `string` so a stored value off the list is read as stored.
+- `claim-types.ts` (types and constants only): `CLAIM_STATUSES` (`unverified`, `verified`, `disputed`, `needs-review`), `CLAIM_STATUS_LABELS` (Unverified, Verified, Disputed, Needs review), `NewClaimInput`, `UpdateClaimInput`, `ClaimListEntry`, `ClaimReadFailure`, `ClaimListResult` (`claims`, `failures`, `sidecarsRead`), `OnMarkClaim`.
+- The status list is a constant of the module. It is not writer-editable, not seeded by a project type and independent of `config.statuses` (Document status): no claim code reads or writes `userMetadata.status`.
+- "Unsourced" is derived from there being no `target`. It is never stored and is refused as a status.
+- `statusChangedAt` is a full ISO timestamp set by the core, shown as a local calendar date (`formatLocalDate`). No earlier status is kept.
+
+## Cores
+
+All three go through the storage adapter (`sidecar.ts`, `io.ts`), never `node:fs`, accept no path, and let a locked-access error propagate. They import `InvalidProjectIdCoreError` from `project-id-core-error.ts`, not `project-crud-core.ts`, so none reaches the bundled project-type JSON.
+
+- `claims-add-core.ts` `addClaimCore(projectId, resourceId, input)`: `validateNewClaim` (keys `id`, `statement`, `quote`, `target` only; a client `status`, `statusChangedAt`, `claim` or `body` is refused) and an empty-quote refusal run before any lock. One `mutateSidecar` call then refuses a missing sidecar and any type other than `text` (a Source is refused although a note is allowed on one), re-runs the collision and 500-per-resource checks against the stored array, and appends the annotation with `claim: { status: "unverified", statusChangedAt: now }`. The 500 cap counts claims and notes together.
+- `claims-update-core.ts` `updateClaimCore(projectId, resourceId, annotationId, input)`: the "update claim" operation. `validateUpdateClaim` takes `status`, `statement` and `target` (`null` removes the link), each optional, at least one present. One `mutateSidecar` write. An annotation with no `claim` is refused. `statusChangedAt` is written only when the stored status differs from the requested one; a statement edit, a link change or removal and a re-selected status leave it alone, and an off-list stored status is spread back as stored. A link is checked against the Source's own sidecar before the claim's lock is taken: a missing, trashed or non-Source id is refused with a fixed message that does not echo the id. `sourceName` is read from the Source's stored name at link time (cut to 500) and replaces any client value; a later rename does not change it. The Source check and the claim write are two steps, not one: a Source trashed between them leaves a link that is then shown as removed.
+- `claims-list-core.ts` `listClaimsCore(projectId)`: a scan of every annotatable resource's sidecar when called (type `text` or `source`, as `annotations-core.ts`), with no store or index. A sidecar that cannot be read or whose `annotations` is not an array is named in `failures` with a fixed message; the claims of the others are still returned. A locked project raises the locked-access error. An unknown project raises `ClaimProjectNotFoundError`. A resource in Trash is outside `resources/` and is not scanned. `sidecarsRead` counts sidecars read successfully.
+- `annotation-validation.ts` adds `validateClaimStatement` (1 to 5000 UTF-16 code units, refused, never truncated), `validateNewClaim`, `validateUpdateClaim` and `validateCarriedClaim` (used by the paste path; see below). The new validators' messages are fixed strings.
+
+## Route, clients, native
+
+- `app/api/claims/route.ts`, in `withStorageContext`: `GET ?projectId=` (the list; a `resourceId` key is tolerated and ignored), `POST { projectId, resourceId, claim }`, `PUT { projectId, resourceId, annotationId, update }`. POST and PUT return `{ annotation }`. An unsupported top-level key or query key is 400; an invalid `status` in `update` is 400. There is no DELETE: a claim is deleted by `DELETE /api/annotations`.
+- Paired device: the gate classifies the route by its `/api` prefix, as it does `/api/annotations`. No limit switch was added and the route calls no `checkLimit`. Claim delete stays under `permanentDeletion`; the panel's Delete is disabled with a visible reason.
+- Client `lib/api/claims.ts` (`listClaims`, `addClaim`, `updateClaim`, `httpClaimsTransport`); the list response schema requires `sidecarsRead`. Native `store/transport/native-claims-backend.ts` + `.web-stub.ts` (alias in `next.config.mjs`) runs the same three cores through `createNativeRunner`. A native write into a project carrying the encrypted marker is refused before the core runs, with the `encrypted-project-refusal.ts` error worded for claims.
+- `lib/api/schemas.ts` `AnnotationResponseSchema` carries the optional `claim`; `lib/api/annotations.ts` uses it.
+
+## Carrying a claim
+
+- `addAnnotationCore` accepts an optional `claim` (`takeCarriedClaim`): validated by `validateCarriedClaim` (exactly `status` and an ISO, parseable `statusChangedAt`; `status` any non-empty string of at most 64 characters) and stored unchanged, with a non-empty body required. `annotation-paste.ts` sends `claim` with `body`, `quote` and `target`, so a pasted claim keeps status, date and Source link.
+- `POST /api/annotations` reaches the same core, so a carried `claim` with a client-supplied date is accepted there if it validates. The status date is core-written only on `POST /api/claims`.
+- Copy, duplicate, paste (same and other resource, cut-paste, partial cut), revision restore, Trash and restore of a resource and of a folder, and encrypt and unlock keep `claim` and `target`; each is pinned in `tests/unit/claim-survival.test.ts`. A stored off-list status is unchanged by each.
+- Compile and export are unchanged by claims (`compile-annotation-marks.test.ts`); no claim id enters `compileDefaults` or `exportDefaults`. Search finds a statement as a note hit (`snippetKind: "note"`) with the module on or off; status and Source are not search fields (`claim-search.test.ts`).
+
+## Module
+
+`config.modules.claims`, module id `claims`, **off by default**: the manifest entry sets `defaultEnabled: false`. See [modules.md](modules.md). Off hides the Claims tab and the Mark as claim control only; claims stay stored with every field and are listed in the annotations panel as ordinary notes. The Source line of a claim that has a link still shows as a citation's does when the module is off (`AnnotationsPanel.tsx` sends a module-off claim down the note path).
+
+## Interface
+
+- Display model: `lib/claim-display.ts` (`deriveClaimDisplay`, `applyClaimFilters`, `describeActiveClaimFilters`, `describeEmptyClaimResult`, `formatLocalDate`); pure. Source state reuses `deriveCitationTargetState`. A claim with a link whose facts could not be read is `unchecked`: neither sourced nor unsourced. A stored status off the list is shown as stored and marked, and matches no status filter except all.
+- Editor control: `Editor/Citations/MarkClaimControl.tsx` ("Mark a claim", **Claim statement**, **Mark as claim**), placed by `MarkClaimHost` in `Modules/uiRegistry.ts` through the `citationControl` slot of the `claims` entry. It renders only for a `text` resource, so it works with Sources off. `lib/claim-flows.ts` `addClaimFlow` stores first and marks after (a failed write sets no mark; a failed mark leaves a stored, detached claim); `updateClaimStatusFlow`, `updateClaimTargetFlow` and `updateClaimStatementFlow` are one write each and non-optimistic.
+- Panel: `Editor/Annotations/ClaimRow.tsx` inside `AnnotationsPanel.tsx`, with `useClaimActions`, `usePanelScope` and `useModuleSwitch` in `useAnnotationsPanel.ts`. Status select, "Status changed <date>", the Source line or "Source: unsourced", Edit, Link Source or Change Source (only while Sources is on), Re-attach, Show in text, Delete. Statement and quote render as text, never HTML. Closing the statement form returns focus to Edit.
+- Claims tab: `Claims/ClaimsView.tsx` (presentational: loading, failed with Try again, locked, empty, list; filters in `ClaimsFilters.tsx`), `Claims/useClaimList.ts` (reads `listClaims`, drops claims of a resource in Trash using the Trash listing, opens the unlock prompt for a locked project as `TrashView` does), registered as the `claims` view slot in `uiRegistry.ts`. The tab lists, filters and opens; every write happens in the panel. A resource that could not be read is named "not read" beside the claims that were read. `focusClaimPassage` selects and highlights the passage once the editor shows the resource.
+- Labels differ by place: the panel reads "(removed)" for a Source in Trash and the tab reads "(in Trash)"; both read "permanently deleted" for a purged one.
+
+## Known limits
+
+- A detached claim opens its document from the Claims tab without focusing a passage. `useClaimList.open` derives `detached` when a claim is opened; the list rows are not marked detached, because the list read does not look inside documents.
+- Relink needs the Sources module: with Sources off, the Source line and saved name stay and Link Source and Change Source are not offered.
+- On a paired device, deleting a claim is limited by `permanentDeletion` as deleting any annotation is.
+- An older build may drop `claim` on paste or parse. `task-1.md` (FR-1 c) observed, with the code before this feature, that the client response parse and `annotation-paste` dropped an added field and that `validateNewAnnotation` and `addAnnotationCore` refused one; those paths now carry `claim`. No older build was run, so the behaviour of one is the observation of that earlier code.
+- An older build's strict `ProjectTypeSchema` refuses a type carrying `modules` (`task-1.md` (d)): a saved type is reported `invalid`, a built-in file is skipped without a message, and the Manager's list parse refuses the whole response.
+- The list is a scan of every sidecar. `task-1.md` (e) measured 76 sidecars read in 18.2 ms on the largest project available, which held no annotations; a project with many claims and a large manuscript were not measured.
+
+## Not verified
+
+- Device and paired-device behaviour: see `experiments/task-29.md`.
+- Any Android version other than the one recorded there, an encrypted project on Android, a project near the 500-annotation cap, the project-wide list on a large project, and any path not run, as the spec's FR-24 lists.
+- The Storybook stories were typechecked and linted only in the task records; colour contrast of the new components was not checked in a browser.
