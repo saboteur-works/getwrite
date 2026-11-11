@@ -374,6 +374,11 @@ const nextConfig = {
           // — same rule as above.
           "../../store/transport/native-mention-highlight-duration-backend":
             "./src/store/transport/native-mention-highlight-duration-backend.web-stub",
+          // claim-ledger Task 17: the claims client (Task 16) lives in
+          // src/lib/api/, so its dynamic import's literal specifier is
+          // "../../store/transport/native-claims-backend" — same rule.
+          "../../store/transport/native-claims-backend":
+            "./src/store/transport/native-claims-backend.web-stub",
         },
   },
 };
