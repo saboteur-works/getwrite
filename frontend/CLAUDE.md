@@ -1,6 +1,6 @@
 # frontend/CLAUDE.md
 
-Orientation for work under `frontend/` (`getwrite-frontend`: Next.js App Router, Redux Toolkit, TipTap, Zod, Storybook, all UI tests). All paths below are relative to `frontend/` unless they start with `docs/`, `specs/`, `electron/` or `cli/` (repo root). Repo-wide rules, standards and the glossary are in the root `CLAUDE.md`. Feature records are in `specs/features/<slug>.md` and `specs/features/<slug>/experiments.md`; prose docs in `docs/features/`.
+Orientation for work under `frontend/` (`getwrite-frontend`: Next.js App Router, Redux Toolkit, TipTap, Zod, Storybook, all UI tests). All paths below are relative to `frontend/` unless they start with `docs/`, `specs/`, `electron/` or `cli/` (repo root). Repo-wide rules, standards and the glossary are in the root `CLAUDE.md`. Feature records are in `specs/features/<slug>.md` and `specs/features/<slug>/experiments.md` (per-task results in `experiments/task-<n>.md`; see the root `CLAUDE.md`); prose docs in `docs/features/`.
 
 ## Commands (run from `frontend/`)
 

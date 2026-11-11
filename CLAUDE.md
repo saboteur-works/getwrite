@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `cli/CLAUDE.md`: CLI commands
 - `android/CLAUDE.md`: Capacitor shell and native build
 
-Feature records live in `specs/features/<slug>.md` and `specs/features/<slug>/experiments.md`; prose docs in `docs/features/`. Release and merge status of each feature is in `specs/product/getwrite.features.md`, not in these files.
+Feature records live in `specs/features/<slug>.md` and `specs/features/<slug>/experiments.md`; prose docs in `docs/features/`. A task records its own results in `specs/features/<slug>/experiments/task-<n>.md`, never directly in `experiments.md`, so tasks running in parallel never edit the same file; the lead links or summarises them in `experiments.md` at close-out. Release and merge status of each feature is in `specs/product/getwrite.features.md`, not in these files.
 
 ## Project Overview
 
