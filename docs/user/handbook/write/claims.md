@@ -21,7 +21,7 @@ Claims are off until you switch them on for a project.
 
 The **Claims** tab appears beside **Sources**, and the claim controls appear in the editor. Clear **Enable Claims** to hide them again. Your claims stay stored, and they show again when you switch Claims back on.
 
-A [project type](../organize/project-types.md#start-new-projects-with-modules-on) can start new projects with Claims already on. A project that already exists is never changed by its project type.
+A [project type](../organize/project-types.md#start-new-projects-with-modules-on) can start new projects with Claims already on. A project that already exists is never changed by its project type. On Android you can't save project types, so set up a project type that turns Claims on on a computer or in the web app. On Android you can still switch Claims on for a project in **Project Settings**.
 
 ### Mark a claim
 
@@ -84,7 +84,7 @@ Choose **Claims** to see every claim in the project. Each entry shows the statem
 - **Source** limits it to **Sourced** or **Unsourced**, or **All**. A claim whose Source is in Trash still counts as **Sourced**, and its line reads "(in Trash)". Only a claim with no Source is **Unsourced**.
 - The two combine. A line starting "Showing:" says which filters are on.
 - If no claim matches, a message says no claim matches the filters. If the project has none, it says "There are no claims."
-- **Open** takes you to the document, selects the claim's passage and opens the **Annotations** panel with that claim in view.
+- **Open** takes you to the document, selects the claim's passage and opens the **Annotations** panel with that claim in view. On a phone the passage can end up a little above the visible area after **Open**. Scroll up to see it.
 
 The tab only lists and opens claims. To change a status, a Source or a statement, use the panel.
 
@@ -94,16 +94,17 @@ If GetWrite can't read some documents, the tab names them as "not read", still l
 
 A claim is **detached** when its passage is no longer in the document. It is not lost. The panel lists it with the passage as it was ("Saved quote"), and its status and Source stay as they were. To attach it to new text, select the passage and choose **Re-attach** on the claim.
 
-The **Claims** tab shows a detached claim as detached. **Open** on it opens the document and the **Annotations** panel with the claim in view and a message that its passage is missing; nothing is selected in the text.
+The **Claims** tab shows a detached claim as detached. If GetWrite can't check a claim's passage against the document, the entry says "The passage could not be checked against the document." **Open** on it opens the document and the **Annotations** panel with the claim in view and a message that its passage is missing; nothing is selected in the text.
 
 ### Copy, paste and search
 
-- Copying and pasting annotated text, duplicating a document, restoring a revision and moving a document to Trash and back keep a claim's status, date and Source.
+- Copying and pasting annotated text (on a computer or in the web app), duplicating a document, restoring a revision and moving a document to Trash and back keep a claim's status, date and Source.
+- On Android, a pasted claim is not carried. Pasting from the context menu does nothing, and pasting from the keyboard inserts the text only, without the claim. After pasting on Android, mark the passage as a claim again.
 - Search finds the words of a claim's statement. The result reads "Note:", as for any note. Search does not look at a claim's status or Source.
 
 ### When Claims is off
 
-With **Enable Claims** cleared, the **Claims** tab and the claim controls are hidden. Each claim is still in the panel as an ordinary note, with its statement as the note's text. You can edit that text. The status and date are not shown, and editing the text does not change them. Search still finds the statement.
+With **Enable Claims** cleared, the **Claims** tab and the claim controls are hidden. Each claim is still in the panel as an ordinary note, with its statement as the note's text. You can edit that text. The status and date are not shown, and editing the text does not change them. The Source line is hidden too, though the link is kept. Search still finds the statement.
 
 With **Enable Sources** cleared, **Link Source** and **Change Source** are hidden. A claim's Source name still shows, and you can't change it until Sources is on again.
 

@@ -1,6 +1,6 @@
 # Claims (developer)
 
-Feature 108. Spec: [specs/features/claim-ledger.md](../../specs/features/claim-ledger.md) (FR-1 to FR-24). Records: `specs/features/claim-ledger/experiments/task-<n>.md`, including `task-fixes-a-e.md`. Device and paired-device runs are recorded in `specs/features/claim-ledger/experiments/task-29.md`; nothing on this page states a result from them. Related: [annotations.md](annotations.md), [sources.md](sources.md), [modules.md](modules.md), [project-types.md](project-types.md).
+Feature 108. Spec: [specs/features/claim-ledger.md](../../specs/features/claim-ledger.md) (FR-1 to FR-24). Records: `specs/features/claim-ledger/experiments/task-<n>.md`, including `task-fixes-a-e.md`. Device and paired-device runs are recorded in `specs/features/claim-ledger/experiments/task-29.md`; the fixes made after them are in `task-fixes-device-run.md`. The "Device runs" section below summarises the record. Related: [annotations.md](annotations.md), [sources.md](sources.md), [modules.md](modules.md), [project-types.md](project-types.md).
 
 A claim is an annotation that carries an optional `claim` marker. It is not a new record kind: it has no store, no Trash kind and no index of its own. The note body is the statement and the saved `quote` is the passage. The Source link is the annotation's existing `target`.
 
@@ -58,8 +58,22 @@ All three go through the storage adapter (`sidecar.ts`, `io.ts`), never `node:fs
 - An older build's strict `ProjectTypeSchema` refuses a type carrying `modules` (`task-1.md` (d)): a saved type is reported `invalid`, a built-in file is skipped without a message, and the Manager's list parse refuses the whole response.
 - The list is a scan of every sidecar. `task-1.md` (e) measured 76 sidecars read in 18.2 ms on the largest project available, which held no annotations; a project with many claims and a large manuscript were not measured.
 
+## Device runs
+
+Recorded in `specs/features/claim-ledger/experiments/task-29.md` (2026-11-11).
+
+- Pixel 7 Pro (Android 17, WebView 157): module switch, Mark as claim, status and date, Link Source, Claims tab and Open, Source to Trash and back, passage deleted and Re-attach, search, and module off (Source line hidden) passed, after the fixes in `16b4dbd1` and `bbe01407`. Before `16b4dbd1` the controls were not reachable at phone width and keep-your-place restored to the top.
+- Emulator, Android 16 (WebView 134): an emulator run, not a device run. Copy and paste of a claim, revision restore and the module-off state passed there; the Source line on module-off and the Claims tab detached marking failed there before the fixes.
+- Paired device (the Pixel's browser) against a packaged desktop build with sharing on: Mark as claim, Add note, status change, Link Source, delete refused under `permanentDeletion`, and changes shown in the desktop window passed. The first attempt failed because `crypto.randomUUID` is not available over plain HTTP (a secure-context API); claim, note and excerpt flows now call `generateUUID` (`310e2c84`).
+
+## Known limits from the device runs
+
+- Android: a copied claim is not carried by paste. `navigator.clipboard.readText()` was measured rejecting with `NotAllowedError`, and no `paste` event was recorded for the context-menu Paste or for a keyboard-clipboard paste, which inserts plain text. This predates the feature.
+- Phone: after Open from the Claims tab, the passage can sit a little above the visible area.
+- Project types cannot be saved on Android (the Manager shows a banner and modules are read-only), so a module declaration is set on desktop or web.
+
 ## Not verified
 
-- Device and paired-device behaviour: see `experiments/task-29.md`.
-- Any Android version other than the one recorded there, an encrypted project on Android, a project near the 500-annotation cap, the project-wide list on a large project, and any path not run, as the spec's FR-24 lists.
+- Device and paired-device behaviour other than the runs above.
+- Any Android version other than the ones recorded there, the encrypted-project refusal on Android (not run), revision restore and duplicate on the Pixel, TalkBack, `getwrite_min_api24`, an encrypted project on Android, a project near the 500-annotation cap, the project-wide list on a large project, and any path not run, as the spec's FR-24 lists.
 - The Storybook stories were typechecked and linted only in the task records; colour contrast of the new components was not checked in a browser.
