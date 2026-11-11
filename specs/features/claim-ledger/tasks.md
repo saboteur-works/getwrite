@@ -50,7 +50,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 5
 **Notes:** Satisfies FR-1. Per the repo rule in root `CLAUDE.md`, this task writes its measurements to `experiments/task-1.md`, not into `experiments.md` beyond the index; no other task edits `experiments.md` before Task 31. If (g) shows the slot renders only Sources', Task 25 extends it. If (c) shows a field is dropped by a path, record it plainly; Tasks 14 and 15 act on it. A cause is written only where an experiment separated it from the alternatives. No build is run here (builds fail in worktrees).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Contract: claim types, status constants, inert core stubs, annotation schema field
 **What:** Define the types-only contract (the `claim` field, the four status identifiers and labels, add/update/list inputs and results) with inert core stubs and the optional `claim` field in the annotation schemas, so core, route, transport, native and UI tasks proceed as siblings.
@@ -59,7 +59,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-7, FR-9 (constant), FR-10 (field), FR-21 (contract). Types, constants and inert stubs only; no behaviour is merged, so this task does not wait for Task 1. The stubs are replaced by Tasks 11, 12 and 13, one file each, so those tasks never share a file. Hot files `types.ts`, `schemas.ts`, `lib/api/schemas.ts`: Task 2, then Tasks 4 and 6 sequentially. The Electron worker constraint applies (files under `lib/models/`).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Per-module default: defaultEnabled and one lookup
 **What:** Add `defaultEnabled` to `ModuleManifestEntry` and make `isModuleEnabled` and the registry use one lookup, with an absent entry meaning the module's default, on for Sources and unknown ids.
@@ -68,7 +68,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Satisfies FR-2 (OQ-4). The claims manifest entry itself is Task 4, so this task tests with a fake manifest. Hot files: `registry.ts` and `module-registry.test.ts`, Task 3 only. The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Claims manifest entry, module id and ViewName
 **What:** Add the `claims` entry to `MODULE_MANIFEST` (off by default, view `claims`, empty `indexSteps`) and add `"claims"` to `ViewName`.
@@ -77,7 +77,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2, 3
 **Estimate:** 2
 **Notes:** Satisfies FR-3 (OQ-5, OQ-8). The `UiModuleEntry` for claims is registered in Task 25 with its components. Hot file `types.ts`: Task 2 then Task 4.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Modules screen: claims switch, Sources save writes no claims entry
 **What:** Make the Project Settings > Modules screen and the hooks show and save the claims switch through the existing path, reading the default when no entry exists.
@@ -86,7 +86,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3, 4
 **Estimate:** 3
 **Notes:** Satisfies FR-3, FR-6 (tab absent and fallback). Nothing writes a claims entry automatically and the screen shows only on or off.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Project type `modules` declaration: schema, validation, API schema
 **What:** Add the optional `modules` record (module id to boolean) to the project type format and its validation, request and response schemas and the JSON schema file.
@@ -95,7 +95,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1, 2
 **Estimate:** 3
 **Notes:** Satisfies FR-4 (format change), FR-23 (boundary validation). `ProjectTypeSchema` is `.strict()`, so an older build rejects a saved type with the key; the older-build behaviour is recorded by Task 1 (d) and listed under Not verified unless measured. Hot files `schemas.ts` and `lib/api/schemas.ts`: Task 2 then Task 6. The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Create projects with the declared module entries
 **What:** Make `createProjectFromType` write exactly the declared `modules` entries to `config.modules` through the one creation path, and none for a type declaring nothing.
@@ -104,7 +104,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 6
 **Estimate:** 3
 **Notes:** Satisfies FR-4 (creation, no effect on existing projects). Hosted creation refuses writer-made types (`saving-unavailable`); only built-ins apply there. The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Project Type draft service: three-state module declaration
 **What:** Add the module declaration (one on, off or not set state per manifest module) to the draft service, its validation and its save payload.
@@ -113,7 +113,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 4, 6
 **Estimate:** 3
 **Notes:** Satisfies FR-5 (state and validation half). No built-in type declares claims on.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Project Type Manager form: module control, accessibility, story
 **What:** Render the three-state control per manifest module in the Project Type Manager with accessible names, keyboard operation and text errors.
@@ -122,7 +122,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 8
 **Estimate:** 3
 **Notes:** Satisfies FR-5 (interface half). Read the component's source and stories before using any prop. No red.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Claim validators: new claim, update claim, carried claim
 **What:** Add the pure validators for creating a claim, for the update-claim operation and for a claim carried by paste, each run before any lock.
@@ -131,7 +131,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-8, FR-9, FR-11 (validation), FR-12 (unsourced never settable), FR-23. Open point for the lead: FR-10 says the date is never client-supplied while FR-18 and OQ-12 say a paste keeps status date; this task accepts a validated carried `claim` only on the paste path and never on mark-as-claim creation, and Task 11's core ignores any client date. Hot file `annotation-validation.ts`: Task 10 only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: addClaimCore: create a claim in one write
 **What:** Implement `addClaimCore`, which stores an annotation with `claim: { status: "unverified", statusChangedAt }` in one `mutateSidecar` write, refusing non-text resources and empty selections.
@@ -140,7 +140,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2, 10
 **Estimate:** 5
 **Notes:** Satisfies FR-7, FR-9 (start status), FR-10, FR-21 (core). Imports no React, JSX or JSON. Replaces the Task 2 stub in its own file.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: updateClaimCore: status, Source link and statement in one write
 **What:** Implement `updateClaimCore`, one operation that changes status, Source link and statement of a claim in a single `mutateSidecar` write, setting `statusChangedAt` only when the status changes.
@@ -149,7 +149,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2, 10
 **Estimate:** 5
 **Notes:** Satisfies FR-9, FR-10, FR-11, FR-12. Existing `updateAnnotationCore` and `reattachAnnotationCore` are not edited; Task 26 pins that they spread the stored `claim`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Project-wide claim list core
 **What:** Implement `listClaimsCore`, which scans every text resource's sidecar and returns the claims read plus the resources that could not be read.
@@ -158,7 +158,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-17 (OQ-9: scan, no new store). Citation state (removed Source) is derived in the UI from the listed facts by Task 20, not here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Carry the claim through add, paste and the client parse
 **What:** Make the add core, `annotation-paste.ts` and the client annotation transport carry a validated `claim` so a pasted claim keeps status, status date and Source link.
@@ -167,7 +167,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1, 2, 10
 **Estimate:** 3
 **Notes:** Satisfies FR-18 (paste path), OQ-7, OQ-12. Hot file `annotations-core.ts`: Task 14 only (Tasks 11 and 12 use `mutateSidecar` directly). The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Route: /api/claims (list, create, update)
 **What:** Add the claims route with GET list, POST create and PUT update-claim, each in `withStorageContext`, taking `projectId` and `resourceId` and no path.
@@ -176,7 +176,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-21 (route, paired-device classification), FR-17 (locked). Contract-first: runs in parallel with Tasks 11 to 13; the final behaviour is exercised end to end in Task 26. The gate's file is located by the task and only read.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Client transport: lib/api/claims.ts
 **What:** Add the client for list, create and update-claim that resolves the HTTP or native backend through `createTransport` and parses every response.
@@ -185,7 +185,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-21 (transport parity), FR-23. The native module is a Task 17 file; this test fakes it by its Task 2 signature.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Native backend: claims core in-process, web stub, encrypted-marker refusal
 **What:** Add the native claims backend that runs the same cores through `createNativeRunner`, with a `.web-stub.ts` alias, and refuse writes into a project carrying the encrypted marker.
@@ -194,7 +194,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-21 (native parity, encrypted marker verified rather than assumed). Hot file `next.config.mjs`: Task 17 only. Inlining of the new module is checked by the lead in Task 28.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Claim flows: mark, update, failure handling
 **What:** Add the flows (`addClaimFlow`, status, link and statement updates) with injected transport functions so a failed write adds no mark and a failed mark leaves the claim stored.
@@ -203,7 +203,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-14 (failure handling), FR-15 (non-optimistic writes). `annotation-flows.ts` is read, not edited.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Mark as claim control and story
 **What:** Add the "Mark as claim" control for the editor's claim slot, keyboard and touch operable, with a status region, working with Sources off.
@@ -212,7 +212,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-14. Presentational: props in, callbacks out; Task 25 wires it. It is not rendered with the module off, a read-only editor or a non-text resource; that gating is Task 25.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Claim display model and filters (pure)
 **What:** Add the pure functions that derive unsourced, the status label and off-list mark, the local date, the removed-Source state and the status and sourced filters.
@@ -221,7 +221,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-9, FR-10, FR-12, FR-13, FR-16 (filters), FR-6 (off display), FR-23. Pure functions, no React.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: ClaimRow: presentational claim row and stories
 **What:** Add the presentational claim row for the annotations panel: claim marker, statement, status control, status date, Source line or "unsourced", detached and removed-Source states.
@@ -230,7 +230,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 20
 **Estimate:** 5
 **Notes:** Satisfies FR-11 (relink placement), FR-12, FR-13, FR-15, FR-6. Props in, callbacks out; `AnnotationsPanel.tsx` is not edited here (Task 24).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: ClaimsView: Claims tab presentation, filters and stories
 **What:** Add the presentational Claims tab with heading, loading, failed with retry, empty, not-read resources, the list, and the combinable filters, modelled on `SourcesView.tsx`.
@@ -239,7 +239,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 20
 **Estimate:** 5
 **Notes:** Satisfies FR-16 (OQ-15: list, filter, open only), FR-17 (not-read named). Presentational; the data and open behaviour come from Task 23.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: useClaimList hook and open-at-passage
 **What:** Add the hook that loads the project-wide list through the client, exposes retry, the locked unlock prompt and the open-claim action, resolving a detached claim to its resource.
@@ -248,7 +248,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 16, 20
 **Estimate:** 3
 **Notes:** Satisfies FR-16 (open at passage), FR-17. Read `TrashView.tsx` and the existing mention-jump or annotation-focus path to reuse before adding any new mechanism.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Annotations panel wiring: claim rows, update actions, module off
 **What:** Wire the panel and its hook to render claim rows, call the update-claim client and show an ordinary note with the module off.
@@ -257,7 +257,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 16, 18, 21
 **Estimate:** 5
 **Notes:** Satisfies FR-6, FR-11, FR-13, FR-15. Hot files: `AnnotationsPanel.tsx`, `useAnnotationsPanel.ts` and the panel story, Task 24 only. Read the component source and stories before using props.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Registry wiring: claims UI entry, citation slot, Claims tab and editor gating
 **What:** Register the claims `UiModuleEntry` with its `view` and `citationControl` slots, make the citation slot render every enabled module's control, and gate the control and tab on the module.
@@ -266,7 +266,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1, 4, 18, 19, 22, 23
 **Estimate:** 5
 **Notes:** Satisfies FR-3, FR-14, FR-16, FR-6 (OQ-8). Hot files `uiRegistry.ts`, `CitationControlSlot.tsx`, `AppShell.tsx`: Task 25 only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Pins: copy, duplicate, paste, cut, revision restore, Trash and encryption of a claim
 **What:** Add one test per FR-18 operation showing a claim keeps its marker, status, date and Source link or is reported, plus the older-build and off-list cases.
@@ -275,7 +275,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 11, 12, 14
 **Estimate:** 5
 **Notes:** Satisfies FR-18, FR-13, FR-9 (never rewritten). Tests only; a failure caused by shipped behaviour is reported, not fixed here. The older-build behaviour is not tested here (Task 1 (c)) and is listed under Not verified.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Pins: compile, export, search and import graph
 **What:** Add the tests showing claims change no compile or export output, are found by search as a Note hit, and that the claim cores respect the import graph.
@@ -284,7 +284,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 11, 13
 **Estimate:** 3
 **Notes:** Satisfies FR-19, FR-20, FR-23. Tests only; `execute-search.ts` is changed only if a test shows it is needed, and then the task stops and reports.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: LEAD-RUN: build, install and inlining check
 **What:** From the main checkout, outside the sandbox, build the native app, run the inlining grep and install the debug build on the Pixel 7 Pro, recording each result.
@@ -293,7 +293,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 5, 7, 9, 15, 17, 24, 25
 **Estimate:** 2
 **Notes:** LEAD-RUN, not for the orchestrator: the lead runs it with the owner outside the sandbox from the main checkout (builds fail in worktrees here; `adb` and Gradle can fail inside the sandbox, retry outside before filing a bug). Satisfies FR-1(f), FR-24.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: LEAD-RUN: device runs on the Pixel 7 Pro and a paired device
 **What:** With the owner, run the claim ledger on the physical Pixel 7 Pro and on a paired device and record every FR-24 item as an observed value.
@@ -302,7 +302,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 26, 27, 28
 **Estimate:** 8
 **Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-24, FR-21 (parity claims). Android and paired-device support MUST NOT be claimed until this is recorded. Record which driving method was used (by hand or `adb`). No cause is written without an experiment that separated it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Documentation updates for the claim ledger
 **What:** Apply the documentation changes FR-24 requires, with the scribe stage writing the prose, so that no document states an unmeasured result as fact.
@@ -311,7 +311,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 26, 27, 28
 **Estimate:** 3
 **Notes:** Satisfies FR-24 (documentation). Prose is the scribe stage's job; the orchestrator passes it the files and the facts recorded by Tasks 1 to 28; it runs alongside the device run, so it states no device or paired-device result and says only that those runs are recorded in `experiments/task-29.md`; Task 31 adds the device-run results to these docs. Hot files: `docs/`, `frontend/CLAUDE.md`, root `CLAUDE.md`, `android/CLAUDE.md`: Task 30 only, then Task 31 for the device-run results.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: LEAD-RUN: final suites exactly as CI runs them and close-out
 **What:** Run every CI command from the places the workflows run them, write the acceptance record with the Not verified list, add the device-run results (from `experiments/task-29.md`) to the docs Task 30 wrote, and link the per-task results from `experiments.md`.
@@ -320,7 +320,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 26, 27, 29, 30
 **Estimate:** 5
 **Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-23, FR-24. Tasks 1 to 25 are covered transitively through Tasks 26, 27 and 30. Folding the device-run results into the docs is its own step after Task 29 is recorded.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 31
