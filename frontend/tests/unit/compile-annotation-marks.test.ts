@@ -30,6 +30,12 @@ import {
 import { collectMarkdownWarnings } from "../../src/lib/export/markdown-serializer";
 import { tiptapToPlainText } from "../../src/lib/tiptap-utils";
 import { generateUUID } from "../../src/lib/models/uuid";
+import { createProject } from "../../src/lib/models/project";
+import { PROJECT_FILENAME } from "../../src/lib/models/project-config";
+import { writeSidecar } from "../../src/lib/models/sidecar";
+import { addClaimCore } from "../../src/lib/models/claims-add-core";
+import { flushIndexer } from "../../src/lib/models/indexer-queue";
+import type { MetadataValue } from "../../src/lib/models/types";
 import type { MarkdownConstructWarning } from "../../src/lib/export/types";
 import { removeDirRetry } from "./helpers/fs-utils";
 import { extractPdfPageTexts } from "../helpers/pdf-text";
@@ -150,10 +156,46 @@ async function docxBodyOf(arrayBuffer: ArrayBuffer): Promise<string> {
   return match[1];
 }
 
+/**
+ * Feature 108, Task 27: gives the project a `project.json`, the resource a
+ * sidecar and one stored claim (`addClaimCore`), so the claim exists in the
+ * project the compile and export paths run over.
+ */
+async function attachClaim(
+  projectsDir: string,
+  projectId: string,
+  claim: { id: string; quote: string },
+): Promise<void> {
+  const projectRoot = path.join(projectsDir, projectId);
+  await fs.writeFile(
+    path.join(projectRoot, PROJECT_FILENAME),
+    JSON.stringify(createProject({ name: "Annotation Check" })),
+    "utf8",
+  );
+  await writeSidecar(projectRoot, RESOURCE_ID, {
+    id: RESOURCE_ID,
+    slug: "chapter",
+    type: "text",
+    name: "Chapter",
+    orderIndex: 0,
+    folderId: null,
+    createdAt: "1970-01-01T00:00:00.000Z",
+    updatedAt: "1970-01-01T00:00:00.000Z",
+    wordCount: 4,
+  } as Record<string, MetadataValue>);
+  await addClaimCore(projectId, RESOURCE_ID, {
+    id: claim.id,
+    statement: "The harbour closed in 1921",
+    quote: claim.quote,
+  });
+  await flushIndexer();
+}
+
 /** Writes `doc` as a one-resource project and runs every path over it. */
 async function runAll(
   doc: JSONContent,
   resourceType: "text" | "source" = "text",
+  claim?: { id: string; quote: string },
 ): Promise<Outputs> {
   const projectsDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-annot-"));
   tmpDirs.push(projectsDir);
@@ -169,6 +211,7 @@ async function runAll(
     tiptapToPlainText(doc as Parameters<typeof tiptapToPlainText>[0]),
   );
   process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+  if (claim) await attachClaim(projectsDir, projectId, claim);
 
   const resources = [{ id: RESOURCE_ID, name: "Chapter", type: resourceType }];
   const compileBody = {
@@ -301,5 +344,97 @@ describe("compile and export output with annotation marks (FR-8)", () => {
         plainOut.exportMarkdownWarnings,
       );
     });
+  });
+});
+
+/** The id of the first `annotation` mark in a document, or undefined. */
+function firstAnnotationId(doc: JSONContent): string | undefined {
+  const match = /"type":"annotation","attrs":\{"id":"([^"]+)"\}/.exec(
+    JSON.stringify(doc),
+  );
+  return match?.[1];
+}
+
+/** The same document with the first annotation mark's id replaced. */
+function withMarkId(doc: JSONContent, markId: string): JSONContent {
+  const first = firstAnnotationId(doc);
+  if (!first) throw new Error("document has no annotation mark");
+  return JSON.parse(
+    JSON.stringify(doc).replaceAll(`"id":"${first}"`, `"id":"${markId}"`),
+  ) as JSONContent;
+}
+
+describe("compile and export output with a claim on the passage (Feature 108, FR-20)", () => {
+  describe.each(CASES)("$label", ({ annotated, plain, control }) => {
+    let claimedOut: Outputs;
+    let plainOut: Outputs;
+    let markedOnlyOut: Outputs;
+    let controlClaimedOut: Outputs;
+
+    beforeAll(async () => {
+      const claimId = generateUUID();
+      const claimedDoc = withMarkId(annotated, claimId);
+      const quote = "claimed passage";
+      claimedOut = await runAll(claimedDoc, "text", { id: claimId, quote });
+      markedOnlyOut = await runAll(claimedDoc);
+      plainOut = await runAll(plain);
+      controlClaimedOut = await runAll(control, "text", { id: claimId, quote });
+    });
+
+    it.each(
+      COMPARISONS.filter(({ name }) => name !== "collectMarkdownWarnings"),
+    )(
+      "control (one changed letter, claim kept) differs: $name",
+      ({ equal }) => {
+        expect(equal(plainOut, controlClaimedOut)).toBe(false);
+      },
+    );
+
+    it.each(COMPARISONS)("claimed equals plain: $name", ({ equal }) => {
+      expect(equal(claimedOut, plainOut)).toBe(true);
+    });
+
+    it.each(COMPARISONS)(
+      "claimed equals the same marks with no claim stored: $name",
+      ({ equal }) => {
+        expect(equal(claimedOut, markedOnlyOut)).toBe(true);
+      },
+    );
+
+    it("the Markdown cores return the same warnings with and without a claim", () => {
+      expect(claimedOut.compileMarkdownWarnings).toEqual(
+        plainOut.compileMarkdownWarnings,
+      );
+      expect(claimedOut.exportMarkdownWarnings).toEqual(
+        plainOut.exportMarkdownWarnings,
+      );
+    });
+
+    it("the statement appears in no output", () => {
+      expect(JSON.stringify(claimedOut)).not.toContain("harbour closed");
+    });
+  });
+
+  it("adding a claim leaves project.json without compileDefaults or exportDefaults", async () => {
+    const projectsDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "gw-claimdef-"),
+    );
+    tmpDirs.push(projectsDir);
+    const projectId = generateUUID();
+    process.env.GETWRITE_PROJECTS_DIR = projectsDir;
+    await fs.mkdir(path.join(projectsDir, projectId), { recursive: true });
+    await attachClaim(projectsDir, projectId, {
+      id: generateUUID(),
+      quote: "claimed passage",
+    });
+    const raw = await fs.readFile(
+      path.join(projectsDir, projectId, PROJECT_FILENAME),
+      "utf8",
+    );
+    const config = (JSON.parse(raw) as { config?: Record<string, unknown> })
+      .config;
+    expect(config?.compileDefaults).toBeUndefined();
+    expect(config?.exportDefaults).toBeUndefined();
+    expect(raw).not.toContain("excludedResourceIds");
   });
 });
