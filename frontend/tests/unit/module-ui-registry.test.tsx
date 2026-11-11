@@ -20,6 +20,8 @@ import projectsReducer, {
 import { useModuleEnabled } from "../../components/Modules/useModuleEnabled";
 import { StaticModulesProvider } from "../../components/Modules/ModulesContext";
 import * as uiRegistryModule from "../../components/Modules/uiRegistry";
+import { MODULE_MANIFEST } from "../../src/lib/models/modules/manifest";
+import type { ViewName } from "../../src/lib/models/types";
 
 const FRONTEND_ROOT = path.resolve(__dirname, "../..");
 const REPO_ROOT = path.resolve(FRONTEND_ROOT, "..");
@@ -180,6 +182,22 @@ describe("UI registry shape (OQ-12, FR-11)", () => {
       (entry) => entry.attachmentsSection !== undefined,
     ).map((entry) => entry.id);
     expect(withSlot).toEqual(["sources"]);
+  });
+
+  it("registers a claims view whose id equals the manifest's and ViewName's, after Sources (Feature 108, FR-3)", () => {
+    const ids = uiRegistryModule.UI_MODULE_VIEWS.map((entry) => entry.id);
+    expect(ids).toEqual(["trash", "sources", "claims"]);
+    const claims = uiRegistryModule.UI_MODULE_VIEWS.find(
+      (entry) => entry.id === "claims",
+    );
+    const manifestView = MODULE_MANIFEST.find((m) => m.id === "claims")?.view;
+    expect(claims?.view.id).toBe(manifestView?.id);
+    expect(claims?.view.label).toBe(manifestView?.label);
+    const viewName: ViewName = "claims";
+    expect(claims?.view.id).toBe(viewName);
+    expect(claims?.view.alwaysEnabled).toBeUndefined();
+    expect(claims?.citationControl).toBeDefined();
+    expect(claims?.attachmentsSection).toBeUndefined();
   });
 
   it("looks a view up by module id and returns undefined when none", () => {
