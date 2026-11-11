@@ -69,10 +69,36 @@ function fakeApi(over: Partial<ClaimFlowApi> = {}): ClaimFlowApi {
 const base = { projectId: "p", resourceId: "r" };
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   while (editors.length) editors.pop()?.destroy();
 });
 
 describe("addClaimFlow", () => {
+  it("makes a valid v4 id when crypto.randomUUID is missing (insecure context)", async () => {
+    vi.stubGlobal("crypto", {
+      getRandomValues: globalThis.crypto.getRandomValues.bind(
+        globalThis.crypto,
+      ),
+    });
+    expect(
+      (globalThis.crypto as { randomUUID?: unknown }).randomUUID,
+    ).toBeUndefined();
+    const editor = mount("Hello world");
+    const api = fakeApi();
+    const result = await addClaimFlow(api, {
+      editor,
+      ...base,
+      statement: "stmt",
+      range: { from: 1, to: 6 },
+    });
+    expect(result.ok).toBe(true);
+    expect(api.add).toHaveBeenCalledTimes(1);
+    const sent = vi.mocked(api.add).mock.calls[0][2];
+    expect(sent.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+  });
+
   it("stores the claim, then sets the annotation mark with the stored id", async () => {
     const editor = mount("Hello world");
     const order: string[] = [];

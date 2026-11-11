@@ -25,6 +25,7 @@ import {
   type UpdateClaimInput,
 } from "./models/claim-types";
 import { ANNOTATION_TRANSACTION_META } from "./annotation-flows";
+import { generateUUID } from "./models/uuid";
 
 /** The two transport calls the claim flows need. */
 export interface ClaimFlowApi {
@@ -128,7 +129,7 @@ export async function addClaimFlow(
       message: "Write the claim statement first.",
     };
   }
-  const id = input.id ?? crypto.randomUUID();
+  const id = input.id ?? generateUUID();
   let annotation: Annotation;
   try {
     annotation = await api.add(projectId, resourceId, { id, statement, quote });

@@ -106,3 +106,24 @@ On the Pixel 7 Pro (owner, 2026-11-11) the editor did not restore the scroll pos
 ### Not verified
 
 Real-device behaviour: jsdom has no layout, so computed `overflow-y` is set inline in tests. The lead re-runs it on the phone.
+
+## Paired device: crypto.randomUUID (2026-11-11)
+
+### Observed
+
+On a paired device (phone browser over plain HTTP to the desktop's home-network sharing server), Mark as claim failed with "The claim could not be saved. crypto.randomUUID is not a function".
+
+### Documented reason
+
+Browsers expose `crypto.randomUUID` only in secure contexts (HTTPS or localhost); a paired device is plain HTTP on the LAN. `crypto.getRandomValues` is available in insecure contexts. The fix's effect on the paired device is not verified until the lead re-runs it there.
+
+### Files changed
+
+- `frontend/src/lib/claim-flows.ts`: `addClaimFlow` uses `generateUUID()` (from `models/uuid.ts`, which imports only a type) instead of `crypto.randomUUID()`.
+- `frontend/src/lib/annotation-flows.ts`: the same in `addAnnotationFlow`, `addTextExcerptFlow` and `addAttachmentExcerptFlow`, so annotations, excerpts and citations from Features 101/103 are covered.
+- A grep of `components/`, `hooks/`, `src/` and `app/` found no other client-side `crypto.randomUUID`; the remaining uses are server code (`lib/sharing/credential-store.ts`, `app/api/auth/[...all]/route.ts`, both `node:crypto`).
+
+### Tests
+
+- `tests/unit/claim-flows.test.ts`: with `crypto.randomUUID` stubbed away, `addClaimFlow` sends a v4 id to the transport.
+- `tests/unit/annotation-flows-excerpts.test.ts`: the same for `addAnnotationFlow`, `addTextExcerptFlow`, `addAttachmentExcerptFlow`.
