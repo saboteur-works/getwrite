@@ -12,7 +12,10 @@ import type {
   AnnotationsHandle,
   AnnotationsState,
 } from "../../src/hooks/useAnnotations";
-import type { CitationFactsDeps } from "../../components/Editor/Annotations/useAnnotationsPanel";
+import type {
+  AnnotationsPanelFocus,
+  CitationFactsDeps,
+} from "../../components/Editor/Annotations/useAnnotationsPanel";
 import { Provider } from "react-redux";
 import {
   StaticSharingLimitsProvider,
@@ -105,12 +108,15 @@ function PanelStory({
   state,
   limits,
   modules,
+  focus,
 }: {
   state: AnnotationsState;
   /** The sharing-limits answer; the window (exempt) when omitted. */
   limits?: StaticSharingLimitsValue;
   /** Module switches (`config.modules`); absent entries use each module's default. */
   modules?: Record<string, boolean>;
+  /** A row to bring into view, as after Open in the Claims tab. */
+  focus?: AnnotationsPanelFocus;
 }): JSX.Element {
   const editor = useEditor();
   const [store] = React.useState(storyStore);
@@ -135,6 +141,8 @@ function PanelStory({
               citationFactsDeps={STORY_FACTS}
               resourceId="story-resource"
               claimApi={STORY_CLAIM_API}
+              focus={focus}
+              onFocusHandled={fn()}
             />
           </div>
         </StaticSharingLimitsProvider>
@@ -299,6 +307,42 @@ export const ClaimDetached: Story = {
     state: {
       status: "ok",
       annotations: [claimNote({ id: "d", quote: "The lighthouse keeper" })],
+    },
+  },
+};
+
+/** Open from the Claims tab: the claim's row is scrolled to and focused. */
+export const ClaimFocusedFromClaimsTab: Story = {
+  args: {
+    modules: { claims: true },
+    state: { status: "ok", annotations: [claimNote()] },
+    focus: { annotationId: "a", isPassageMissing: false },
+  },
+};
+
+/** Open from the Claims tab on a claim whose passage is gone: the row is focused and the message says so. */
+export const ClaimDetachedFromClaimsTab: Story = {
+  args: {
+    modules: { claims: true },
+    state: {
+      status: "ok",
+      annotations: [claimNote({ id: "d", quote: "The lighthouse keeper" })],
+    },
+    focus: { annotationId: "d", isPassageMissing: true },
+  },
+};
+
+/** The claims module off: a claim's Source line is hidden with the marker, status and date. */
+export const ClaimModuleOffSourceHidden: Story = {
+  args: {
+    modules: { claims: false },
+    state: {
+      status: "ok",
+      annotations: [
+        claimNote({
+          target: { sourceId: SOURCE_ID, sourceName: "Interview with Ada" },
+        }),
+      ],
     },
   },
 };

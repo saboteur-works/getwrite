@@ -22,7 +22,7 @@ export default meta;
 
 type Story = StoryObj<typeof ModuleState>;
 
-/** No `config.modules` entry: the module reads as on (OQ-13). */
+/** No `config.modules` entry: the module reads as its default (on for Sources, OQ-13). */
 export const Absent: Story = {};
 
 export const On: Story = { parameters: { modules: { sources: true } } };

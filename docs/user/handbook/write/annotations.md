@@ -30,7 +30,7 @@ If the notes can't be read, the panel says so and offers **Try again**. That is 
 
 ## Cite a Source
 
-You can tie a passage in a document to one of your [Sources](../protect-and-finish/resources.md#sources-and-attachments). Select the passage, choose a Source under **Cite a Source**, and choose **Cite selection**. You can also pick one of the Source's attachments and say where in it the passage sits: a **Page**, **Timestamp**, **Paragraph** or **Line**, with a free-text value. A citation can have no note text. A note on any other passage needs 1 to 5000 characters.
+You can tie a passage in a document to one of your [Sources](../protect-and-finish/resources.md#sources-and-attachments). Select the passage and choose **Cite selection** below the text to open the form (it starts closed). Choose a Source under **Cite a Source**, then choose **Cite selection** in the form. You can also pick one of the Source's attachments and say where in it the passage sits: a **Page**, **Timestamp**, **Paragraph** or **Line**, with a free-text value. A citation can have no note text. A note on any other passage needs 1 to 5000 characters.
 
 The panel shows each citation with the Source's name as it was when you cited it. Renaming the Source later does not change that name. If the Source is deleted, the citation stays and shows the Source as removed. If GetWrite cannot check the Source, the citation says so. It does not show the Source as removed or as present.
 

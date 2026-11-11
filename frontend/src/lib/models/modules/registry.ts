@@ -38,8 +38,8 @@ export interface ModuleManifestEntry {
   indexSteps: readonly ModuleIndexStep[];
   /**
    * State of the module for a project whose `config.modules` has no own entry
-   * for it (Feature 108, FR-2). Absent means on; only an explicit `false`
-   * makes the module off until the writer turns it on.
+   * for it (Feature 108, FR-2). When the field is omitted the module is
+   * on; only an explicit `false` makes it off until the writer turns it on.
    */
   defaultEnabled?: boolean;
 }

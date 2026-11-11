@@ -148,6 +148,16 @@ describe("ClaimsView list", () => {
     expect(list.queryByText(/unsourced/i)).toBeNull();
   });
 
+  it("says in text that a passage was not checked when its document could not be read, and does not call it detached", () => {
+    setup(ready([item("u", {}, { isPassageUnchecked: true })]));
+    expect(
+      screen.getByText(
+        "The passage could not be checked against the document.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/passage is detached/i)).toBeNull();
+  });
+
   it("shows detached, removed, purged and could-not-be-checked in text", () => {
     setup(
       ready([

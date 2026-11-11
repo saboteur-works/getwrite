@@ -56,6 +56,11 @@ export interface CitationControlProps {
   resourceId: string;
   /** Called after a citation was stored, so the host can re-read its list. */
   onStored?: () => void;
+  /**
+   * Called with a message after a citation was stored and marked, so a host
+   * that shows the form on demand can close it (not called on a failure).
+   */
+  onDone?: (message: string) => void;
 }
 
 type Loaded<T> =
@@ -122,6 +127,7 @@ export default function CitationControl({
   editor,
   resourceId,
   onStored,
+  onDone,
 }: CitationControlProps): JSX.Element {
   const projectId = useAppSelector(selectActiveProjectDirectoryId);
   const resources = useAppSelector((s) => selectResources(s.resources));
@@ -216,6 +222,7 @@ export default function CitationControl({
     if (result.ok) {
       setStatus(`Cited ${source.name}.`);
       onStored?.();
+      onDone?.(`Cited ${source.name}.`);
     } else if (result.stage === "mark") {
       setStatus(
         `The citation was saved but could not be attached to the passage. It is listed as detached. ${result.message}`,

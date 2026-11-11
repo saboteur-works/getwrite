@@ -28,6 +28,12 @@ import {
 } from "../../../src/lib/claim-flows";
 import type { ClaimStatus } from "../../../src/lib/models/claim-types";
 
+import {
+  clearAnnotationsPanelRequest,
+  getAnnotationsPanelRequest,
+  subscribeAnnotationsPanelRequest,
+} from "./annotationsPanelRequest";
+
 /** DOM id of the annotations panel region. */
 export const ANNOTATIONS_PANEL_ID = "editor-annotations-panel";
 
@@ -39,8 +45,18 @@ export interface PendingAnnotationAdd {
   quote: string;
 }
 
+/** The row the panel brings into view after an outside request opened it. */
+export interface AnnotationsPanelFocus {
+  annotationId: string;
+  /** The claim's passage was not found in the saved document. */
+  isPassageMissing: boolean;
+}
+
 interface AnnotationsPanelController {
   isOpen: boolean;
+  /** Set when the Claims tab asked for a row; the panel clears it when handled. */
+  focus: AnnotationsPanelFocus | null;
+  clearFocus: () => void;
   /** Set between choosing "Add note" and saving or cancelling the form. */
   pendingAdd: PendingAnnotationAdd | null;
   /** Ends the add form (saved or cancelled). */
@@ -66,12 +82,34 @@ export function useAnnotationsPanel(
   const [pendingAdd, setPendingAdd] =
     React.useState<PendingAnnotationAdd | null>(null);
   const [canAdd, setCanAdd] = React.useState(false);
+  const [focus, setFocus] = React.useState<AnnotationsPanelFocus | null>(null);
   const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+  const request = React.useSyncExternalStore(
+    subscribeAnnotationsPanelRequest,
+    getAnnotationsPanelRequest,
+    () => null,
+  );
 
   React.useEffect(() => {
     setIsOpen(false);
     setPendingAdd(null);
+    setFocus(null);
   }, [resetKey]);
+
+  // Declared after the reset above, so a request for the resource that was
+  // just opened is applied after the reset, not wiped by it.
+  React.useEffect(() => {
+    if (request === null || request.resourceId !== resetKey) return;
+    setPendingAdd(null);
+    setIsOpen(true);
+    setFocus({
+      annotationId: request.annotationId,
+      isPassageMissing: request.isPassageMissing,
+    });
+    clearAnnotationsPanelRequest(request.token);
+  }, [request, resetKey]);
+
+  const clearFocus = React.useCallback(() => setFocus(null), []);
 
   React.useEffect(() => {
     if (!editor) {
@@ -103,6 +141,7 @@ export function useAnnotationsPanel(
   const close = React.useCallback(() => {
     setIsOpen(false);
     setPendingAdd(null);
+    setFocus(null);
     buttonRef.current?.focus();
   }, []);
 
@@ -114,7 +153,7 @@ export function useAnnotationsPanel(
     canAdd,
     onAdd: editor ? onAdd : undefined,
   };
-  return { isOpen, pendingAdd, clearAdd, close, control };
+  return { isOpen, focus, clearFocus, pendingAdd, clearAdd, close, control };
 }
 
 /**

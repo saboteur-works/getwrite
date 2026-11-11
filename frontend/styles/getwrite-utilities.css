@@ -2406,6 +2406,41 @@ html.gw-theme-dark {
     padding: 16px 20px;
   }
 
+  /* The annotations panel keeps its own scroll beside the editor on wide
+     screens; on a phone it is part of the one scroll below. */
+  .annotations-panel {
+    max-height: 45vh;
+    overflow-y: auto;
+  }
+
+  /* Phone width: the shell is the one scroller, so the editor body, the module
+     controls and the Annotations panel are all reachable by scrolling and none
+     is clipped or squeezed by a fixed-height region. The toolbar stays pinned
+     at the top of the shell. Desktop and tablet layout is unchanged. */
+  @media (max-width: 767px) {
+    .tiptap-editor-shell {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .tiptap-editor-shell > .editor-menubar {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .tiptap-editor-shell .tiptap-editor-content {
+      flex: 0 0 auto;
+      min-height: 50vh;
+      overflow-y: visible;
+    }
+
+    .tiptap-editor-shell .annotations-panel {
+      max-height: none;
+      overflow-y: visible;
+    }
+  }
+
   .editor-menubar {
     flex-shrink: 0;
     display: flex;

@@ -38,6 +38,8 @@ import {
 import { collectAnnotationRanges } from "../Editor/Annotations/annotation-doc";
 import { setAnnotationHighlight } from "../Editor/Extensions/AnnotationHighlightExtension";
 import CitationControl from "../Editor/Citations/CitationControl";
+import ControlDisclosure from "../Editor/Citations/ControlDisclosure";
+import { requestAnnotationsPanel } from "../Editor/Annotations/annotationsPanelRequest";
 import MarkExcerptControl from "../Editor/Citations/MarkExcerptControl";
 import SourceAttachmentsPanel from "../Sources/SourceAttachmentsPanel";
 import SourcesView from "../Sources/SourcesView";
@@ -151,14 +153,24 @@ const SOURCES_ATTACHMENTS_SECTION: UiAttachmentsSectionSlot = {
 /**
  * The Sources module's editor controls, placed by the editor (FR-24, FR-21):
  * Cite selection, and Mark as excerpt, which renders only for a Source. Both
- * sit in the one citation-control slot, so the module switch hides both.
+ * sit in the one citation-control slot, so the module switch hides both. Cite
+ * selection starts collapsed behind a disclosure button (`ControlDisclosure`).
  */
 const SOURCES_CITATION_CONTROL: UiCitationControlSlot = {
   render: ({ editor, resourceId, onStored }) =>
     React.createElement(
       React.Fragment,
       null,
-      React.createElement(CitationControl, { editor, resourceId, onStored }),
+      React.createElement(ControlDisclosure, {
+        label: "Cite selection",
+        renderForm: (done: (message: string) => void) =>
+          React.createElement(CitationControl, {
+            editor,
+            resourceId,
+            onStored,
+            onDone: done,
+          }),
+      }),
       React.createElement(MarkExcerptControl, { editor, resourceId, onStored }),
     ),
 };
@@ -171,13 +183,17 @@ const FOCUS_POLL_INTERVAL_MS = 50;
 const FOCUS_POLL_TIMEOUT_MS = 3000;
 
 /**
- * Selects and highlights the claim's passage once the editor shows its
- * resource. A detached claim has no passage to focus; the resource still opens.
- * Gives up quietly after the timeout (the resource is open either way).
+ * Once the editor shows the claim's resource: selects and highlights the
+ * claim's passage (not for a detached claim, which has none), then asks the
+ * editor to open its annotations panel with the claim's row in view. The panel
+ * request comes last so the row focus is the final scroll on a narrow screen,
+ * where the editor and the panel share one scroller. A detached claim opens
+ * the panel with a message that its passage is missing. Gives up quietly after
+ * the timeout (the resource is open either way).
  */
 function focusClaimPassage(request: OpenClaimRequest): void {
-  if (request.passage === "detached") return;
   const startedAt = Date.now();
+  const isDetached = request.passage === "detached";
   const attempt = (): void => {
     const editor = getActiveEditor();
     if (
@@ -185,9 +201,9 @@ function focusClaimPassage(request: OpenClaimRequest): void {
       !editor.isDestroyed &&
       getActiveEditorResourceId() === request.resourceId
     ) {
-      const range = collectAnnotationRanges(editor.state.doc).get(
-        request.annotationId,
-      );
+      const range = isDetached
+        ? undefined
+        : collectAnnotationRanges(editor.state.doc).get(request.annotationId);
       if (range) {
         editor
           .chain()
@@ -196,6 +212,11 @@ function focusClaimPassage(request: OpenClaimRequest): void {
           .run();
         setAnnotationHighlight(editor, { activeId: request.annotationId });
       }
+      requestAnnotationsPanel({
+        resourceId: request.resourceId,
+        annotationId: request.annotationId,
+        isPassageMissing: isDetached,
+      });
       return;
     }
     if (Date.now() - startedAt < FOCUS_POLL_TIMEOUT_MS) {
@@ -211,9 +232,9 @@ function toViewItem(row: ClaimRow): ClaimViewItem {
     resourceName: row.resourceName,
     annotationId: row.annotation.id,
     display: row.display,
-    // The list read does not look inside each document; detachment is derived
-    // when a claim is opened (`useClaimList.open`).
-    isDetached: false,
+    // Derived by the list read from the saved document (`claims-list-core`).
+    isDetached: row.passage === "detached",
+    isPassageUnchecked: row.passage === "unknown",
   };
 }
 
@@ -329,9 +350,14 @@ function MarkClaimHost({
     if (result.stage === "mark") onStored?.();
     throw new Error(result.message);
   };
-  return React.createElement(MarkClaimControl, {
-    selectionText: selection.text,
-    onMarkClaim,
+  return React.createElement(ControlDisclosure, {
+    label: "Mark as claim",
+    renderForm: (done: (message: string) => void) =>
+      React.createElement(MarkClaimControl, {
+        selectionText: selection.text,
+        onMarkClaim,
+        onDone: done,
+      }),
   });
 }
 

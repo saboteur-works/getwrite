@@ -105,8 +105,9 @@ export interface StoredProject {
   /** Per-feature opt-in flags. Absent (or an absent flag) means the feature is disabled. */
   features?: ProjectFeatureFlags;
   /**
-   * Per-module on/off flags (`config.modules`, Feature 103). Absent, or an
-   * absent id, means the module is on; read through `useModuleEnabled`.
+   * Per-module on/off flags (`config.modules`, Feature 103). An absent
+   * map, or an absent id, takes the module's default (on for Sources, off for
+   * Claims); read through `useModuleEnabled`.
    */
   modules?: Record<string, boolean>;
   /** Organizer card-body source configuration; absent means none configured. */
@@ -1110,8 +1111,8 @@ export const selectActiveProjectFeatures = (
 
 /**
  * Selects the raw `config.modules` map of the active project, or `undefined`
- * when no project is selected or it has no `modules` entry (every module on,
- * OQ-13). Read the flag with `isModuleEnabled`, not directly.
+ * when no project is selected or it has no `modules` entry (each module then
+ * takes its own default: on for Sources, off for Claims). Read the flag with `isModuleEnabled`, not directly.
  *
  * @param state - Redux root state (typed as `any` to avoid circular imports).
  */

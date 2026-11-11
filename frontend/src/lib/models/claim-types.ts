@@ -58,11 +58,20 @@ export interface UpdateClaimInput {
 /** The stored annotation of a created or updated claim. */
 export type ClaimRecord = Annotation;
 
+/**
+ * Whether a claim's passage is marked in its resource's saved document
+ * (derived at list time, never stored). `unknown` means the document could
+ * not be read or parsed: it is shown as not checked, never as detached.
+ */
+export type ClaimPassageState = "present" | "detached" | "unknown";
+
 /** One claim in the project-wide list, with the resource it sits in. */
 export interface ClaimListEntry {
   resourceId: string;
   resourceName: string;
   annotation: Annotation;
+  /** Derived from the saved document by the list read (Feature 108, FR-16). */
+  passage: ClaimPassageState;
 }
 
 /**

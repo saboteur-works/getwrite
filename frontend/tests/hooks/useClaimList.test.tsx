@@ -21,7 +21,10 @@ import {
 import { UNLOCK_AT_DESKTOP_MESSAGE } from "../../components/Sharing/sharing-copy";
 import { ProjectLockedError } from "../../src/lib/models/locked-access";
 import type { Annotation } from "../../src/lib/models";
-import type { ClaimListResult } from "../../src/lib/models/claim-types";
+import type {
+  ClaimListResult,
+  ClaimPassageState,
+} from "../../src/lib/models/claim-types";
 import type { TrashListing } from "../../src/lib/api/trash";
 import {
   fetchEncryptionStatus,
@@ -55,8 +58,9 @@ function entry(
   resourceId: string,
   annotation: Annotation,
   resourceName = "One",
+  passage: ClaimPassageState = "present",
 ): ClaimListResult["claims"][number] {
-  return { resourceId, resourceName, annotation };
+  return { resourceId, resourceName, annotation, passage };
 }
 
 const EMPTY_TRASH: TrashListing = { resources: [], folders: [] };
@@ -295,6 +299,22 @@ describe("useClaimList Trash", () => {
     expect(state.claims.map((c) => c.resourceId)).toEqual(["r-live"]);
     expect(state.inTrashCount).toBe(2);
     expect(state.isTrashChecked).toBe(true);
+  });
+
+  it("carries each claim's passage state from the list read into its row", async () => {
+    const { result } = setup(
+      withClaims([
+        entry("r1", claim("a"), "One", "present"),
+        entry("r1", claim("b"), "One", "detached"),
+        entry("r2", claim("c"), "Two", "unknown"),
+      ]),
+    );
+    await waitFor(() => expect(result.current.state.status).toBe("ready"));
+    expect(ready(result).claims.map((c) => c.passage)).toEqual([
+      "present",
+      "detached",
+      "unknown",
+    ]);
   });
 
   it("keeps the claims but says Trash could not be checked when that read fails", async () => {

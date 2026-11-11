@@ -8,7 +8,13 @@
  */
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { Editor } from "@tiptap/core";
@@ -40,7 +46,15 @@ afterEach(() => {
   while (editors.length) editors.pop()?.destroy();
 });
 
-function mount(resourceId = "chapter"): Editor {
+/** The form's own button, not the disclosure that opens the form. */
+function citeButtonInForm(): HTMLElement {
+  return within(screen.getByRole("group", { name: "Cite a Source" })).getByRole(
+    "button",
+    { name: "Cite selection" },
+  );
+}
+
+function mount(resourceId = "chapter", open = true): Editor {
   const editor = new Editor({
     element: document.createElement("div"),
     extensions: baseSchemaExtensions,
@@ -64,6 +78,10 @@ function mount(resourceId = "chapter"): Editor {
       <CitationControlSlot editor={editor} resourceId={resourceId} />
     </Provider>,
   );
+  // The control starts collapsed; these tests check the expanded form.
+  if (open) {
+    fireEvent.click(screen.getByRole("button", { name: "Cite selection" }));
+  }
   return editor;
 }
 
@@ -79,9 +97,13 @@ describe("CitationControl accessibility", () => {
     mount();
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Source"), SOURCE.id);
-    await user.click(screen.getByRole("button", { name: "Cite selection" }));
+    await user.click(citeButtonInForm());
     expect(await screen.findByText(/could not be saved/)).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Disk is full");
+    expect(
+      within(screen.getByRole("group", { name: "Cite a Source" })).getByRole(
+        "status",
+      ),
+    ).toHaveTextContent("Disk is full");
     await runAxe(screen.getByRole("group", { name: "Cite a Source" }), [
       "region",
     ]);
@@ -111,7 +133,23 @@ describe("CitationControl accessibility", () => {
     for (const name of ["Source", "Locator type", "Locator"]) {
       expect(screen.getByLabelText(name)).toBeInTheDocument();
     }
-    await user.tab();
+    // Opening the disclosure already moved focus into the form.
     expect(screen.getByLabelText("Source")).toHaveFocus();
+    await user.tab();
+    expect(screen.getByLabelText("Locator type")).toHaveFocus();
+  });
+
+  it("the disclosure has no axe violations collapsed or expanded, and is a named button with aria-expanded", async () => {
+    mount("chapter", false);
+    const button = screen.getByRole("button", { name: "Cite selection" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    await runAxe(button.parentElement?.parentElement as HTMLElement, [
+      "region",
+    ]);
+    fireEvent.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    await runAxe(button.parentElement?.parentElement as HTMLElement, [
+      "region",
+    ]);
   });
 });

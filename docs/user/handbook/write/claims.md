@@ -26,8 +26,8 @@ A [project type](../organize/project-types.md#start-new-projects-with-modules-on
 ### Mark a claim
 
 1. Open a document in the editor and select the passage.
-2. Below the text, find **Mark a claim**. Type the claim in **Claim statement**.
-3. Choose **Mark as claim**. A message says **Marked as a claim.**
+2. Below the text, choose **Mark as claim** to open the form. It starts closed so it doesn't take up the screen; choose the button again, or press Escape, to close it.
+3. Type the claim in **Claim statement**, then choose **Mark as claim** in the form. The form closes and a message beside the button says **Marked as a claim.**
 
 The passage is highlighted, as for any [annotation](annotations.md). A new claim starts as **Unverified**.
 
@@ -81,10 +81,10 @@ Deleting the passage text does not delete the claim. See "Detached claims" below
 Choose **Claims** to see every claim in the project. Each entry shows the statement, the passage, the document it is in, the status with its date, and the Source or **Unsourced**.
 
 - **Status** limits the list to one status, or **All**.
-- **Source** limits it to **Sourced** or **Unsourced**, or **All**.
+- **Source** limits it to **Sourced** or **Unsourced**, or **All**. A claim whose Source is in Trash still counts as **Sourced**, and its line reads "(in Trash)". Only a claim with no Source is **Unsourced**.
 - The two combine. A line starting "Showing:" says which filters are on.
 - If no claim matches, a message says no claim matches the filters. If the project has none, it says "There are no claims."
-- **Open** takes you to the document and selects the claim's passage.
+- **Open** takes you to the document, selects the claim's passage and opens the **Annotations** panel with that claim in view.
 
 The tab only lists and opens claims. To change a status, a Source or a statement, use the panel.
 
@@ -94,7 +94,7 @@ If GetWrite can't read some documents, the tab names them as "not read", still l
 
 A claim is **detached** when its passage is no longer in the document. It is not lost. The panel lists it with the passage as it was ("Saved quote"), and its status and Source stay as they were. To attach it to new text, select the passage and choose **Re-attach** on the claim.
 
-**Open** on a detached claim opens the document but does not select a passage. Open **Annotations** to find the claim there.
+The **Claims** tab shows a detached claim as detached. **Open** on it opens the document and the **Annotations** panel with the claim in view and a message that its passage is missing; nothing is selected in the text.
 
 ### Copy, paste and search
 

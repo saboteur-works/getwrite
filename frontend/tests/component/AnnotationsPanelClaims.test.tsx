@@ -27,7 +27,11 @@ import {
 import { PERMANENT_DELETION_LIMITED_REASON } from "../../components/Sharing/sharing-copy";
 import type { ClaimFlowApi } from "../../src/lib/claim-flows";
 import type { Annotation, AnyResource } from "../../src/lib/models/types";
-import type { AnnotationsHandle } from "../../src/hooks/useAnnotations";
+import type {
+  AnnotationsHandle,
+  AnnotationsState,
+} from "../../src/hooks/useAnnotations";
+import type { AnnotationsPanelFocus } from "../../components/Editor/Annotations/useAnnotationsPanel";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -99,6 +103,9 @@ interface Options {
   modules?: Record<string, boolean>;
   limits?: StaticSharingLimitsValue;
   api?: FakeApi;
+  focus?: AnnotationsPanelFocus | null;
+  onFocusHandled?: () => void;
+  handleState?: AnnotationsState;
 }
 
 function renderPanel(options: Options): {
@@ -109,7 +116,9 @@ function renderPanel(options: Options): {
 } {
   const editor = makeEditor();
   editors.push(editor);
-  const handle = makeHandle({ status: "ok", annotations: options.annotations });
+  const handle = makeHandle(
+    options.handleState ?? { status: "ok", annotations: options.annotations },
+  );
   const api = options.api ?? fakeApi();
   const { container } = render(
     <Provider store={storeWithSource()}>
@@ -123,6 +132,8 @@ function renderPanel(options: Options): {
             resourceId="r1"
             claimApi={api}
             citationFactsDeps={FACTS}
+            focus={options.focus}
+            onFocusHandled={options.onFocusHandled}
           />
         </StaticSharingLimitsProvider>
       </StaticModulesProvider>
@@ -357,6 +368,42 @@ describe("AnnotationsPanel with the claims module off", () => {
     expect(api.update).not.toHaveBeenCalled();
   });
 
+  it("hides the Source line of a claim with the marker, status and date, and leaves the stored target alone", () => {
+    const api = fakeApi();
+    renderPanel({
+      annotations: [
+        claim("a", {
+          target: { sourceId: SOURCE_ID, sourceName: "Interview with Ada" },
+        }),
+      ],
+      modules: { claims: false },
+      api,
+    });
+    expect(screen.queryByTestId("annotation-target")).toBeNull();
+    expect(screen.queryByText(/Interview with Ada/)).toBeNull();
+    expect(screen.queryByText(/Source:/)).toBeNull();
+    expect(api.update).not.toHaveBeenCalled();
+  });
+
+  it("still shows the Source line of a citation that is not a claim", () => {
+    renderPanel({
+      annotations: [
+        {
+          id: "a",
+          body: "",
+          quote: "hello",
+          createdAt: "t",
+          updatedAt: "t",
+          target: { sourceId: SOURCE_ID, sourceName: "Interview with Ada" },
+        },
+      ],
+      modules: { claims: false },
+    });
+    expect(screen.getByTestId("annotation-target")).toHaveTextContent(
+      "Interview with Ada",
+    );
+  });
+
   it("renders as an ordinary note when the module is not declared at all", () => {
     renderPanel({ annotations: [claim("a")], modules: {} });
     expect(screen.queryByTestId("claim-row")).toBeNull();
@@ -425,5 +472,76 @@ describe("AnnotationsPanel claims axe", () => {
     fireEvent.click(screen.getByRole("button", { name: "Link Source" }));
     expect(screen.getByLabelText("Source")).toBeVisible();
     await runAxe(container, ["region"]);
+  });
+});
+
+describe("AnnotationsPanel focus request from the Claims tab (device run, fix 2 and 4)", () => {
+  function rowOf(id: string): HTMLElement {
+    const row = document.querySelector<HTMLElement>(
+      `[data-annotation-id="${id}"][data-testid="annotation-item"]`,
+    );
+    if (!row) throw new Error(`no row ${id}`);
+    return row;
+  }
+
+  it("scrolls to and focuses the claim's row and calls back once, with no notice for an attached claim", async () => {
+    const onFocusHandled = vi.fn();
+    renderPanel({
+      annotations: [claim("a")],
+      focus: { annotationId: "a", isPassageMissing: false },
+      onFocusHandled,
+    });
+    await waitFor(() => expect(rowOf("a")).toHaveFocus());
+    expect(onFocusHandled).toHaveBeenCalledTimes(1);
+    expect(rowOf("a")).toHaveAttribute("data-detached", "false");
+    expect(screen.queryByText(/missing from the document/)).toBeNull();
+  });
+
+  it("focuses a detached claim's row and says its passage is missing", async () => {
+    renderPanel({
+      annotations: [claim("d", { quote: "gone passage" })],
+      focus: { annotationId: "d", isPassageMissing: true },
+    });
+    await waitFor(() => expect(rowOf("d")).toHaveFocus());
+    expect(rowOf("d")).toHaveAttribute("data-detached", "true");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "The passage for this claim is missing from the document",
+    );
+  });
+
+  it("says so when the claim is not in the list, and still calls back", async () => {
+    const onFocusHandled = vi.fn();
+    renderPanel({
+      annotations: [claim("a")],
+      focus: { annotationId: "nope", isPassageMissing: false },
+      onFocusHandled,
+    });
+    await waitFor(() => expect(onFocusHandled).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "not in this document's annotation list",
+    );
+  });
+
+  it("waits while the list loads and does not report handled", () => {
+    const onFocusHandled = vi.fn();
+    renderPanel({
+      annotations: [],
+      handleState: { status: "loading" },
+      focus: { annotationId: "a", isPassageMissing: false },
+      onFocusHandled,
+    });
+    expect(onFocusHandled).not.toHaveBeenCalled();
+  });
+
+  it("gives up quietly when the list failed (the failure is already shown)", async () => {
+    const onFocusHandled = vi.fn();
+    renderPanel({
+      annotations: [],
+      handleState: { status: "failed", message: "disk" },
+      focus: { annotationId: "a", isPassageMissing: false },
+      onFocusHandled,
+    });
+    await waitFor(() => expect(onFocusHandled).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole("alert")).toHaveTextContent("could not be read");
   });
 });

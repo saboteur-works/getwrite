@@ -59,6 +59,7 @@ const ListResponseSchema = z.object({
       resourceId: z.string(),
       resourceName: z.string(),
       annotation: AnnotationResponseSchema,
+      passage: z.enum(["present", "detached", "unknown"]),
     }),
   ),
   failures: z.array(

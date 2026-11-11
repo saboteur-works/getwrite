@@ -197,6 +197,90 @@ describe("listClaimsCore (FR-17)", () => {
     expect(result.failures.map((f) => f.resourceId)).toEqual([bad]);
   });
 
+  describe("passage state (FR-16)", () => {
+    async function writeDoc(id: string, markIds: string[]): Promise<void> {
+      const doc = {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: markIds.map((markId) => ({
+              type: "text",
+              text: "marked",
+              marks: [{ type: "annotation", attrs: { id: markId } }],
+            })),
+          },
+        ],
+      };
+      await fs.writeFile(
+        path.join(projectRoot, "resources", id, "content.tiptap.json"),
+        JSON.stringify(doc),
+        "utf8",
+      );
+    }
+
+    it("is present for a claim whose mark is in the saved document and detached for one whose mark is not", async () => {
+      const kept = claimAnnotation();
+      const lost = claimAnnotation();
+      const id = await makeResource(projectRoot, "Alpha", [kept, lost]);
+      await writeDoc(id, [kept.id as string]);
+      const result = await listClaimsCore(projectId);
+      const passage = new Map(
+        result.claims.map((c) => [c.annotation.id, c.passage]),
+      );
+      expect(passage.get(kept.id as string)).toBe("present");
+      expect(passage.get(lost.id as string)).toBe("detached");
+    });
+
+    it("is unknown, not detached, when the document cannot be read or parsed", async () => {
+      const noFile = await makeResource(projectRoot, "NoFile", [
+        claimAnnotation(),
+      ]);
+      const broken = await makeResource(projectRoot, "Broken", [
+        claimAnnotation(),
+      ]);
+      await fs.writeFile(
+        path.join(projectRoot, "resources", broken, "content.tiptap.json"),
+        "{not json",
+        "utf8",
+      );
+      const result = await listClaimsCore(projectId);
+      const byResource = new Map(result.claims.map((c) => [c.resourceId, c]));
+      expect(byResource.get(noFile)?.passage).toBe("unknown");
+      expect(byResource.get(broken)?.passage).toBe("unknown");
+      expect(result.failures).toEqual([]);
+    });
+
+    it("reads no document for a resource with no claim", async () => {
+      await makeResource(projectRoot, "Plain", [
+        {
+          id: generateUUID(),
+          body: "note",
+          quote: "q",
+          createdAt: T0,
+          updatedAt: T0,
+        },
+      ]);
+      const reads: string[] = [];
+      const base = io.getStorageAdapter();
+      const spy: StorageAdapter = {
+        ...base,
+        readFile: (p, e) => {
+          reads.push(p);
+          return base.readFile(p, e);
+        },
+      };
+      io.setStorageAdapter(spy);
+      try {
+        await listClaimsCore(projectId);
+      } finally {
+        io.setStorageAdapter(base);
+      }
+      expect(reads.length).toBeGreaterThan(0);
+      expect(reads.some((p) => p.endsWith("content.tiptap.json"))).toBe(false);
+    });
+  });
+
   it("does not list a claim of a resource in Trash", async () => {
     const live = await makeResource(projectRoot, "Live", [claimAnnotation()]);
     const gone = await makeResource(projectRoot, "Gone", [claimAnnotation()]);

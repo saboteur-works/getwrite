@@ -28,7 +28,7 @@ export default meta;
 
 type Story = StoryObj<typeof ModuleSwitchSection>;
 
-/** No `config.modules` entry: the Sources switch reads as on (OQ-13). */
+/** No `config.modules` entry: the Sources switch reads as its default, on (OQ-13). */
 export const Absent: Story = {};
 
 export const On: Story = { parameters: { modules: { sources: true } } };

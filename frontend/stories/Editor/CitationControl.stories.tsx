@@ -72,14 +72,29 @@ const meta: Meta<typeof CitationStory> = {
 export default meta;
 type Story = StoryObj<typeof CitationStory>;
 
-/** The Sources module is on: the control lists the project's Sources. */
-export const Default: Story = {
+/** The control starts collapsed: a Cite selection button, no form. */
+export const Collapsed: Story = {
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     await expect(
+      canvas.getByRole("button", { name: "Cite selection" }),
+    ).toHaveAttribute("aria-expanded", "false");
+    await expect(
+      canvas.queryByRole("group", { name: "Cite a Source" }),
+    ).toBeNull();
+  },
+};
+
+/** Opening the disclosure lists the project's Sources and puts focus on the first field. */
+export const Default: Story = {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Cite selection" }),
+    );
+    await expect(
       canvas.getByRole("group", { name: "Cite a Source" }),
     ).toBeInTheDocument();
-    await userEvent.tab();
     await expect(canvas.getByLabelText("Source")).toHaveFocus();
   },
 };
@@ -140,7 +155,9 @@ export const NoSourceChosen: Story = {
     await userEvent.click(
       canvas.getByRole("button", { name: "Cite selection" }),
     );
-    await expect(canvas.getByRole("status")).toHaveTextContent(
+    const form = within(canvas.getByRole("group", { name: "Cite a Source" }));
+    await userEvent.click(form.getByRole("button", { name: "Cite selection" }));
+    await expect(form.getByRole("status")).toHaveTextContent(
       "Choose a Source to cite.",
     );
   },

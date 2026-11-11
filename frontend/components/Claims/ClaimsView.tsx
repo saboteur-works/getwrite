@@ -18,8 +18,10 @@ export interface ClaimViewItem {
   resourceName: string;
   annotationId: string;
   display: ClaimDisplayModel;
-  /** The passage is not marked in the document. */
+  /** The passage is not marked in the saved document. */
   isDetached: boolean;
+  /** The document could not be read, so the passage was not checked. */
+  isPassageUnchecked?: boolean;
 }
 
 export type ClaimsViewState =
@@ -88,6 +90,11 @@ function ClaimRow({
       {item.isDetached && (
         <p className="text-gw-label text-gw-secondary">
           The passage is detached: it is no longer marked in the document.
+        </p>
+      )}
+      {item.isPassageUnchecked && (
+        <p className="text-gw-label text-gw-secondary">
+          The passage could not be checked against the document.
         </p>
       )}
       <div className="mt-1">

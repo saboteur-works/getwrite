@@ -61,7 +61,12 @@ describe("claims transport: web runtime", () => {
       .mockResolvedValue(
         response(200, {
           claims: [
-            { resourceId: RID, resourceName: "Chapter 1", annotation: CLAIM },
+            {
+              resourceId: RID,
+              resourceName: "Chapter 1",
+              annotation: CLAIM,
+              passage: "detached",
+            },
           ],
           failures: [
             {
@@ -78,6 +83,7 @@ describe("claims transport: web runtime", () => {
     expect(String(url)).toBe(`/api/claims?projectId=${PID}`);
     expect(init).toBeUndefined();
     expect(result.claims[0].annotation.claim).toEqual(CLAIM.claim);
+    expect(result.claims[0].passage).toBe("detached");
     expect(result.failures).toEqual([
       { resourceId: "r2", resourceName: "Chapter 2", message: "unreadable" },
     ]);
@@ -124,6 +130,26 @@ describe("claims transport: web runtime", () => {
       update: { status: "verified", target: null },
     });
     expect(stored.claim?.status).toBe("verified");
+  });
+
+  it("rejects a list entry with no or an unknown passage state as malformed", async () => {
+    for (const passage of [undefined, "gone"]) {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+        response(200, {
+          claims: [
+            {
+              resourceId: RID,
+              resourceName: "Chapter 1",
+              annotation: CLAIM,
+              ...(passage === undefined ? {} : { passage }),
+            },
+          ],
+          failures: [],
+          sidecarsRead: 1,
+        }),
+      );
+      await expect(listClaims(PID)).rejects.toThrow("malformed");
+    }
   });
 
   it("surfaces the server's error text and never an empty list", async () => {

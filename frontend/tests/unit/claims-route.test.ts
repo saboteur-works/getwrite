@@ -162,7 +162,14 @@ describe("route surface", () => {
 describe("GET /api/claims", () => {
   it("returns the core's list for the project id", async () => {
     const list: ClaimListOutcome = {
-      claims: [{ resourceId: RESOURCE, resourceName: "R", annotation: STORED }],
+      claims: [
+        {
+          resourceId: RESOURCE,
+          resourceName: "R",
+          annotation: STORED,
+          passage: "present",
+        },
+      ],
       failures: [{ resourceId: "x", resourceName: "X", message: "unreadable" }],
       sidecarsRead: 1,
     };
@@ -338,7 +345,14 @@ describe("hosted tenancy (core faked over the request's storage context)", () =>
   it("reads the signed-in tenant's own project", async () => {
     tenantState.root = await tmp("gw-claims-a-");
     const list: ClaimListOutcome = {
-      claims: [{ resourceId: RESOURCE, resourceName: "R", annotation: STORED }],
+      claims: [
+        {
+          resourceId: RESOURCE,
+          resourceName: "R",
+          annotation: STORED,
+          passage: "present",
+        },
+      ],
       failures: [],
       sidecarsRead: 1,
     };
@@ -353,7 +367,12 @@ describe("hosted tenancy (core faked over the request's storage context)", () =>
     const tenantB = await tmp("gw-claims-b-");
     await seedProject(tenantA, {
       claims: [
-        { resourceId: RESOURCE, resourceName: "A-only", annotation: STORED },
+        {
+          resourceId: RESOURCE,
+          resourceName: "A-only",
+          annotation: STORED,
+          passage: "present",
+        },
       ],
       failures: [],
       sidecarsRead: 1,

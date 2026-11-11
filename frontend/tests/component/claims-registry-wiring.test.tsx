@@ -106,6 +106,10 @@ import {
   setActiveEditorResourceId,
 } from "../../components/Editor/activeEditorRegistry";
 import { baseSchemaExtensions } from "../../components/Editor/editorExtensions";
+import {
+  getAnnotationsPanelRequest,
+  resetAnnotationsPanelRequestForTests,
+} from "../../components/Editor/Annotations/annotationsPanelRequest";
 import { makeStore } from "../../src/store/store";
 import {
   setProject,
@@ -204,6 +208,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  resetAnnotationsPanelRequestForTests();
   setActiveEditor(null);
   setActiveEditorResourceId(null);
 });
@@ -233,6 +238,7 @@ describe("Claims tab (FR-3, FR-6, FR-16)", () => {
           resourceId: text.id,
           resourceName: "Scene A",
           annotation: claimAnnotation("a1", "The harbour froze in 1962."),
+          passage: "present",
         },
       ],
       failures: [],
@@ -295,6 +301,7 @@ describe("Claims tab (FR-3, FR-6, FR-16)", () => {
           resourceId: text.id,
           resourceName: "Scene A",
           annotation: claimAnnotation("a1", "The harbour froze in 1962."),
+          passage: "present",
         },
       ],
       failures: [],
@@ -322,7 +329,94 @@ describe("Claims tab (FR-3, FR-6, FR-16)", () => {
       const { from, to } = editor.state.selection;
       expect(editor.state.doc.textBetween(from, to)).toBe("Harbour");
     });
+    // The annotations panel is asked to open with this claim's row in view.
+    // (No TipTapEditor is mounted in this test, so the request stays pending.)
+    await waitFor(() =>
+      expect(getAnnotationsPanelRequest()).toMatchObject({
+        resourceId: text.id,
+        annotationId: "a1",
+        isPassageMissing: false,
+      }),
+    );
     editor.destroy();
+  });
+
+  it("lists a detached claim as detached and opens its resource and panel with the passage reported missing, selecting nothing", async () => {
+    const editor = new Editor({
+      element: document.createElement("div"),
+      extensions: baseSchemaExtensions,
+      content: {
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "No marks." }] },
+        ],
+      },
+    });
+    listClaims.mockResolvedValue({
+      claims: [
+        {
+          resourceId: text.id,
+          resourceName: "Scene A",
+          annotation: claimAnnotation("a1", "The harbour froze in 1962."),
+          passage: "detached",
+        },
+      ],
+      failures: [],
+    });
+    fetchResourceContent.mockResolvedValue({
+      resourceContent: { tipTapContent: editor.getJSON() },
+    });
+    const store = await renderShell({ claims: true });
+    store.dispatch(setSelectedResourceId(source.id));
+    fireEvent.click(screen.getByRole("tab", { name: "Claims" }));
+    await flushPendingEffects();
+    await screen.findByText("The harbour froze in 1962.");
+    expect(screen.getByText(/passage is detached/i)).toBeVisible();
+    setActiveEditor(editor);
+    setActiveEditorResourceId(text.id);
+    const before = editor.state.selection.toJSON();
+    await userEvent
+      .setup()
+      .click(
+        screen.getByRole("button", {
+          name: "Open claim: The harbour froze in 1962.",
+        }),
+      );
+    await waitFor(() => expect(isActive("Edit")).toBe(true));
+    expect(store.getState().resources.selectedResourceId).toBe(text.id);
+    await waitFor(() =>
+      expect(getAnnotationsPanelRequest()).toMatchObject({
+        resourceId: text.id,
+        annotationId: "a1",
+        isPassageMissing: true,
+      }),
+    );
+    expect(editor.state.selection.toJSON()).toEqual(before);
+    editor.destroy();
+  });
+
+  it("says in text that a passage was not checked when the list could not read its document", async () => {
+    listClaims.mockResolvedValue({
+      claims: [
+        {
+          resourceId: text.id,
+          resourceName: "Scene A",
+          annotation: claimAnnotation("a1", "The harbour froze in 1962."),
+          passage: "unknown",
+        },
+      ],
+      failures: [],
+    });
+    await renderShell({ claims: true });
+    fireEvent.click(screen.getByRole("tab", { name: "Claims" }));
+    await flushPendingEffects();
+    await screen.findByText("The harbour froze in 1962.");
+    expect(
+      screen.getByText(
+        "The passage could not be checked against the document.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/passage is detached/i)).toBeNull();
   });
 });
 
@@ -350,13 +444,15 @@ describe("Mark as claim in the editor (FR-14)", () => {
       modules?: Record<string, boolean>;
       resourceId?: string;
       onStored?: () => void;
+      /** Expand every module-control disclosure (default); false leaves them collapsed. */
+      open?: boolean;
     } = {},
   ) {
     const store = makeStore();
     store.dispatch(setProject({ id: "p", rootPath: "/test/p" }));
     store.dispatch(setSelectedProjectId("p"));
     store.dispatch(setResources([text, source]));
-    return render(
+    const view = render(
       <Provider store={store}>
         <StaticModulesProvider value={options.modules}>
           <CitationControlSlot
@@ -367,7 +463,24 @@ describe("Mark as claim in the editor (FR-14)", () => {
         </StaticModulesProvider>
       </Provider>,
     );
+    if (options.open !== false) {
+      for (const button of screen.queryAllByRole("button", {
+        expanded: false,
+      })) {
+        if (/^(Cite selection|Mark as claim)$/.test(button.textContent ?? "")) {
+          fireEvent.click(button);
+        }
+      }
+    }
+    return view;
   }
+
+  /** The form's button inside the "Mark a claim" group, not its disclosure. */
+  const markButton = () =>
+    within(screen.getByRole("group", { name: "Mark a claim" })).getByRole(
+      "button",
+      { name: "Mark as claim" },
+    );
 
   function selectAll(editor: Editor): void {
     act(() => {
@@ -386,6 +499,59 @@ describe("Mark as claim in the editor (FR-14)", () => {
   const markGroup = () => screen.queryByRole("group", { name: "Mark a claim" });
   const citeGroup = () =>
     screen.queryByRole("group", { name: "Cite a Source" });
+
+  it("starts collapsed: Cite selection and Mark as claim are buttons with aria-expanded false and no form", () => {
+    mount(makeEditor(), {
+      modules: { sources: true, claims: true },
+      open: false,
+    });
+    for (const name of ["Cite selection", "Mark as claim"]) {
+      expect(screen.getByRole("button", { name })).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
+    }
+    expect(citeGroup()).toBeNull();
+    expect(markGroup()).toBeNull();
+    expect(screen.queryByLabelText("Claim statement")).toBeNull();
+  });
+
+  it("Mark as claim expands on demand with aria-controls, moves focus into the form, and Escape returns focus to the button", async () => {
+    mount(makeEditor(), { modules: { claims: true }, open: false });
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "Mark as claim" });
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(
+      document
+        .getElementById(button.getAttribute("aria-controls") ?? "")
+        ?.contains(markGroup()),
+    ).toBe(true);
+    expect(screen.getByLabelText("Claim statement")).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(markGroup()).toBeNull();
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveFocus();
+  });
+
+  it("a failed Mark as claim keeps the form open", async () => {
+    addClaim.mockRejectedValue(new Error("write refused"));
+    const editor = makeEditor();
+    selectAll(editor);
+    mount(editor, { modules: { claims: true }, open: false });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Mark as claim" }));
+    await user.type(screen.getByLabelText("Claim statement"), "It froze.");
+    await user.click(markButton());
+    await waitFor(() =>
+      expect(
+        within(markGroup() as HTMLElement).getByRole("status"),
+      ).toHaveTextContent(/could not be saved/),
+    );
+    expect(
+      screen.getByRole("button", { name: "Mark as claim", expanded: true }),
+    ).toBeTruthy();
+  });
 
   it("shows both Sources' controls and Mark as claim when both modules are on", () => {
     mount(makeEditor(), { modules: { sources: true, claims: true } });
@@ -435,7 +601,7 @@ describe("Mark as claim in the editor (FR-14)", () => {
     mount(editor, { modules: { claims: true }, onStored });
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Claim statement"), "It froze.");
-    await user.click(screen.getByRole("button", { name: "Mark as claim" }));
+    await user.click(markButton());
     await waitFor(() => expect(addClaim).toHaveBeenCalledTimes(1));
     const [projectId, resourceId, sent] = addClaim.mock.calls[0] as [
       string,
@@ -446,10 +612,15 @@ describe("Mark as claim in the editor (FR-14)", () => {
     expect(resourceId).toBe(text.id);
     expect(sent.statement).toBe("It froze.");
     expect(sent.quote).toBe("Harbour");
-    await waitFor(() =>
-      expect(
-        within(markGroup() as HTMLElement).getByRole("status"),
-      ).toHaveTextContent("Marked as a claim."),
+    // The form closes after a success; the result stays as a status line
+    // beside the disclosure button, which has the focus again.
+    await waitFor(() => expect(markGroup()).toBeNull());
+    const disclosure = screen.getByRole("button", { name: "Mark as claim" });
+    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    expect(disclosure).toHaveFocus();
+    expect(screen.getByText("Marked as a claim.")).toHaveAttribute(
+      "role",
+      "status",
     );
     expect(JSON.stringify(editor.getJSON())).toContain(sent.id);
     expect(onStored).toHaveBeenCalledTimes(1);
@@ -462,7 +633,7 @@ describe("Mark as claim in the editor (FR-14)", () => {
     mount(editor, { modules: { claims: true } });
     const user = userEvent.setup();
     await user.type(screen.getByLabelText("Claim statement"), "It froze.");
-    await user.click(screen.getByRole("button", { name: "Mark as claim" }));
+    await user.click(markButton());
     await waitFor(() =>
       expect(
         within(markGroup() as HTMLElement).getByRole("status"),

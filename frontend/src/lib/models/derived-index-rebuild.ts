@@ -70,7 +70,7 @@ function isMissingEntryError(error: unknown): boolean {
 /**
  * Plain unlocked read of `config` from `project.json` (not `updateProjectJson`).
  * Shared with `indexer-queue.ts`'s per-save module gating (Feature 103, FR-6).
- * A missing file reads as no config (every module on, OQ-13). Any other
+ * A missing file reads as no config (each module takes its default, OQ-13). Any other
  * failure, a locked project included, is rethrown: a failed read must not
  * render as "no module switched off".
  */

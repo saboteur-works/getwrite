@@ -42,6 +42,7 @@ import {
 } from "../../src/lib/claim-display";
 import type {
   ClaimListResult,
+  ClaimPassageState,
   ClaimReadFailure,
 } from "../../src/lib/models/claim-types";
 import type { Annotation } from "../../src/lib/models/types";
@@ -60,8 +61,7 @@ import {
 } from "../Sharing/unlock-prompt-gate";
 import { UNLOCK_AT_DESKTOP_MESSAGE } from "../Sharing/sharing-copy";
 
-/** Whether the claim's passage is marked in its resource's document. */
-export type ClaimPassageState = "present" | "detached" | "unknown";
+export type { ClaimPassageState };
 
 /** What the hook asks the shell to do when a claim is opened. */
 export interface OpenClaimRequest {
@@ -97,6 +97,8 @@ export interface ClaimRow {
   resourceName: string;
   annotation: Annotation;
   display: ClaimDisplayModel;
+  /** From the list read: is the passage marked in the saved document. */
+  passage: ClaimPassageState;
 }
 
 export type ClaimListState =
@@ -334,6 +336,7 @@ export function useClaimList(options: UseClaimListOptions): ClaimListHandle {
         resourceName: entry.resourceName,
         annotation: entry.annotation,
         display,
+        passage: entry.passage,
       });
     }
     return {

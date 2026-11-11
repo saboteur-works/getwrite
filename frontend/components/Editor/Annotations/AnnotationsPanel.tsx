@@ -66,6 +66,7 @@ import {
   usePanelScope,
   type CitationFactsDeps,
   type CitationFactsResult,
+  type AnnotationsPanelFocus,
   type LoadedSourceRef,
   type PendingAnnotationAdd,
 } from "./useAnnotationsPanel";
@@ -98,6 +99,13 @@ export interface AnnotationsPanelProps {
   resourceId?: string;
   /** The update-claim client; defaults to the live transport. */
   claimApi?: ClaimFlowApi;
+  /**
+   * A row to bring into view once the list has loaded (the Claims tab's Open):
+   * the row is scrolled to and focused, and a missing passage is stated.
+   */
+  focus?: AnnotationsPanelFocus | null;
+  /** Called once the focus request was handled (or could not be). */
+  onFocusHandled?: () => void;
 }
 
 const LIVE_CLAIM_API: ClaimFlowApi = { add: addClaim, update: updateClaim };
@@ -325,6 +333,8 @@ export default function AnnotationsPanel({
   citationFactsDeps,
   resourceId,
   claimApi = LIVE_CLAIM_API,
+  focus = null,
+  onFocusHandled,
 }: AnnotationsPanelProps): JSX.Element {
   const headingId = `${panelId}-heading`;
   const headingRef = React.useRef<HTMLHeadingElement>(null);
@@ -415,6 +425,34 @@ export default function AnnotationsPanel({
     }, 0);
     return () => clearTimeout(timer);
   }, [pendingFocus]);
+
+  const [focusNotice, setFocusNotice] = React.useState<string | null>(null);
+  const listStatus = state.status;
+  React.useEffect(() => {
+    if (focus === null || listStatus === "loading") return;
+    if (listStatus === "failed") {
+      // The failure is already shown in the panel; nothing to bring into view.
+      onFocusHandled?.();
+      return;
+    }
+    const row = rootRef.current?.querySelector<HTMLElement>(
+      `[data-annotation-id="${CSS.escape(focus.annotationId)}"]`,
+    );
+    if (!row) {
+      setFocusNotice("That claim is not in this document's annotation list.");
+    } else {
+      row.focus();
+      row.scrollIntoView?.({ block: "nearest" });
+      setFocusNotice(
+        focus.isPassageMissing
+          ? "The passage for this claim is missing from the document, so it is listed under Detached."
+          : null,
+      );
+    }
+    onFocusHandled?.();
+    // Runs when a request arrives or the list finishes loading.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus, listStatus]);
 
   const citationFacts = useCitationFacts(annotations, citationFactsDeps);
   const isDetached = (a: Annotation): boolean =>
@@ -619,6 +657,8 @@ export default function AnnotationsPanel({
         data-testid="annotation-item"
         data-annotation-id={id}
         data-detached={isDetached ? "true" : "false"}
+        tabIndex={-1}
+        className="outline-none focus-visible:ring-1 focus-visible:ring-gw-border"
       >
         <ClaimRow
           annotation={annotation}
@@ -676,6 +716,10 @@ export default function AnnotationsPanel({
     if (isClaimsOn && annotation.claim !== undefined) {
       return renderClaimItem(annotation, isDetached);
     }
+    // With the claims module off a claim is an ordinary note: its Source line
+    // is hidden with the marker, status and date (FR-6, OQ-13). The stored
+    // `claim` and `target` are not touched.
+    const isHiddenClaim = !isClaimsOn && annotation.claim !== undefined;
     const isEditing = editingId === annotation.id;
     const isAtCaret = docView.caretIds.includes(annotation.id);
     const isMarkLess = isMarkLessByDesign(annotation);
@@ -704,7 +748,9 @@ export default function AnnotationsPanel({
             <q>{annotation.quote}</q>
           </p>
         ) : null}
-        {renderTargetLine(annotation, citationFacts.get(annotation.id))}
+        {isHiddenClaim
+          ? null
+          : renderTargetLine(annotation, citationFacts.get(annotation.id))}
         {isEditing ? (
           <div className="mt-2 flex flex-col gap-2">
             <label
@@ -829,7 +875,7 @@ export default function AnnotationsPanel({
       role="region"
       aria-labelledby={headingId}
       data-testid="annotations-panel"
-      className="annotations-panel shrink-0 max-h-[45vh] overflow-y-auto border-t border-gw-border bg-gw-chrome p-4"
+      className="annotations-panel shrink-0 border-t border-gw-border bg-gw-chrome p-4"
       onKeyDown={(e) => {
         if (e.key === "Escape" && pendingDeleteId === null) {
           e.stopPropagation();
@@ -861,6 +907,12 @@ export default function AnnotationsPanel({
       {actionError ? (
         <p role="alert" className="mb-3 text-gw-small text-gw-primary">
           {actionError}
+        </p>
+      ) : null}
+
+      {focusNotice ? (
+        <p role="status" className="mb-3 text-gw-small text-gw-primary">
+          {focusNotice}
         </p>
       ) : null}
 

@@ -12,6 +12,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -84,15 +85,35 @@ function stored(id: string): Annotation {
   return { id, body: "", quote: "Harbour", createdAt: "t", updatedAt: "t" };
 }
 
+/** The form's own button, not the disclosure that opens the form. */
+function citeButton(): HTMLElement {
+  return within(screen.getByRole("group", { name: "Cite a Source" })).getByRole(
+    "button",
+    { name: "Cite selection" },
+  );
+}
+
+/** The status line of the open form, not the disclosure's result line. */
+function formStatus(): HTMLElement {
+  return within(screen.getByRole("group", { name: "Cite a Source" })).getByRole(
+    "status",
+  );
+}
+
 function mount(
   editor: Editor,
-  options: { modules?: Record<string, boolean>; onStored?: () => void } = {},
+  options: {
+    modules?: Record<string, boolean>;
+    onStored?: () => void;
+    /** Expand the Cite selection disclosure (default); false leaves it collapsed. */
+    open?: boolean;
+  } = {},
 ) {
   const store = makeStore();
   store.dispatch(setProject({ id: "p", rootPath: "/test/p" }));
   store.dispatch(setSelectedProjectId("p"));
   store.dispatch(setResources([INTERVIEW, LETTERS, CHAPTER]));
-  return render(
+  const view = render(
     <Provider store={store}>
       <StaticModulesProvider value={options.modules}>
         <CitationControlSlot
@@ -103,6 +124,12 @@ function mount(
       </StaticModulesProvider>
     </Provider>,
   );
+  const disclosure = screen.queryByRole("button", {
+    name: "Cite selection",
+    expanded: false,
+  });
+  if (options.open !== false && disclosure) fireEvent.click(disclosure);
+  return view;
 }
 
 beforeEach(() => {
@@ -169,7 +196,7 @@ describe("storing a citation (FR-24)", () => {
     mount(editor, { onStored });
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Source"), INTERVIEW.id);
-    await user.click(screen.getByRole("button", { name: "Cite selection" }));
+    await user.click(citeButton());
     await waitFor(() => expect(addAnnotation).toHaveBeenCalledTimes(1));
     const [projectId, resourceId, sent] = addAnnotation.mock.calls[0] as [
       string,
@@ -216,7 +243,7 @@ describe("storing a citation (FR-24)", () => {
     );
     await user.selectOptions(screen.getByLabelText("Locator type"), "page");
     await user.type(screen.getByLabelText("Locator"), "42");
-    await user.click(screen.getByRole("button", { name: "Cite selection" }));
+    await user.click(citeButton());
     await waitFor(() => expect(addAnnotation).toHaveBeenCalledTimes(1));
     const sent = addAnnotation.mock.calls[0][2] as {
       target: Record<string, unknown>;
@@ -250,7 +277,7 @@ describe("storing a citation (FR-24)", () => {
     const excerpt = await screen.findByLabelText("Excerpt");
     expect(excerpt.querySelectorAll("option")).toHaveLength(2);
     await user.selectOptions(excerpt, excerptId);
-    await user.click(screen.getByRole("button", { name: "Cite selection" }));
+    await user.click(citeButton());
     await waitFor(() => expect(addAnnotation).toHaveBeenCalledTimes(1));
     expect(
       (addAnnotation.mock.calls[0][2] as { target: { excerptId?: string } })
@@ -266,12 +293,12 @@ describe("storing a citation (FR-24)", () => {
     select(editor, 1, 8);
     mount(editor);
     const user = userEvent.setup();
-    await user.tab();
+    // Opening the disclosure moved focus into the form.
     expect(screen.getByLabelText("Source")).toHaveFocus();
     // user-event does not drive a native select's arrow keys; the choice is
     // made with selectOptions, and the rest is Tab and Enter.
     await user.selectOptions(screen.getByLabelText("Source"), INTERVIEW.id);
-    const button = screen.getByRole("button", { name: "Cite selection" });
+    const button = citeButton();
     for (let i = 0; i < 6 && document.activeElement !== button; i += 1) {
       await user.tab();
     }
@@ -281,15 +308,90 @@ describe("storing a citation (FR-24)", () => {
   });
 });
 
+describe("Cite selection disclosure (device run D6)", () => {
+  it("starts collapsed: a button with aria-expanded false and no form", () => {
+    mount(makeEditor(), { open: false });
+    const button = screen.getByRole("button", { name: "Cite selection" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("group", { name: "Cite a Source" })).toBeNull();
+    expect(screen.queryByLabelText("Source")).toBeNull();
+  });
+
+  it("expands on demand, wires aria-controls to the form and moves focus into it", async () => {
+    mount(makeEditor(), { open: false });
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "Cite selection" });
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    const region = document.getElementById(
+      button.getAttribute("aria-controls") ?? "",
+    );
+    expect(region).not.toBeNull();
+    expect(region).toContainElement(
+      screen.getByRole("group", { name: "Cite a Source" }),
+    );
+    expect(screen.getByLabelText("Source")).toHaveFocus();
+  });
+
+  it("closes by the button or Escape and returns focus to the button", async () => {
+    mount(makeEditor(), { open: false });
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "Cite selection" });
+    await user.click(button);
+    await user.click(button);
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("group", { name: "Cite a Source" })).toBeNull();
+    expect(button).toHaveFocus();
+    await user.click(button);
+    await user.keyboard("{Escape}");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).toHaveFocus();
+  });
+
+  it("after a stored citation collapses, returns focus to the button and keeps the result as text", async () => {
+    addAnnotation.mockResolvedValue(stored("a1"));
+    const editor = makeEditor();
+    select(editor, 1, 8);
+    mount(editor, { open: false });
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "Cite selection" });
+    await user.click(button);
+    await user.selectOptions(screen.getByLabelText("Source"), INTERVIEW.id);
+    await user.click(citeButton());
+    await waitFor(() => expect(addAnnotation).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(button).toHaveAttribute("aria-expanded", "false"),
+    );
+    expect(button).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Cited Interview.");
+  });
+
+  it("stays open and shows the failure when the write fails", async () => {
+    addAnnotation.mockRejectedValue(new Error("write refused"));
+    const editor = makeEditor();
+    select(editor, 1, 8);
+    mount(editor, { open: false });
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "Cite selection" });
+    await user.click(button);
+    await user.selectOptions(screen.getByLabelText("Source"), INTERVIEW.id);
+    await user.click(citeButton());
+    await waitFor(() =>
+      expect(screen.getAllByRole("status").at(-1)).toHaveTextContent(
+        /could not be saved/,
+      ),
+    );
+    expect(button).toHaveAttribute("aria-expanded", "true");
+  });
+});
+
 describe("refusals and failures show text and write nothing wrong", () => {
   it("asks for a Source when none is chosen and writes nothing", async () => {
     const editor = makeEditor();
     select(editor, 1, 8);
     mount(editor);
-    await userEvent.click(
-      screen.getByRole("button", { name: "Cite selection" }),
-    );
-    expect(screen.getByRole("status")).toHaveTextContent("Choose a Source");
+    await userEvent.click(citeButton());
+    expect(formStatus()).toHaveTextContent("Choose a Source");
     expect(addAnnotation).not.toHaveBeenCalled();
   });
 
@@ -298,8 +400,8 @@ describe("refusals and failures show text and write nothing wrong", () => {
     mount(editor);
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Source"), INTERVIEW.id);
-    await user.click(screen.getByRole("button", { name: "Cite selection" }));
-    expect(screen.getByRole("status")).toHaveTextContent("Select some text");
+    await user.click(citeButton());
+    expect(formStatus()).toHaveTextContent("Select some text");
     expect(addAnnotation).not.toHaveBeenCalled();
   });
 
@@ -310,8 +412,8 @@ describe("refusals and failures show text and write nothing wrong", () => {
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Source"), INTERVIEW.id);
     await user.selectOptions(screen.getByLabelText("Locator type"), "page");
-    await user.click(screen.getByRole("button", { name: "Cite selection" }));
-    expect(screen.getByRole("status")).toHaveTextContent("locator");
+    await user.click(citeButton());
+    expect(formStatus()).toHaveTextContent("locator");
     expect(addAnnotation).not.toHaveBeenCalled();
   });
 
@@ -323,9 +425,9 @@ describe("refusals and failures show text and write nothing wrong", () => {
     mount(editor, { onStored });
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Source"), INTERVIEW.id);
-    await user.click(screen.getByRole("button", { name: "Cite selection" }));
+    await user.click(citeButton());
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(
+      expect(formStatus()).toHaveTextContent(
         "The citation could not be saved. Disk is full",
       ),
     );
@@ -347,13 +449,11 @@ describe("refusals and failures show text and write nothing wrong", () => {
     mount(editor, { onStored });
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Source"), INTERVIEW.id);
-    await user.click(screen.getByRole("button", { name: "Cite selection" }));
+    await user.click(citeButton());
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "saved but could not be attached",
-      ),
+      expect(formStatus()).toHaveTextContent("saved but could not be attached"),
     );
-    expect(screen.getByRole("status")).toHaveTextContent("detached");
+    expect(formStatus()).toHaveTextContent("detached");
     expect(JSON.stringify(editor.getJSON())).not.toContain('"annotation"');
     expect(onStored).toHaveBeenCalledTimes(1);
   });
@@ -368,14 +468,10 @@ describe("refusals and failures show text and write nothing wrong", () => {
       INTERVIEW.id,
     );
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "excerpts could not be read",
-      ),
+      expect(formStatus()).toHaveTextContent("excerpts could not be read"),
     );
     expect(screen.queryByLabelText("Excerpt")).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Cite selection" }),
-    ).toBeEnabled();
+    expect(citeButton()).toBeEnabled();
   });
 });
 

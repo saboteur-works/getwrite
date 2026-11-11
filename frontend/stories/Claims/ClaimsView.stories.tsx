@@ -79,7 +79,8 @@ type Scenario =
   | "empty"
   | "list"
   | "not-read"
-  | "off-list";
+  | "off-list"
+  | "unchecked";
 
 interface StoryArgs {
   scenario: Scenario;
@@ -112,6 +113,12 @@ function stateFor(scenario: Scenario): ClaimsViewState {
             message: "unreadable",
           },
         ],
+      };
+    case "unchecked":
+      return {
+        status: "ready",
+        items: [{ ...item("u", "Chapter One", {}), isPassageUnchecked: true }],
+        failures: [],
       };
     case "off-list":
       return {
@@ -217,5 +224,8 @@ export const NotRead: Story = {
     expect(canvas.getByRole("alert")).toHaveTextContent("Chapter Nine");
   },
 };
+
+/** The document could not be read, so the passage was not checked: said in text, not shown as detached. */
+export const PassageNotChecked: Story = { args: { scenario: "unchecked" } };
 
 export const StatusNotOnList: Story = { args: { scenario: "off-list" } };

@@ -29,6 +29,11 @@ export interface MarkClaimControlProps {
   selectionText: string;
   /** Marks the selection as a claim with the given statement. */
   onMarkClaim: OnMarkClaim;
+  /**
+   * Called with a message after the claim was stored and marked, so a host
+   * that shows the form on demand can close it (not called on a failure).
+   */
+  onDone?: (message: string) => void;
 }
 
 function errorText(error: unknown): string {
@@ -38,6 +43,7 @@ function errorText(error: unknown): string {
 export default function MarkClaimControl({
   selectionText,
   onMarkClaim,
+  onDone,
 }: MarkClaimControlProps): JSX.Element {
   const [statement, setStatement] = React.useState("");
   const [status, setStatus] = React.useState("");
@@ -65,6 +71,7 @@ export default function MarkClaimControl({
       await onMarkClaim(statement);
       setStatus("Marked as a claim.");
       setStatement("");
+      onDone?.("Marked as a claim.");
     } catch (error: unknown) {
       setStatus(`The claim could not be saved. ${errorText(error)}`.trim());
     } finally {

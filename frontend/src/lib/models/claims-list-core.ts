@@ -15,6 +15,13 @@
  *   sidecar read, so a locked project is never an empty or partial list.
  * - A resource in Trash is not under `resources/`, so it is not scanned.
  * - Citation state (a removed Source) is derived by the caller, not here.
+ * - Each claim carries `passage`: whether its `annotation` mark is in the
+ *   resource's saved `content.tiptap.json`. That is one more file read and
+ *   JSON parse per resource that holds at least one claim (none for a resource
+ *   with no claims), so the cost grows with the number of claim-bearing
+ *   resources, not with the number of claims. A document that cannot be read
+ *   or parsed gives `unknown` for its claims, never `detached`; a locked-access
+ *   error is rethrown.
  *
  * Reachable from `core.ts`, the CLI and the Electron workers: no React, JSX or
  * JSON.
@@ -26,8 +33,11 @@ import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { PROJECT_FILENAME } from "./project-config";
 import { resolveProjectRoot } from "./project-root-resolver";
 import { readSidecar } from "./sidecar";
+import { collectAnnotationMarkIds } from "./annotation-mark-ids";
+import { isDetachedAnnotation } from "./excerpts";
 import type {
   ClaimListEntry,
+  ClaimPassageState,
   ClaimListResult,
   ClaimReadFailure,
 } from "./claim-types";
@@ -109,10 +119,43 @@ async function scanResource(
       failure: { resourceId, resourceName, message: MALFORMED_MESSAGE },
     };
   }
-  const entries = (stored as unknown[])
-    .filter(isClaim)
-    .map((annotation) => ({ resourceId, resourceName, annotation }));
+  const claims = (stored as unknown[]).filter(isClaim);
+  if (claims.length === 0) return { kind: "read", entries: [] };
+  const markIds = await readMarkIds(projectRoot, resourceId);
+  const entries = claims.map((annotation) => ({
+    resourceId,
+    resourceName,
+    annotation,
+    passage: passageOf(annotation, markIds),
+  }));
   return { kind: "read", entries };
+}
+
+/** Annotation-mark ids in the saved document, or null when it cannot be read. */
+async function readMarkIds(
+  projectRoot: string,
+  resourceId: string,
+): Promise<Set<string> | null> {
+  try {
+    const raw = await readFile(
+      `${projectRoot}/resources/${resourceId}/content.tiptap.json`,
+      "utf8",
+    );
+    return collectAnnotationMarkIds(JSON.parse(raw) as unknown);
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
+    return null;
+  }
+}
+
+function passageOf(
+  annotation: Annotation,
+  markIds: Set<string> | null,
+): ClaimPassageState {
+  if (markIds === null) return "unknown";
+  return isDetachedAnnotation(annotation, markIds.has(annotation.id))
+    ? "detached"
+    : "present";
 }
 
 /**
