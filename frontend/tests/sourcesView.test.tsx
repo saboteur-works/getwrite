@@ -49,7 +49,8 @@ vi.mock("../src/lib/api/source-attachments", () => ({
 
 const createResource = vi.fn();
 const renameResource = vi.fn();
-vi.mock("../src/lib/api/resources", () => ({
+vi.mock("../src/lib/api/resources", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/api/resources")>()),
   createResource: (...a: unknown[]) => createResource(...a),
   renameResource: (...a: unknown[]) => renameResource(...a),
 }));

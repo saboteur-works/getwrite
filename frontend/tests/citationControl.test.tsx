@@ -116,11 +116,11 @@ afterEach(() => {
 });
 
 describe("citation-control slot (FR-3)", () => {
-  it("the Sources module registers a citation control and nothing else does", () => {
+  it("the Sources and Claims modules register citation controls and nothing else does", () => {
     const withSlot = uiModuleRegistry.modules
       .filter((entry) => entry.citationControl !== undefined)
       .map((entry) => entry.id);
-    expect(withSlot).toEqual(["sources"]);
+    expect(withSlot).toEqual(["sources", "claims"]);
     expect(uiModuleRegistry.getCitationControl("sources")).toBeDefined();
     expect(uiModuleRegistry.getCitationControl("trash")).toBeUndefined();
   });
