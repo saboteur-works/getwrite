@@ -26,10 +26,12 @@ import { InvalidProjectIdCoreError } from "./project-crud-core";
 import {
   validateAnnotationBody,
   validateAnnotationQuote,
+  validateCarriedClaim,
+  validateClaimStatement,
   validateNewAnnotation,
   type NewAnnotationInput,
 } from "./annotation-validation";
-import type { Annotation, MetadataValue } from "./types";
+import type { Annotation, ClaimMarker, MetadataValue } from "./types";
 
 export { InvalidProjectIdCoreError };
 
@@ -154,8 +156,38 @@ export async function listAnnotationsCore(
 }
 
 /**
- * Add an annotation. `input` is `{ id, body, quote, target? }`; the core sets both
- * timestamps. Returns the stored annotation.
+ * Split a carried `claim` (Feature 108, FR-18: a pasted claim keeps its
+ * status, status date and Source link) off the add input and validate it.
+ * `validateNewAnnotation` keeps refusing every key it does not know, so the
+ * claim is checked here and the rest goes on to it. A claim needs a
+ * non-empty statement (its body). Returns the claim, or `undefined` when none
+ * was carried.
+ */
+function takeCarriedClaim(input: unknown): {
+  rest: unknown;
+  claim: ClaimMarker | undefined;
+} {
+  if (
+    typeof input !== "object" ||
+    input === null ||
+    Array.isArray(input) ||
+    !("claim" in input)
+  ) {
+    return { rest: input, claim: undefined };
+  }
+  const { claim: carried, ...rest } = input as Record<string, unknown>;
+  if (carried === undefined) return { rest, claim: undefined };
+  const checked = validateCarriedClaim(carried);
+  if (!checked.ok) throw new InvalidAnnotationError(checked.message);
+  const statement = validateClaimStatement(rest.body);
+  if (!statement.ok) throw new InvalidAnnotationError(statement.message);
+  return { rest, claim: checked.value };
+}
+
+/**
+ * Add an annotation. `input` is `{ id, body, quote, target?, claim? }`; the
+ * core sets both timestamps. A carried `claim` (paste path, Feature 108) is
+ * validated and stored unchanged. Returns the stored annotation.
  *
  * @throws InvalidAnnotationError, InvalidAnnotationResourceIdError,
  *   InvalidProjectIdCoreError, AnnotationResourceTypeError,
@@ -167,9 +199,10 @@ export async function addAnnotationCore(
   input: unknown,
 ): Promise<Annotation> {
   requireResourceId(resourceId);
+  const { rest, claim } = takeCarriedClaim(input);
   // Shape, id, body and quote checks run here, before any lock; the
   // collision and cap checks repeat inside the lock against the stored array.
-  const early = validateNewAnnotation(input, []);
+  const early = validateNewAnnotation(rest, []);
   if (!early.ok) throw new InvalidAnnotationError(early.message);
   const fields: NewAnnotationInput = early.value;
   const now = new Date().toISOString();
@@ -178,6 +211,7 @@ export async function addAnnotationCore(
     body: fields.body,
     quote: fields.quote,
     ...(fields.target === undefined ? {} : { target: fields.target }),
+    ...(claim === undefined ? {} : { claim }),
     createdAt: now,
     updatedAt: now,
   };

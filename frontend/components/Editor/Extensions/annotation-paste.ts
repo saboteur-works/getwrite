@@ -226,6 +226,9 @@ async function writeCopies(
         body: source.body,
         quote: source.quote,
         ...(source.target ? { target: source.target } : {}),
+        // Feature 108 (FR-18): a claim keeps status, status date and Source
+        // link; the core refuses a claim it cannot validate, which is reported.
+        ...(source.claim ? { claim: source.claim } : {}),
       });
     } catch (error) {
       fail(newId, messageOf(error, "The note could not be copied."));
