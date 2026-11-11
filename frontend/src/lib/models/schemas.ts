@@ -963,7 +963,12 @@ const PROJECT_TYPE_SECTION_LABELS: Record<string, string> = {
   relationshipTypes: "Relationship types",
   subtypes: "Subtypes",
   wordCountGoal: "Word Count Goal",
+  modules: "Modules",
 };
+
+/** Refusal text for a malformed `modules` declaration; names no client input. */
+const PROJECT_TYPE_MODULES_MESSAGE =
+  "Modules must list each module as on (true) or off (false).";
 
 /**
  * Per-parse fallback for refusals the schema gives no message of its own
@@ -1038,6 +1043,16 @@ export const ProjectTypeSchema = z
       .number()
       .int(WORD_COUNT_GOAL_MESSAGE)
       .nonnegative(WORD_COUNT_GOAL_MESSAGE)
+      .optional(),
+    /**
+     * Module declaration (Feature 108, FR-4): module id to on/off for a new
+     * project, the shape of `config.modules`. An id this build does not know
+     * is kept as given. Absent means the type declares nothing.
+     */
+    modules: z
+      .record(z.string(), z.boolean({ error: PROJECT_TYPE_MODULES_MESSAGE }), {
+        error: PROJECT_TYPE_MODULES_MESSAGE,
+      })
       .optional(),
   })
   .strict()

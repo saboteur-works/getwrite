@@ -64,3 +64,38 @@ describe("project-type schema (T016/T017)", () => {
     }
   });
 });
+
+describe("project-type modules declaration (Feature 108, FR-4)", () => {
+  const folders = [{ name: "Chapters" }];
+
+  it("keeps modules on a validated spec and leaves a spec without it unchanged", () => {
+    const withModules = validateProjectType({
+      id: "m",
+      name: "M",
+      folders,
+      modules: { claims: true, sources: false },
+    });
+    expect(withModules.success).toBe(true);
+    if (withModules.success && "value" in withModules && withModules.value) {
+      expect(withModules.value.modules).toEqual({
+        claims: true,
+        sources: false,
+      });
+    }
+    const without = validateProjectType({ id: "m", name: "M", folders });
+    expect(without.success).toBe(true);
+    if (without.success && "value" in without && without.value) {
+      expect(without.value.modules).toBeUndefined();
+    }
+  });
+
+  it("refuses an array as modules, so it is never stored", () => {
+    const res = validateProjectType({
+      id: "m",
+      name: "M",
+      folders,
+      modules: ["claims"],
+    });
+    expect(res.success).toBe(false);
+  });
+});
