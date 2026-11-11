@@ -73,6 +73,87 @@ describe("isModuleEnabled", () => {
   });
 });
 
+/** A manifest in which one module defaults off (Feature 108, FR-2). */
+const offByDefault: ModuleManifestEntry = {
+  id: "default-off",
+  view: { id: "default-off", label: "Default off" },
+  indexSteps: [{ id: "default-off-step", run: async () => undefined }],
+  defaultEnabled: false,
+};
+const FAKE_MANIFEST: readonly ModuleManifestEntry[] = [
+  ...MODULE_MANIFEST,
+  offByDefault,
+];
+
+describe("per-module default (Feature 108, FR-2)", () => {
+  it("is off when config, modules or the own entry is absent", () => {
+    expect(isModuleEnabled(undefined, "default-off", FAKE_MANIFEST)).toBe(
+      false,
+    );
+    expect(isModuleEnabled({}, "default-off", FAKE_MANIFEST)).toBe(false);
+    expect(isModuleEnabled({ modules: {} }, "default-off", FAKE_MANIFEST)).toBe(
+      false,
+    );
+    expect(
+      isModuleEnabled(
+        { modules: { sources: false } },
+        "default-off",
+        FAKE_MANIFEST,
+      ),
+    ).toBe(false);
+  });
+
+  it("lets an explicit entry win over the default", () => {
+    expect(
+      isModuleEnabled(
+        { modules: { "default-off": true } },
+        "default-off",
+        FAKE_MANIFEST,
+      ),
+    ).toBe(true);
+    expect(
+      isModuleEnabled(
+        { modules: { "default-off": false } },
+        "default-off",
+        FAKE_MANIFEST,
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps Sources, an unknown id and prototype names on when absent", () => {
+    expect(isModuleEnabled({}, "sources", FAKE_MANIFEST)).toBe(true);
+    expect(isModuleEnabled({}, "ghost", FAKE_MANIFEST)).toBe(true);
+    expect(isModuleEnabled({ modules: {} }, "toString", FAKE_MANIFEST)).toBe(
+      true,
+    );
+    expect(isModuleEnabled({ modules: {} }, "__proto__", FAKE_MANIFEST)).toBe(
+      true,
+    );
+  });
+
+  it("follows the same rule in enabledViews and indexSteps", () => {
+    const registry = createModuleRegistry(FAKE_MANIFEST);
+    expect(registry.enabledViews({}).map((v) => v.id)).toEqual(["sources"]);
+    expect(registry.indexSteps({}).map((s) => s.id)).toEqual([]);
+    const on = { modules: { "default-off": true } };
+    expect(registry.enabledViews(on).map((v) => v.id)).toEqual([
+      "sources",
+      "default-off",
+    ]);
+    expect(registry.indexSteps(on).map((s) => s.id)).toEqual([
+      "default-off-step",
+    ]);
+    const off = { modules: { "default-off": true, sources: false } };
+    expect(registry.enabledViews(off).map((v) => v.id)).toEqual([
+      "default-off",
+    ]);
+  });
+
+  it("leaves the shipped Sources entry without defaultEnabled false", () => {
+    expect(MODULE_MANIFEST[0].defaultEnabled).not.toBe(false);
+  });
+});
+
 describe("createModuleRegistry", () => {
   it("accepts a test-only module with an index step", () => {
     const registry = createModuleRegistry([...MODULE_MANIFEST, testModule]);
