@@ -20,6 +20,8 @@
  *   including "(removed)" and the saved name, stays visible when it is off.
  * - With `moduleEnabled` false the row is an ordinary note: the body is
  *   editable and no marker, status or Source line is shown.
+ * - Closing the statement form (Cancel or a saved statement) returns focus to
+ *   the Edit control that opened it.
  * - Delete is a callback; a reason string disables it with visible text, as
  *   the note rows do under the `permanentDeletion` limit.
  */
@@ -258,6 +260,16 @@ export default function ClaimRow({
 }: ClaimRowProps): JSX.Element {
   const uid = React.useId();
   const [isEditing, setIsEditing] = React.useState(false);
+  const editButtonRef = React.useRef<HTMLButtonElement>(null);
+  // Set when the form closes (Cancel or a saved statement); focus goes back to
+  // the Edit control that opened it once that control is rendered again.
+  const returnFocusRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isEditing && returnFocusRef.current) {
+      returnFocusRef.current = false;
+      editButtonRef.current?.focus();
+    }
+  }, [isEditing]);
   const display = deriveClaimDisplay(annotation, {
     moduleEnabled,
     sourceFacts,
@@ -318,7 +330,10 @@ export default function ClaimRow({
           minLength={minLength}
           isBusy={isBusy}
           onSave={onSaveStatement}
-          onCancel={() => setIsEditing(false)}
+          onCancel={() => {
+            returnFocusRef.current = true;
+            setIsEditing(false);
+          }}
         />
       ) : (
         <>
@@ -355,6 +370,7 @@ export default function ClaimRow({
             ) : null}
             {onSaveStatement ? (
               <Button
+                ref={editButtonRef}
                 variant="secondary"
                 size="sm"
                 aria-describedby={bodyId}

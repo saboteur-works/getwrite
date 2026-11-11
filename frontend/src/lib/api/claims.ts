@@ -68,6 +68,7 @@ const ListResponseSchema = z.object({
       message: z.string(),
     }),
   ),
+  sidecarsRead: z.number().int().nonnegative(),
 });
 const OneResponseSchema = z.object({ annotation: AnnotationResponseSchema });
 
@@ -140,6 +141,7 @@ export const httpClaimsTransport: ClaimsTransport = {
         annotation: entry.annotation as Annotation,
       })),
       failures: parsed.data.failures,
+      sidecarsRead: parsed.data.sidecarsRead,
     };
   },
   add(projectId, resourceId, claim) {

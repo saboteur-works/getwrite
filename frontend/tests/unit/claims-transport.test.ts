@@ -70,6 +70,7 @@ describe("claims transport: web runtime", () => {
               message: "unreadable",
             },
           ],
+          sidecarsRead: 4,
         }),
       );
     const result = await listClaims(PID);
@@ -80,6 +81,7 @@ describe("claims transport: web runtime", () => {
     expect(result.failures).toEqual([
       { resourceId: "r2", resourceName: "Chapter 2", message: "unreadable" },
     ]);
+    expect(result.sidecarsRead).toBe(4);
     expect(nativeTransport.list).not.toHaveBeenCalled();
   });
 
@@ -199,13 +201,18 @@ describe("claims transport: native runtime", () => {
   it("calls the native backend and never fetch", async () => {
     vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
     const fetchSpy = vi.spyOn(globalThis, "fetch");
-    nativeTransport.list.mockResolvedValue({ claims: [], failures: [] });
+    nativeTransport.list.mockResolvedValue({
+      claims: [],
+      failures: [],
+      sidecarsRead: 0,
+    });
     nativeTransport.add.mockResolvedValue(CLAIM);
     nativeTransport.update.mockResolvedValue(CLAIM);
 
     await expect(listClaims(PID)).resolves.toEqual({
       claims: [],
       failures: [],
+      sidecarsRead: 0,
     });
     await expect(addClaim(PID, RID, NEW_CLAIM)).resolves.toEqual(CLAIM);
     await expect(

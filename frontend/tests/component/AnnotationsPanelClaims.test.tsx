@@ -220,6 +220,15 @@ describe("AnnotationsPanel claim rows (module on)", () => {
     );
   });
 
+  it("returns focus to Edit statement when the statement form is cancelled", () => {
+    renderPanel({ annotations: [claim("a")], api: fakeApi() });
+    fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      screen.getByRole("button", { name: "Edit statement" }),
+    ).toHaveFocus();
+  });
+
   it("keeps the statement form open and shows the failure text when the save fails", async () => {
     const api = fakeApi();
     api.update.mockRejectedValue(new Error("Could not save."));

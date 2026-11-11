@@ -10,7 +10,8 @@
  *
  * Native storage has no encrypting layer, so a write into a project carrying
  * the encrypted marker is refused before the core runs, with the typed error
- * of Feature 107's guard (`native-encrypted-project-guard.ts`, reused). The
+ * of Feature 107's guard (`native-encrypted-project-guard.ts`, reused), worded
+ * for claims rather than for capture. The
  * read-only list is not guarded, as on the web path.
  *
  * Imported only on the native path (`lib/api/claims.ts`'s dynamic import,
@@ -54,12 +55,12 @@ export function createNativeClaimsTransport(
     list: (projectId) => run(() => listClaimsCore(projectId)),
     add: (projectId, resourceId, input) =>
       run(async () => {
-        await assertProjectNotEncrypted(projectId);
+        await assertProjectNotEncrypted(projectId, "claims");
         return addClaimCore(projectId, resourceId, input);
       }),
     update: (projectId, resourceId, annotationId, input) =>
       run(async () => {
-        await assertProjectNotEncrypted(projectId);
+        await assertProjectNotEncrypted(projectId, "claims");
         return updateClaimCore(projectId, resourceId, annotationId, input);
       }),
   };

@@ -421,7 +421,7 @@ describe("paste, cut and partial cut", () => {
     );
   });
 
-  it("pasting a claim whose stored status is off the list is reported, the mark removed, and the stored status never rewritten", async () => {
+  it("pasting a claim whose stored status is off the list carries it as stored (OQ-11) and never rewrites the source", async () => {
     const from = await makeText(true);
     const to = await makeText(false);
     await makeClaim(from);
@@ -431,9 +431,9 @@ describe("paste, cut and partial cut", () => {
     const dst = mount(to, emptyDoc);
     paste(dst, take(src, "copy"));
     const result = await dst.settled();
-    expect(result.ok).toBe(false);
-    expect(ids(dst.editor)).toEqual([]);
-    expect(await stored(to)).toEqual([]);
+    expect(result.ok).toBe(true);
+    expect(ids(dst.editor)).toHaveLength(1);
+    expect((await stored(to))[0]!.claim).toEqual(offList.claim);
     expect(await sidecarText(from)).toBe(before);
     expect((await stored(from))[0]!.claim).toEqual(offList.claim);
   });

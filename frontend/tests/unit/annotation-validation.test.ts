@@ -365,10 +365,28 @@ describe("claim validators (Feature 108, FR-8, FR-9, FR-11, FR-12)", () => {
     expect(validateCarriedClaim(claim)).toEqual({ ok: true, value: claim });
   });
 
-  it("refuses a carried claim with an unknown status, a bad or missing date, an unknown key or a non-object", () => {
+  it("carries a stored status that is off the list as stored, within a length bound", () => {
+    const odd = { status: "unsourced", statusChangedAt: NOW };
+    expect(validateCarriedClaim(odd)).toEqual({ ok: true, value: odd });
     expect(
-      validateCarriedClaim({ status: "unsourced", statusChangedAt: NOW }).ok,
+      validateCarriedClaim({ status: "x".repeat(64), statusChangedAt: NOW }).ok,
+    ).toBe(true);
+    expect(
+      validateCarriedClaim({ status: "x".repeat(65), statusChangedAt: NOW }).ok,
     ).toBe(false);
+    expect(validateCarriedClaim({ status: "", statusChangedAt: NOW }).ok).toBe(
+      false,
+    );
+    expect(validateCarriedClaim({ status: 3, statusChangedAt: NOW }).ok).toBe(
+      false,
+    );
+  });
+
+  it("still refuses an unknown status at creation and update", () => {
+    expect(validateUpdateClaim({ status: "unsourced" }).ok).toBe(false);
+  });
+
+  it("refuses a carried claim with a bad or missing date, an unknown key or a non-object", () => {
     expect(
       validateCarriedClaim({ status: "verified", statusChangedAt: "yesterday" })
         .ok,

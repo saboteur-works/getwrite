@@ -130,6 +130,12 @@ describe("native claims backend", () => {
     );
     expect(isEncryptedProjectCaptureRefusal(e1)).toBe(true);
     expect(isEncryptedProjectCaptureRefusal(e2)).toBe(true);
+    for (const e of [e1, e2]) {
+      expect((e as Error).message).toMatch(
+        /^Claims can't be changed in an encrypted project on this device\./,
+      );
+      expect((e as Error).message).not.toMatch(/captur/i);
+    }
     expect(rec.writes).toEqual([]);
     expect(add).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();

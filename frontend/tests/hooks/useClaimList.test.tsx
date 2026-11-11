@@ -83,7 +83,7 @@ function makeDeps(over: Partial<ClaimListDeps> = {}): ClaimListDeps {
   return {
     listClaims: vi
       .fn<ClaimListDeps["listClaims"]>()
-      .mockResolvedValue({ claims: [], failures: [] }),
+      .mockResolvedValue({ claims: [], failures: [], sidecarsRead: 0 }),
     listTrash: vi
       .fn<ClaimListDeps["listTrash"]>()
       .mockResolvedValue(EMPTY_TRASH),
@@ -101,7 +101,7 @@ function withClaims(
   return makeDeps({
     listClaims: vi
       .fn<ClaimListDeps["listClaims"]>()
-      .mockResolvedValue({ claims, failures: [] }),
+      .mockResolvedValue({ claims, failures: [], sidecarsRead: 0 }),
     ...over,
   });
 }
@@ -154,6 +154,7 @@ describe("useClaimList loading and ready", () => {
     const list: ClaimListResult = {
       claims: [entry("r1", claim("a"))],
       failures: [{ resourceId: "r2", resourceName: "Two", message: "bad" }],
+      sidecarsRead: 2,
     };
     const deps = makeDeps({ listClaims: vi.fn().mockResolvedValue(list) });
     const { result } = setup(deps);
@@ -190,6 +191,7 @@ describe("useClaimList failure", () => {
       .mockResolvedValueOnce({
         claims: [entry("r1", claim("a"))],
         failures: [],
+        sidecarsRead: 1,
       });
     const { result } = setup(makeDeps({ listClaims }));
     await waitFor(() => expect(result.current.state.status).toBe("failed"));
@@ -222,7 +224,7 @@ describe("useClaimList locked project", () => {
       listClaims: vi
         .fn<ClaimListDeps["listClaims"]>()
         .mockRejectedValueOnce(new ProjectLockedError(PROJECT_ID))
-        .mockResolvedValue({ claims: [], failures: [] }),
+        .mockResolvedValue({ claims: [], failures: [], sidecarsRead: 0 }),
     });
 
   it("opens the unlock prompt and is a locked failure, not an empty list", async () => {

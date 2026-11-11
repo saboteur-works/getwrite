@@ -75,10 +75,15 @@ export interface ClaimReadFailure {
   message: string;
 }
 
-/** Result of the project-wide claim list. */
+/**
+ * Result of the project-wide claim list. `sidecarsRead` (the count recorded
+ * by Task 1's measurement, FR-1(e)) is part of the shape on both the HTTP and
+ * the native path.
+ */
 export interface ClaimListResult {
   claims: ClaimListEntry[];
   failures: ClaimReadFailure[];
+  sidecarsRead: number;
 }
 
 /** Callback the editor control calls to mark the current selection as a claim. */

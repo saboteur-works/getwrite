@@ -122,6 +122,23 @@ async function recordedFs(
   return { fs: wrapped, writes, reads };
 }
 
+describe("encrypted-project refusal wording by subject", () => {
+  it("keeps the capture wording by default and gives claims their own", () => {
+    for (const reason of ["encrypted", "marker-unreadable"] as const) {
+      expect(new EncryptedProjectCaptureRefusedError(reason).message).toMatch(
+        /^Nothing was captured/,
+      );
+      const claims = new EncryptedProjectCaptureRefusedError(reason, {
+        subject: "claims",
+      });
+      expect(claims.message).toMatch(/^Claims can't be changed/);
+      expect(claims.message).not.toMatch(/captur/i);
+      expect(isEncryptedProjectCaptureRefusal(claims)).toBe(true);
+      expect(claims.reason).toBe(reason);
+    }
+  });
+});
+
 describe("native encrypted-project guard", () => {
   it("refuses a marked project on the text path, with no write and no core call", async () => {
     const rec = await recordedFs("valid");

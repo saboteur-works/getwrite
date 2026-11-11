@@ -272,6 +272,45 @@ describe("ClaimRow (module on)", () => {
     expect(onSaveStatement).toHaveBeenNthCalledWith(2, "New statement");
   });
 
+  it("returns focus to the Edit control on Cancel and after a successful save", async () => {
+    const onSaveStatement = vi.fn().mockResolvedValue({ ok: true });
+    render(<ClaimRow {...props({ onSaveStatement })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+    expect(screen.getByLabelText("Claim statement")).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(
+      screen.getByRole("button", { name: "Edit statement" }),
+    ).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+    fireEvent.change(screen.getByLabelText("Claim statement"), {
+      target: { value: "New statement" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save statement" }));
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Claim statement")).toBeNull(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Edit statement" }),
+    ).toHaveFocus();
+  });
+
+  it("does not move focus on mount or when a failed save keeps the form open", async () => {
+    const onSaveStatement = vi
+      .fn()
+      .mockResolvedValue({ ok: false, message: "Could not save." });
+    render(<ClaimRow {...props({ onSaveStatement })} />);
+    expect(document.body).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Edit statement" }));
+    fireEvent.change(screen.getByLabelText("Claim statement"), {
+      target: { value: "x" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save statement" }));
+    await screen.findByRole("alert");
+    expect(screen.getByLabelText("Claim statement")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit statement" })).toBeNull();
+  });
+
   it("refuses an empty statement even with a Source link", () => {
     render(
       <ClaimRow

@@ -247,6 +247,8 @@ const NEW_CLAIM_KEYS: readonly string[] = [
   "target",
 ];
 const UPDATE_CLAIM_KEYS: readonly string[] = ["status", "statement", "target"];
+/** Longest status identifier a carried claim may bring with it. */
+const MAX_CARRIED_STATUS_LENGTH = 64;
 const CARRIED_CLAIM_KEYS: readonly string[] = ["status", "statusChangedAt"];
 const ISO_DATE_SHAPE =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
@@ -368,9 +370,13 @@ export function validateUpdateClaim(
 }
 
 /**
- * Validate a claim marker carried by paste (FR-18): exactly a known status
- * and a valid ISO `statusChangedAt`. Only the paste path may accept it;
- * mark-as-claim creation never does. The message never echoes the input.
+ * Validate a claim marker carried by paste (FR-18): exactly a status and a
+ * valid ISO `statusChangedAt`. The status is carried as stored, so one off the
+ * fixed list (written by a newer build or by hand) is accepted if it is
+ * non-empty text within a length bound (OQ-11: shown as stored, never
+ * rewritten); only the date is checked for shape. Only the paste path may
+ * accept it; mark-as-claim creation and the update operation stay on the four
+ * known statuses. The message never echoes the input.
  */
 export function validateCarriedClaim(
   input: unknown,
@@ -384,9 +390,14 @@ export function validateCarriedClaim(
   ) {
     return refuse("A carried claim needs exactly a status and a status date.");
   }
-  if (!isClaimStatus(input.status)) {
+  const status = input.status;
+  if (
+    typeof status !== "string" ||
+    status.length === 0 ||
+    status.length > MAX_CARRIED_STATUS_LENGTH
+  ) {
     return refuse(
-      "A claim status must be unverified, verified, disputed or needs-review.",
+      `A carried claim status must be text of 1 to ${MAX_CARRIED_STATUS_LENGTH} characters.`,
     );
   }
   const date = input.statusChangedAt;
@@ -397,5 +408,5 @@ export function validateCarriedClaim(
   ) {
     return refuse("A claim status date must be a valid ISO date.");
   }
-  return { ok: true, value: { status: input.status, statusChangedAt: date } };
+  return { ok: true, value: { status, statusChangedAt: date } };
 }

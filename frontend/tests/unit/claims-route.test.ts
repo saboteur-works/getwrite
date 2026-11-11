@@ -60,7 +60,6 @@ import {
 } from "../../src/lib/models/locked-access";
 import { resolveProjectsDir } from "../../src/lib/models/projects-dir";
 import type { Annotation } from "../../src/lib/models/types";
-import type { ClaimListResult } from "../../src/lib/models/claim-types";
 import type { ClaimListOutcome } from "../../src/lib/models/claims-list-core";
 import { runGate } from "../../src/lib/sharing/gate";
 import type { OwnMachine } from "../../src/lib/sharing/host-allowlist";
@@ -327,7 +326,7 @@ describe("hosted tenancy (core faked over the request's storage context)", () =>
 
   async function seedProject(
     root: string,
-    list: ClaimListResult,
+    list: ClaimListOutcome,
   ): Promise<void> {
     await fs.mkdir(path.join(root, PROJECT), { recursive: true });
     await fs.writeFile(
@@ -338,9 +337,10 @@ describe("hosted tenancy (core faked over the request's storage context)", () =>
 
   it("reads the signed-in tenant's own project", async () => {
     tenantState.root = await tmp("gw-claims-a-");
-    const list: ClaimListResult = {
+    const list: ClaimListOutcome = {
       claims: [{ resourceId: RESOURCE, resourceName: "R", annotation: STORED }],
       failures: [],
+      sidecarsRead: 1,
     };
     await seedProject(tenantState.root, list);
     const res = await GET(get(`projectId=${PROJECT}`));
@@ -356,6 +356,7 @@ describe("hosted tenancy (core faked over the request's storage context)", () =>
         { resourceId: RESOURCE, resourceName: "A-only", annotation: STORED },
       ],
       failures: [],
+      sidecarsRead: 1,
     });
     tenantState.root = tenantB;
     const outcome = await GET(get(`projectId=${PROJECT}`)).then(

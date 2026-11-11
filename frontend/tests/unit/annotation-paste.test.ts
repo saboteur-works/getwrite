@@ -464,7 +464,9 @@ describe("addAnnotationCore with a carried claim (Feature 108, FR-18)", () => {
   it("refuses an invalid carried claim and writes nothing", async () => {
     const bad: unknown[] = [
       { status: "verified" },
-      { status: "bogus", statusChangedAt: CLAIM_DATE },
+      { status: "", statusChangedAt: CLAIM_DATE },
+      { status: 5, statusChangedAt: CLAIM_DATE },
+      { status: "x".repeat(65), statusChangedAt: CLAIM_DATE },
       { status: "verified", statusChangedAt: "yesterday" },
       { status: "verified", statusChangedAt: CLAIM_DATE, extra: 1 },
       "verified",
@@ -531,17 +533,19 @@ describe("paste of a claim (Feature 108, FR-18)", () => {
     expect("claim" in (await stored(res2))[0]).toBe(false);
   });
 
-  it("reports and removes the mark when the stored status is off the list; the source keeps it", async () => {
+  it("carries a stored status that is off the list as stored (OQ-11); the source keeps it too", async () => {
     await seedClaim("from-a-newer-build", CLAIM_DATE);
     const m = source(res1);
     const target = plainTarget(res2);
     paste(target, takeNoted(m, "copy"));
     const result = await target.settled();
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.message.length).toBeGreaterThan(0);
-    expect(annotationIds(target.editor)).toEqual([]);
-    expect(await stored(res2)).toEqual([]);
+    expect(result.ok).toBe(true);
+    expect(annotationIds(target.editor)).toHaveLength(1);
+    expect((await stored(res2))[0].claim).toEqual({
+      status: "from-a-newer-build",
+      statusChangedAt: CLAIM_DATE,
+    });
     expect((await stored(res1))[0].claim?.status).toBe("from-a-newer-build");
   });
 });
