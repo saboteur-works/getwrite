@@ -61,6 +61,7 @@ import {
 import { resolveProjectsDir } from "../../src/lib/models/projects-dir";
 import type { Annotation } from "../../src/lib/models/types";
 import type { ClaimListResult } from "../../src/lib/models/claim-types";
+import type { ClaimListOutcome } from "../../src/lib/models/claims-list-core";
 import { runGate } from "../../src/lib/sharing/gate";
 import type { OwnMachine } from "../../src/lib/sharing/host-allowlist";
 import { DEVICE_COOKIE } from "../../src/lib/sharing/classify-request";
@@ -83,7 +84,11 @@ const STORED = {
   quote: "quoted",
   claim: { status: "unverified", statusChangedAt: "2026-11-11T00:00:00.000Z" },
 } as unknown as Annotation;
-const EMPTY_LIST: ClaimListResult = { claims: [], failures: [] };
+const EMPTY_LIST: ClaimListOutcome = {
+  claims: [],
+  failures: [],
+  sidecarsRead: 0,
+};
 
 beforeEach(() => {
   savedAuthUrl = process.env.BETTER_AUTH_URL;
@@ -157,9 +162,10 @@ describe("route surface", () => {
 
 describe("GET /api/claims", () => {
   it("returns the core's list for the project id", async () => {
-    const list: ClaimListResult = {
+    const list: ClaimListOutcome = {
       claims: [{ resourceId: RESOURCE, resourceName: "R", annotation: STORED }],
       failures: [{ resourceId: "x", resourceName: "X", message: "unreadable" }],
+      sidecarsRead: 1,
     };
     vi.mocked(listClaimsCore).mockResolvedValueOnce(list);
     const res = await GET(get(`projectId=${PROJECT}`));
@@ -315,7 +321,7 @@ describe("hosted tenancy (core faked over the request's storage context)", () =>
     // sees is decided by the storage context the route established.
     vi.mocked(listClaimsCore).mockImplementation(async (projectId: string) => {
       const file = path.join(resolveProjectsDir(), projectId, "claims.json");
-      return JSON.parse(await fs.readFile(file, "utf8")) as ClaimListResult;
+      return JSON.parse(await fs.readFile(file, "utf8")) as ClaimListOutcome;
     });
   });
 

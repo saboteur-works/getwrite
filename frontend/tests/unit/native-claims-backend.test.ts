@@ -89,7 +89,7 @@ describe("native claims backend", () => {
     const rec = await recordedFs(false);
     const list = vi
       .spyOn(listCore, "listClaimsCore")
-      .mockResolvedValue({ claims: [], failures: [] });
+      .mockResolvedValue({ claims: [], failures: [], sidecarsRead: 0 });
     const add = vi.spyOn(addCore, "addClaimCore").mockResolvedValue(STORED);
     const update = vi
       .spyOn(updateCore, "updateClaimCore")
@@ -101,6 +101,7 @@ describe("native claims backend", () => {
     await expect(t.list(PROJECT_ID)).resolves.toEqual({
       claims: [],
       failures: [],
+      sidecarsRead: 0,
     });
     await expect(t.add(PROJECT_ID, RESOURCE_ID, NEW_CLAIM)).resolves.toBe(
       STORED,
@@ -136,7 +137,7 @@ describe("native claims backend", () => {
 
   it("allows the read-only list in an encrypted-marked project", async () => {
     const rec = await recordedFs(true);
-    const result = { claims: [], failures: [] };
+    const result = { claims: [], failures: [], sidecarsRead: 0 };
     const list = vi.spyOn(listCore, "listClaimsCore").mockResolvedValue(result);
     const t = nativeBackend.createNativeClaimsTransport({
       fs: rec.fs,

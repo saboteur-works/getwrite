@@ -12,7 +12,6 @@ import { AnnotationSchema } from "../../src/lib/models/schemas";
 import { AnnotationResponseSchema } from "../../src/lib/api/schemas";
 import { addClaimCore } from "../../src/lib/models/claims-add-core";
 import { updateClaimCore } from "../../src/lib/models/claims-update-core";
-import { listClaimsCore } from "../../src/lib/models/claims-list-core";
 
 const ID = "11111111-1111-4111-8111-111111111111";
 const STAMP = "2026-11-11T10:00:00.000Z";
@@ -91,6 +90,5 @@ describe("inert core stubs", () => {
     await expect(updateClaimCore("p", "r", ID, {})).rejects.toThrow(
       "not implemented",
     );
-    await expect(listClaimsCore("p")).rejects.toThrow("not implemented");
   });
 });
