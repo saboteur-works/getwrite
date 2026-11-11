@@ -148,6 +148,11 @@ export interface ProjectTypeSpec {
   subtypes?: string[];
   /** Target word count for the project. */
   wordCountGoal?: number;
+  /**
+   * Module on/off entries to write to `config.modules` on creation (Feature
+   * 108, FR-4). Unknown ids are stored as given; absent or empty writes none.
+   */
+  modules?: Record<string, boolean>;
 }
 
 /** Load and validate a project-type spec from a file path or an inline object. */
@@ -236,6 +241,17 @@ export async function createProjectFromType(options: {
       wordCountGoal: specObj.wordCountGoal,
     },
   });
+  // `normalizeProjectConfig` does not carry `modules` (it is read from
+  // `project.json` as stored), so the declared entries are set here, before
+  // the single `project.json` write. Nothing is written for a type that
+  // declares none.
+  if (
+    project.config !== undefined &&
+    specObj.modules !== undefined &&
+    Object.keys(specObj.modules).length > 0
+  ) {
+    project.config.modules = { ...specObj.modules };
+  }
 
   const projectJsonPath = path.join(projectRoot, "project.json");
   await writeFile(projectJsonPath, JSON.stringify(project, null, 2), "utf8");
