@@ -159,12 +159,14 @@ describe("createModuleRegistry", () => {
     const registry = createModuleRegistry([...MODULE_MANIFEST, testModule]);
     expect(registry.modules.map((m) => m.id)).toEqual([
       "sources",
+      "claims",
       "test-indexed",
     ]);
     expect(registry.getModule("test-indexed")).toBe(testModule);
     expect(registry.getModule("missing")).toBeUndefined();
     expect(registry.views().map((v) => v.id)).toEqual([
       "sources",
+      "claims",
       "test-indexed",
     ]);
   });

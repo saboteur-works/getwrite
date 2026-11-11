@@ -7,7 +7,13 @@
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { makeStore } from "../src/store/store";
@@ -81,7 +87,9 @@ describe("ModuleSwitchSection", () => {
       moduleId: "sources",
       enabled: false,
     });
-    expect(await screen.findByRole("status")).toHaveTextContent(
+    const sourcesSwitch = screen.getByRole("checkbox", { name: /Sources/ });
+    const sourcesRow = sourcesSwitch.closest("div") as HTMLElement;
+    expect(await within(sourcesRow).findByRole("status")).toHaveTextContent(
       /Sources.*off/i,
     );
     expect(screen.getByRole("checkbox", { name: /Sources/ })).not.toBeChecked();
