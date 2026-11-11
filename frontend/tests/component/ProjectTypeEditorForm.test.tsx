@@ -2,11 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import ProjectTypeEditorForm from "../../components/project-types/ProjectTypeEditorForm";
 import type { ProjectTypeDefinition } from "../../src/types/project-types";
 import { LINE_HEIGHT_FLOOR_MESSAGE } from "../../src/lib/editor-body-settings";
 import { validateDraft } from "../../components/project-types/ProjectTypeDraftService";
+import { MODULE_MANIFEST } from "../../src/lib/models/modules/manifest";
 import { runAxe } from "../a11y/helpers/axe";
 
 const base: ProjectTypeDefinition = {
@@ -24,11 +25,15 @@ function Harness({
   onDefinition,
   fieldErrors,
   onRefusalChange,
+  modulesEditable,
+  modulesReadOnlyReason,
 }: {
   initial: ProjectTypeDefinition;
   onDefinition?: (d: ProjectTypeDefinition) => void;
   fieldErrors?: Record<string, string>;
   onRefusalChange?: (field: string, refused: boolean) => void;
+  modulesEditable?: boolean;
+  modulesReadOnlyReason?: "built-in" | "saving-unavailable";
 }): JSX.Element {
   const [definition, setDefinition] = React.useState(initial);
   const noop = vi.fn();
@@ -37,6 +42,8 @@ function Harness({
       definition={definition}
       fieldErrors={fieldErrors}
       onRefusalChange={onRefusalChange}
+      modulesEditable={modulesEditable}
+      modulesReadOnlyReason={modulesReadOnlyReason}
       onChange={(d) => {
         setDefinition(d);
         onDefinition?.(d);
@@ -526,5 +533,150 @@ describe("ProjectTypeEditorForm refused font names (Defect 1)", () => {
       target: { value: "Q;R" },
     });
     expect(latest.editorConfig?.headings?.h3?.fontFamily).toBe("Garamond");
+  });
+});
+
+describe("ProjectTypeEditorForm module declaration (Feature 108, FR-5)", () => {
+  const groupFor = (label: string): HTMLElement =>
+    screen.getByRole("group", { name: label });
+
+  it("shows one labelled on/off/not-set control per manifest module", () => {
+    render(<Harness initial={base} modulesEditable />);
+    for (const entry of MODULE_MANIFEST) {
+      const group = groupFor(`${entry.view?.label ?? entry.id} module`);
+      const radios = within(group).getAllByRole("radio");
+      expect(
+        radios.map((r: HTMLElement) => r.parentElement?.textContent),
+      ).toEqual(["On", "Off", "Not set"]);
+      expect(
+        within(group).getByRole("radio", { name: "Not set" }),
+      ).toBeChecked();
+    }
+  });
+
+  it("reflects a declared state and writes the choice into the definition", () => {
+    let latest: ProjectTypeDefinition = { ...base, modules: { claims: false } };
+    render(
+      <Harness
+        initial={latest}
+        onDefinition={(d) => (latest = d)}
+        modulesEditable
+      />,
+    );
+    const claims = groupFor("Claims module");
+    expect(within(claims).getByRole("radio", { name: "Off" })).toBeChecked();
+
+    fireEvent.click(within(claims).getByRole("radio", { name: "On" }));
+    expect(latest.modules).toEqual({ claims: true });
+
+    fireEvent.click(within(claims).getByRole("radio", { name: "Not set" }));
+    expect(latest.modules).toBeUndefined();
+  });
+
+  it("uses native radios, one named group per module, so the arrow keys and Tab work", () => {
+    render(<Harness initial={base} modulesEditable />);
+    const names = MODULE_MANIFEST.map((entry) => {
+      const radios = within(
+        groupFor(`${entry.view?.label ?? entry.id} module`),
+      ).getAllByRole("radio");
+      const group = new Set(
+        radios.map((r: HTMLElement) => r.getAttribute("name")),
+      );
+      expect(group.size).toBe(1);
+      for (const radio of radios) {
+        expect(radio).toHaveAttribute("type", "radio");
+        expect(radio).not.toBeDisabled();
+        expect(radio).not.toHaveAttribute("tabindex", "-1");
+      }
+      return [...group][0];
+    });
+    expect(new Set(names).size).toBe(MODULE_MANIFEST.length);
+  });
+
+  it("shows a field error as text linked to its control, and not on the others", () => {
+    render(
+      <Harness
+        initial={base}
+        modulesEditable
+        fieldErrors={{ "modules.claims": "Claims must be on or off." }}
+      />,
+    );
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Claims must be on or off.");
+    expect(groupFor("Claims module")).toHaveAttribute(
+      "aria-describedby",
+      expect.stringContaining(alert.id),
+    );
+    expect(groupFor("Claims module")).toHaveAttribute("aria-invalid", "true");
+    expect(groupFor("Sources module")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("shows a whole-record error as text", () => {
+    render(
+      <Harness
+        initial={base}
+        modulesEditable
+        fieldErrors={{ modules: "Modules must be a record." }}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Modules must be a record.",
+    );
+  });
+
+  it("shows a built-in's declaration read-only, as text, with no control", () => {
+    render(
+      <Harness
+        initial={{ ...base, modules: { sources: true, claims: false } }}
+        modulesReadOnlyReason="built-in"
+      />,
+    );
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.getByText("Sources module: On")).toBeInTheDocument();
+    expect(screen.getByText("Claims module: Off")).toBeInTheDocument();
+    expect(
+      screen.getByText(/built-in project type cannot be changed/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the declaration read-only with a text reason where saving is unavailable", () => {
+    render(
+      <Harness
+        initial={{ ...base, modules: { claims: true } }}
+        modulesReadOnlyReason="saving-unavailable"
+      />,
+    );
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.getByText("Claims module: On")).toBeInTheDocument();
+    expect(screen.getByText("Sources module: Not set")).toBeInTheDocument();
+    expect(
+      screen.getByText(/saving project types is not available here/i),
+    ).toBeInTheDocument();
+  });
+
+  it("is read-only unless the parent says the declaration is editable", () => {
+    render(<Harness initial={base} />);
+    expect(screen.queryByRole("radio")).toBeNull();
+  });
+
+  it.each([
+    ["editable", { modulesEditable: true }],
+    ["built-in read-only", { modulesReadOnlyReason: "built-in" as const }],
+    [
+      "saving unavailable",
+      { modulesReadOnlyReason: "saving-unavailable" as const },
+    ],
+    [
+      "with an error",
+      {
+        modulesEditable: true,
+        fieldErrors: { "modules.claims": "Claims must be on or off." },
+      },
+    ],
+  ])("has no axe violations (%s)", async (_name, props) => {
+    const { container } = render(
+      <Harness initial={{ ...base, modules: { claims: true } }} {...props} />,
+    );
+    await runAxe(container);
   });
 });

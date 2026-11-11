@@ -21,6 +21,12 @@ import type {
   ProjectTypeResourceKind,
 } from "../../src/types/project-types";
 import type { EditorHeading } from "../../src/lib/models/types";
+import { MODULE_MANIFEST } from "../../src/lib/models/modules/manifest";
+import {
+  moduleStatesOf,
+  withModuleState,
+  type ModuleDeclarationState,
+} from "./ProjectTypeDraftService";
 import TypographyFields, {
   type TypographyFieldKey,
 } from "../typography/TypographyFields";
@@ -100,7 +106,40 @@ export interface ProjectTypeEditorFormProps {
    * line height) so the parent can block Save while one is refused.
    */
   onRefusalChange?: (field: string, refused: boolean) => void;
+  /**
+   * Whether the module declaration can be changed. Defaults to false (the
+   * declaration is shown as text), so a parent that does not say so never
+   * offers a control on a built-in type or where saving is unavailable.
+   */
+  modulesEditable?: boolean;
+  /** Why a read-only declaration cannot be changed; shown as text. */
+  modulesReadOnlyReason?: ModulesReadOnlyReason;
 }
+
+/** The two reasons a module declaration is shown read-only. */
+export type ModulesReadOnlyReason = "built-in" | "saving-unavailable";
+
+const MODULES_READ_ONLY_TEXT: Record<ModulesReadOnlyReason, string> = {
+  "built-in":
+    "A built-in project type cannot be changed, so its module declaration is shown here for reading only.",
+  "saving-unavailable":
+    "Saving project types is not available here, so module declarations are shown for reading only.",
+};
+
+const DECLARATION_OPTIONS: readonly {
+  state: ModuleDeclarationState;
+  label: string;
+}[] = [
+  { state: "on", label: "On" },
+  { state: "off", label: "Off" },
+  { state: "not-set", label: "Not set" },
+];
+
+const DECLARATION_LABEL: Record<ModuleDeclarationState, string> = {
+  on: "On",
+  off: "Off",
+  "not-set": "Not set",
+};
 
 export default function ProjectTypeEditorForm({
   definition,
@@ -120,6 +159,8 @@ export default function ProjectTypeEditorForm({
   nameError,
   fieldErrors,
   onRefusalChange,
+  modulesEditable = false,
+  modulesReadOnlyReason,
 }: ProjectTypeEditorFormProps): JSX.Element {
   const patchDefinition = (updates: Partial<ProjectTypeDefinition>): void => {
     onChange({ ...definition, ...updates });
@@ -231,6 +272,15 @@ export default function ProjectTypeEditorForm({
         placeholder="Describe this project type..."
         rows={3}
         onChange={(value) => patchDefinition({ description: value })}
+      />
+
+      {/* ── Modules ── */}
+      <ModulesSection
+        definition={definition}
+        editable={modulesEditable}
+        readOnlyReason={modulesReadOnlyReason}
+        fieldErrors={fieldErrors}
+        onChange={onChange}
       />
 
       {/* ── Statuses ── */}
@@ -601,6 +651,125 @@ function MetadataSourceRow({
             onMetadataInputTypeChange(value as MetadataInputType)
           }
         />
+      ) : null}
+    </div>
+  );
+}
+
+interface ModulesSectionProps {
+  definition: ProjectTypeDefinition;
+  editable: boolean;
+  readOnlyReason?: ModulesReadOnlyReason;
+  fieldErrors?: Record<string, string>;
+  onChange: (nextDefinition: ProjectTypeDefinition) => void;
+}
+
+/**
+ * One three-state declaration (On, Off, Not set) per module in the manifest.
+ * Editable, each is a native radio group named by its legend; read-only, the
+ * state is written out as text, so it is never conveyed by colour alone.
+ */
+function ModulesSection({
+  definition,
+  editable,
+  readOnlyReason,
+  fieldErrors,
+  onChange,
+}: ModulesSectionProps): JSX.Element {
+  const states = moduleStatesOf(definition);
+  const recordError = fieldErrors?.modules;
+  const recordErrorId = useId();
+  return (
+    <section className="project-type-editor-section">
+      <div className="project-type-editor-section-header">
+        <h2 className="project-type-editor-section-title">Modules</h2>
+      </div>
+      <p className="project-type-editor-helper-text">
+        Whether a new project of this type starts with each module on or off.
+        Not set declares nothing for the module.
+      </p>
+      {editable ? null : (
+        <p className="project-type-editor-helper-text">
+          {MODULES_READ_ONLY_TEXT[readOnlyReason ?? "saving-unavailable"]}
+        </p>
+      )}
+      {recordError ? (
+        <p
+          id={recordErrorId}
+          role="alert"
+          className="text-sm text-gw-secondary"
+        >
+          {recordError}
+        </p>
+      ) : null}
+      {MODULE_MANIFEST.map((entry) => (
+        <ModuleDeclarationControl
+          key={entry.id}
+          moduleId={entry.id}
+          label={`${entry.view?.label ?? entry.id} module`}
+          state={states[entry.id]}
+          editable={editable}
+          error={fieldErrors?.[`modules.${entry.id}`]}
+          onStateChange={(state) =>
+            onChange(withModuleState(definition, entry.id, state))
+          }
+        />
+      ))}
+    </section>
+  );
+}
+
+interface ModuleDeclarationControlProps {
+  moduleId: string;
+  label: string;
+  state: ModuleDeclarationState;
+  editable: boolean;
+  error?: string;
+  onStateChange: (state: ModuleDeclarationState) => void;
+}
+
+function ModuleDeclarationControl({
+  moduleId,
+  label,
+  state,
+  editable,
+  error,
+  onStateChange,
+}: ModuleDeclarationControlProps): JSX.Element {
+  const errorId = useId();
+  if (!editable) {
+    return (
+      <p className="project-type-editor-field">
+        {label}: {DECLARATION_LABEL[state]}
+      </p>
+    );
+  }
+  return (
+    <div className="project-type-editor-field">
+      <fieldset
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+      >
+        <legend className="project-type-editor-field-label">{label}</legend>
+        <div className="flex gap-4">
+          {DECLARATION_OPTIONS.map((option) => (
+            <label key={option.state} className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                name={`module-declaration-${moduleId}`}
+                value={option.state}
+                checked={state === option.state}
+                onChange={() => onStateChange(option.state)}
+              />
+              {option.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {error ? (
+        <p id={errorId} role="alert" className="text-sm text-gw-secondary">
+          {error}
+        </p>
       ) : null}
     </div>
   );
