@@ -43,4 +43,4 @@ Known limits: on Android a copied claim is not carried by paste (the context-men
 
 Task 31 ([experiments/task-31.md](experiments/task-31.md)), 2026-11-11, main checkout outside the sandbox: format check, lint (0 errors), no-hex, typecheck, frontend build, `build:native`, Electron typecheck/test (565)/build, CLI typecheck/test (164)/build/smoke, Android placeholder build and e2e (249) exit 0. `test:ci`: 12,153 passed, 1 failed (the Feature 103 timing test in `indexer-queue.test.ts`, 25/25 when run alone). knip after `240c7ddf`: unused exports 154 and exported types 175, equal to main. No `package.json` or lockfile change.
 
-Desktop project-type flow (Stage 6.5): pending the owner's run in the packaged app.
+Desktop project-type flow (Stage 6.5), 2026-11-11, owner, packaged desktop app built from `310e2c84`: a writer-made type with Claims set to On started a new project with Claims on. PASS. Seen at the same time: in dark mode the module names in the Project Type Manager's Modules section were black; fixed in the commit after this record (see `git log`), not re-checked in the app.

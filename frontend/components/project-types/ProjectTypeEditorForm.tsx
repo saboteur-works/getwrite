@@ -739,7 +739,7 @@ function ModuleDeclarationControl({
   const errorId = useId();
   if (!editable) {
     return (
-      <p className="project-type-editor-field">
+      <p className="project-type-editor-field text-sm text-gw-primary">
         {label}: {DECLARATION_LABEL[state]}
       </p>
     );
@@ -753,9 +753,13 @@ function ModuleDeclarationControl({
         <legend className="project-type-editor-field-label">{label}</legend>
         <div className="flex gap-4">
           {DECLARATION_OPTIONS.map((option) => (
-            <label key={option.state} className="flex items-center gap-1.5">
+            <label
+              key={option.state}
+              className="flex items-center gap-1.5 text-sm text-gw-primary"
+            >
               <input
                 type="radio"
+                className="accent-current"
                 name={`module-declaration-${moduleId}`}
                 value={option.state}
                 checked={state === option.state}

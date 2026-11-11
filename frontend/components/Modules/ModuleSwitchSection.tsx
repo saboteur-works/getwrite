@@ -77,13 +77,16 @@ function ModuleSwitchRow({
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={inputId} className="inline-flex items-center gap-2">
+      <label
+        htmlFor={inputId}
+        className="inline-flex items-center gap-2 text-gw-primary"
+      >
         <input
           id={inputId}
           type="checkbox"
           checked={isChecked}
           onChange={(event) => void handleChange(event.target.checked)}
-          className="h-4 w-4 rounded border-gw-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gw-primary"
+          className="h-4 w-4 rounded border-gw-border accent-current focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gw-primary"
         />
         <span className="text-sm font-medium text-gw-primary">
           Enable {label}

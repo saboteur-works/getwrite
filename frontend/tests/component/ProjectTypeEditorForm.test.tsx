@@ -593,6 +593,22 @@ describe("ProjectTypeEditorForm module declaration (Feature 108, FR-5)", () => {
     expect(new Set(names).size).toBe(MODULE_MANIFEST.length);
   });
 
+  it("gives the editable and read-only module text a themed colour class", () => {
+    const { unmount } = render(<Harness initial={base} modulesEditable />);
+    const first = MODULE_MANIFEST[0];
+    const radio = within(
+      groupFor(`${first.view?.label ?? first.id} module`),
+    ).getAllByRole("radio")[0];
+    expect(radio.closest("label")).toHaveClass("text-gw-primary");
+    expect(radio).toHaveClass("accent-current");
+    unmount();
+    render(<Harness initial={base} modulesEditable={false} />);
+    const line = screen.getByText(
+      new RegExp(`${first.view?.label ?? first.id} module:`),
+    );
+    expect(line).toHaveClass("text-gw-primary");
+  });
+
   it("shows a field error as text linked to its control, and not on the others", () => {
     render(
       <Harness
