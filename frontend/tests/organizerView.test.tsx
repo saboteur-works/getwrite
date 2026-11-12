@@ -83,6 +83,16 @@ import {
   cardDraggableId,
   cellDroppableId,
 } from "../components/WorkArea/Views/OrganizerView/useOrganizerGridDrag";
+vi.mock("../src/lib/api/organizer-arrangements", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../src/lib/api/organizer-arrangements")
+    >();
+  return { ...actual, addOrganizerArrangement: vi.fn() };
+});
+import { addOrganizerArrangement } from "../src/lib/api/organizer-arrangements";
+import { organizerArrangementStorageKey } from "../src/lib/organizer-arrangement-preference";
+import type { OrganizerArrangement } from "../src/lib/models/organizer-grid-types";
 vi.mock("../src/lib/api/folder-metadata", () => ({
   getFolderMetadata: vi
     .fn()
@@ -2164,5 +2174,176 @@ describe("OrganizerView grid branch (Feature 109, Task 23)", () => {
       pick("Rows", "status");
       expect(screen.getByText(/Loading the smart folder/)).toBeInTheDocument();
     });
+  });
+});
+
+describe("OrganizerView arrangements (Feature 109, Task 36)", () => {
+  const DIR_ID = "66666666-6666-4666-8666-666666666666";
+  const ARR_ID = "77777777-7777-4777-8777-777777777777";
+  const NEW_ID = "88888888-8888-4888-8888-888888888888";
+  const seeded: OrganizerArrangement = {
+    id: ARR_ID,
+    name: "Deep by status",
+    source: { kind: "folder", folderId: FOLDER_ID, scope: "descendants" },
+    rows: { kind: "status" },
+    columns: "order",
+  };
+
+  const flat: OrganizerArrangement = {
+    ...seeded,
+    id: "99999999-9999-4999-8999-999999999999",
+    name: "Flat",
+    rows: "none",
+  };
+
+  function makeArrangementStore(arrangements?: OrganizerArrangement[]) {
+    const store = makeGridStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: `/projects/${DIR_ID}`,
+        folders: [
+          { id: FOLDER_ID, name: "Folder A" },
+          { id: SUB_ID, name: "Sub" },
+        ],
+        resources: [],
+        statuses: ["Draft", "Final"],
+        ...(arrangements ? { organizerArrangements: arrangements } : {}),
+      } as any),
+    );
+    return store;
+  }
+
+  /** The hook reads availability only once the saved queries are loaded. */
+  async function loadedStore(arrangements?: OrganizerArrangement[]) {
+    const store = makeArrangementStore(arrangements);
+    vi.mocked(fetchSavedQueryList).mockResolvedValueOnce({
+      queries: [],
+    } as any);
+    await act(async () => {
+      await store.dispatch(loadSavedQueries({ projectId: PROJECT_ID }));
+    });
+    return store;
+  }
+
+  const openArrangements = () =>
+    fireEvent.click(screen.getByRole("button", { name: /^arrangements/i }));
+
+  beforeEach(() => {
+    viewport.tier = "desktop";
+    window.localStorage.clear();
+    vi.mocked(addOrganizerArrangement).mockReset();
+    vi.mocked(fetchSavedQueryList).mockReset();
+  });
+
+  it("shows Default for a project with no arrangements", async () => {
+    renderGrid(await loadedStore());
+    expect(screen.getByText("Applied: Default")).toBeInTheDocument();
+    expect(screen.queryByText(/Showing the default arrangement/)).toBeNull();
+  });
+
+  it("applies source, rows and columns only, leaving the filters", async () => {
+    renderGrid(await loadedStore([seeded]));
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    pick("Filter by status", "Draft");
+    openArrangements();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Apply Deep by status" }),
+    );
+    expect(screen.getByLabelText("Source")).toHaveValue("descendants");
+    expect(screen.getByLabelText("Rows")).toHaveValue("status");
+    expect(screen.getByLabelText("Columns")).toHaveValue("order");
+    expect(screen.getByLabelText("Filter by status")).toHaveValue("Draft");
+    expect(screen.queryByText("Bravo")).toBeNull();
+    expect(screen.getByText("Applied: Deep by status")).toBeInTheDocument();
+  });
+
+  it("saves the current picks, then applying another changes only source, rows and columns", async () => {
+    vi.mocked(addOrganizerArrangement).mockResolvedValue({
+      ok: true,
+      id: NEW_ID,
+    } as any);
+    renderGrid(await loadedStore([seeded, flat]));
+    pick("Rows", "status");
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    pick("Filter by status", "Draft");
+    openArrangements();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save current arrangement" }),
+    );
+    fireEvent.change(screen.getByLabelText("Arrangement name"), {
+      target: { value: "Mine" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    });
+    const sent = vi.mocked(addOrganizerArrangement).mock.calls[0][1] as any;
+    expect(sent).toMatchObject({
+      name: "Mine",
+      rows: { kind: "status" },
+      columns: "order",
+    });
+    expect(Object.keys(sent).sort()).toEqual(
+      ["columns", "name", "rows", "source"].sort(),
+    );
+    expect(await screen.findByText("Applied: Mine")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Apply Flat" }));
+    expect(screen.getByLabelText("Source")).toHaveValue("descendants");
+    expect(screen.getByLabelText("Rows")).toHaveValue("none");
+    expect(screen.getByLabelText("Columns")).toHaveValue("order");
+    expect(screen.getByLabelText("Filter by status")).toHaveValue("Draft");
+  });
+
+  it("applies the remembered arrangement on open", async () => {
+    window.localStorage.setItem(organizerArrangementStorageKey(DIR_ID), ARR_ID);
+    renderGrid(await loadedStore([seeded]));
+    expect(screen.getByLabelText("Rows")).toHaveValue("status");
+    expect(screen.getByLabelText("Source")).toHaveValue("descendants");
+    expect(screen.getByText("Applied: Deep by status")).toBeInTheDocument();
+    expect(screen.queryByText(/Showing the default arrangement/)).toBeNull();
+  });
+
+  it("falls back to the default with a message when the remembered one is unavailable", async () => {
+    const gone: OrganizerArrangement = {
+      ...seeded,
+      source: { kind: "folder", folderId: "no-such-folder", scope: "children" },
+    };
+    window.localStorage.setItem(organizerArrangementStorageKey(DIR_ID), ARR_ID);
+    renderGrid(await loadedStore([gone]));
+    expect(screen.getByLabelText("Rows")).toHaveValue("none");
+    expect(screen.getByText("Applied: Default")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Showing the default arrangement/),
+    ).toBeInTheDocument();
+  });
+
+  it("saves and applies at 360px: the controls wrap and may shrink, on the phone tier", async () => {
+    viewport.tier = "phone";
+    vi.mocked(addOrganizerArrangement).mockResolvedValue({
+      ok: true,
+      id: NEW_ID,
+    } as any);
+    renderGrid(await loadedStore([seeded]));
+    const toggle = screen.getByRole("button", { name: /^arrangements/i });
+    expect(toggle.parentElement?.className).toContain("flex-wrap");
+    const holder = toggle.closest("[data-organizer-arrangements]");
+    expect(holder?.className).toContain("min-w-0");
+    expect(holder?.className).toContain("max-w-full");
+    openArrangements();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Apply Deep by status" }),
+    );
+    expect(screen.getByText("Applied: Deep by status")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save current arrangement" }),
+    );
+    fireEvent.change(screen.getByLabelText("Arrangement name"), {
+      target: { value: "Phone" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    });
+    expect(await screen.findByText("Applied: Phone")).toBeInTheDocument();
   });
 });

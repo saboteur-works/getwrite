@@ -41,6 +41,8 @@ import { withFolderFieldValues } from "./organizerFolderChildren";
 import useViewportTier from "../../../../src/lib/hooks/useViewportTier";
 import { selectSavedQueriesList } from "../../../../src/store/querySlice";
 import type {
+  OrganizerArrangementAvailability,
+  OrganizerArrangementResult,
   OrganizerAxis,
   OrganizerAxisValue,
   OrganizerSource,
@@ -56,6 +58,13 @@ import {
   type OrganizerGridResult,
 } from "./organizerGridModel";
 import OrganizerGridToolbar from "./OrganizerGridToolbar";
+import OrganizerArrangementControls from "./OrganizerArrangementControls";
+import {
+  useOrganizerArrangements,
+  type HookArrangementAvailability,
+  type OrganizerArrangementOutcome,
+  type OrganizerPicks,
+} from "./useOrganizerArrangements";
 import OrganizerGrid, { type OrganizerGridCardInfo } from "./OrganizerGrid";
 import OrganizerGridCell, {
   type OrganizerGridCellProps,
@@ -205,6 +214,26 @@ function SortableOrganizerCard({
  * `OrganizerCard.tsx`'s own `title` derivation exactly, so a drag-end
  * announcement (FR-8) names the same title the card itself renders.
  */
+/** The controls take only the model's availability; a `failed` check reads as pending (the hook's `apply` refuses it with text). */
+function availabilityForControls(
+  availability: Record<string, HookArrangementAvailability>,
+): Record<string, OrganizerArrangementAvailability> {
+  const out: Record<string, OrganizerArrangementAvailability> = {};
+  for (const [id, value] of Object.entries(availability)) {
+    out[id] = value.status === "failed" ? { status: "pending" } : value;
+  }
+  return out;
+}
+
+/** Adapts the hook's outcome to the controls' result type; the controls show only `message`. */
+function asArrangementResult(
+  outcome: OrganizerArrangementOutcome,
+): OrganizerArrangementResult<{ id: string }> {
+  return outcome.ok
+    ? outcome
+    : { ok: false, reason: "invalid-input", message: outcome.message };
+}
+
 function resolveCardTitle(resource: AnyResource): string {
   return (resource as { title?: string }).title ?? resource.name ?? "Untitled";
 }
@@ -426,6 +455,42 @@ export default function OrganizerView({
         : source,
     [source, isSourcePinned, browsedFolderIdForSource],
   );
+
+  // Saved arrangements (FR-14 to FR-16, FR-19): applying one sets source,
+  // rows and columns only; the filters are never touched. A folder source of
+  // an applied arrangement is pinned to its saved folder.
+  const [arrangementMessage, setArrangementMessage] = React.useState<
+    string | null
+  >(null);
+  const arrangementCurrent: OrganizerPicks = React.useMemo(
+    () => ({ source: effectiveSource, rows: rowsAxis, columns: columnsAxis }),
+    [effectiveSource, rowsAxis, columnsAxis],
+  );
+  const arrangementDefaults: OrganizerPicks = React.useMemo(
+    () => ({
+      source: { ...DEFAULT_SOURCE, folderId: browsedFolderIdForSource },
+      rows: "none",
+      columns: "order",
+    }),
+    [browsedFolderIdForSource],
+  );
+  const applyArrangementPicks = React.useCallback((picks: OrganizerPicks) => {
+    setSource(picks.source);
+    setIsSourcePinned(
+      picks.source.kind === "folder" && picks.source.folderId !== "",
+    );
+    setRowsAxis(picks.rows);
+    setColumnsAxis(picks.columns);
+  }, []);
+  const arrangements = useOrganizerArrangements({
+    current: arrangementCurrent,
+    defaultPicks: arrangementDefaults,
+    onApply: applyArrangementPicks,
+  });
+  const selectArrangement = (id: string | null): void => {
+    const outcome = arrangements.apply(id);
+    setArrangementMessage(outcome.ok ? null : outcome.message);
+  };
   const smartFolder = useOrganizerSmartFolderCards(
     effectiveSource.kind === "smart-folder" ? effectiveSource.queryId : null,
   );
@@ -917,6 +982,29 @@ export default function OrganizerView({
               setIsSourcePinned(false);
             }}
           />
+          <div data-organizer-arrangements className="min-w-0 max-w-full mt-2">
+            <OrganizerArrangementControls
+              arrangements={arrangements.arrangements}
+              selectedId={arrangements.appliedId}
+              availability={availabilityForControls(arrangements.availability)}
+              isChangedSinceApplied={arrangements.isChanged}
+              onSelect={selectArrangement}
+              onAdd={async (name) =>
+                asArrangementResult(await arrangements.save(name))
+              }
+              onRename={async (id, name) =>
+                asArrangementResult(await arrangements.rename(id, name))
+              }
+              onDelete={async (id) =>
+                asArrangementResult(await arrangements.remove(id))
+              }
+            />
+            {(arrangementMessage ?? arrangements.notice) && (
+              <p role="status" className="text-xs text-gw-secondary">
+                {arrangementMessage ?? arrangements.notice}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
