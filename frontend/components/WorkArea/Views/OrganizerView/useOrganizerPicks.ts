@@ -22,7 +22,7 @@ import {
  * live unless pinned, which applying a saved folder source does.
  */
 
-export const DEFAULT_SOURCE: OrganizerSource = {
+const DEFAULT_SOURCE: OrganizerSource = {
   kind: "folder",
   folderId: "",
   scope: "children",

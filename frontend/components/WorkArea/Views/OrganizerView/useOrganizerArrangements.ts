@@ -45,7 +45,7 @@ export interface OrganizerPicks {
  * used when the saved-query list could not be loaded and the arrangement
  * names a smart folder. A failed load is neither available nor unavailable.
  */
-export type HookArrangementAvailability =
+type HookArrangementAvailability =
   | OrganizerArrangementAvailability
   | { status: "failed"; message: string };
 
@@ -55,9 +55,7 @@ export type OrganizerArrangementOutcome =
   | { ok: false; message: string };
 
 /** Outcome of an apply request. */
-export type OrganizerApplyOutcome =
-  | { ok: true }
-  | { ok: false; message: string };
+type OrganizerApplyOutcome = { ok: true } | { ok: false; message: string };
 
 export interface UseOrganizerArrangementsOptions {
   /** The grid's current source, rows and columns (the caller owns them). */

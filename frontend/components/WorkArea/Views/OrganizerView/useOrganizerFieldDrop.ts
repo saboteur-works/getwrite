@@ -39,7 +39,7 @@ import type { OrganizerDropPlan } from "./organizerDropModel";
  * (`docs/standards/failure-visibility.md`). The hook writes no writing-log
  * entry and makes no revision call.
  */
-export interface OrganizerDropCardInfo {
+interface OrganizerDropCardInfo {
   id: string;
   kind: "resource" | "folder";
   /** Display name, used in the live-region text. */
@@ -53,7 +53,7 @@ export interface OrganizerDropRequest {
   destinationLabel: string;
 }
 
-export type OrganizerFieldDropState =
+type OrganizerFieldDropState =
   | { status: "idle" }
   | { status: "saving" }
   | { status: "saved"; message: string }

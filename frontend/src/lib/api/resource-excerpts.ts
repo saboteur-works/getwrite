@@ -27,7 +27,7 @@ import { reportTransportValidationFailure } from "./transport-validation";
 // ---------------------------------------------------------------------------
 
 /** The excerpts route refuses more ids than this per request (`MAX_RESOURCE_IDS`). */
-export const EXCERPT_BATCH_SIZE = 1000;
+const EXCERPT_BATCH_SIZE = 1000;
 
 /**
  * The excerpts-route-backed operation both platforms implement. Shared with

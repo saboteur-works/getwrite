@@ -24,14 +24,6 @@ export const ORGANIZER_ARRANGEMENT_NAME_MAX_LENGTH = 100;
 // Axes, sources, arrangements (FR-14, OQ-2)
 // ---------------------------------------------------------------------------
 
-/** The kinds an axis can have. `order` is offered on Columns only. */
-export type OrganizerAxisKind =
-  | "none"
-  | "order"
-  | "status"
-  | "subtype"
-  | "field";
-
 /** Axis spelled as stored: the two plain words, or an object for a field. */
 export type OrganizerAxis =
   | "none"
@@ -39,9 +31,6 @@ export type OrganizerAxis =
   | { kind: "status" }
   | { kind: "subtype" }
   | { kind: "field"; key: string };
-
-/** The two source kinds of an arrangement. */
-export type OrganizerSourceKind = "folder" | "smart-folder";
 
 /** Whether a folder source lists direct children or all descendants. */
 export type OrganizerFolderScope = "children" | "descendants";
@@ -88,7 +77,7 @@ export type OrganizerArrangementAvailability =
  * One line of an axis: a value from the field's own list, the "Other values"
  * line, or the "None" line. Order is list values, then other, then none.
  */
-export type OrganizerAxisValueKind = "value" | "other" | "none";
+type OrganizerAxisValueKind = "value" | "other" | "none";
 
 export interface OrganizerAxisValue {
   /** Stable key within the axis (the value, a reference id, `other`, `none`). */

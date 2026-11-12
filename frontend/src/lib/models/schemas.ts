@@ -307,7 +307,7 @@ const OrganizerSourceSchema = z.union([
     .strict(),
 ]);
 
-export const OrganizerArrangementSchema = z
+const OrganizerArrangementSchema = z
   .object({
     id: z.string().uuid(),
     name: z.string().min(1).max(100),

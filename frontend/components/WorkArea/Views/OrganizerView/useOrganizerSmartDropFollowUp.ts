@@ -30,7 +30,7 @@ interface PendingDrop {
   before: OrganizerSmartFolderState;
 }
 
-export function leftSmartFolderMessage(name: string): string {
+function leftSmartFolderMessage(name: string): string {
   return `${name} left the smart folder because it no longer matches.`;
 }
 

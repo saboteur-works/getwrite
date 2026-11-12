@@ -34,7 +34,7 @@ export interface SourceProblem {
   retry?: () => void;
 }
 
-export function describeSourceProblem(
+function describeSourceProblem(
   source: OrganizerSource,
   smart: OrganizerSmartFolderState,
   isFolderMissing: boolean,

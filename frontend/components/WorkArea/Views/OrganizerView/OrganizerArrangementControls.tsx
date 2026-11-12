@@ -29,7 +29,7 @@ import {
  * when the check could not run (for example the saved queries did not load).
  * A failed check is shown in text and is never read as pending or available.
  */
-export type OrganizerArrangementControlAvailability =
+type OrganizerArrangementControlAvailability =
   | OrganizerArrangementAvailability
   | { status: "failed"; message: string };
 

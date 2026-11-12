@@ -176,7 +176,7 @@ export interface ProjectTypeSpec {
 }
 
 /** Why a declared arrangement was left out of a new project. */
-export type SkippedArrangementReason =
+type SkippedArrangementReason =
   | "folder-not-found"
   | "invalid"
   | "duplicate-name"

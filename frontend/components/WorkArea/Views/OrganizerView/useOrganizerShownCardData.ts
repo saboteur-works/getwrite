@@ -26,7 +26,7 @@ import type { OrganizerSource } from "../../../../src/lib/models/organizer-grid-
  * empty body or dropping the card (`docs/standards/failure-visibility.md`).
  * A result for an earlier shown set is discarded. Writes nothing to Redux.
  */
-export type OrganizerExcerptsState =
+type OrganizerExcerptsState =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "ready"; byId: Record<string, string> }

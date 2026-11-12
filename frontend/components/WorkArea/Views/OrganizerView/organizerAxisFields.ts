@@ -30,7 +30,7 @@ export const OTHER_VALUES_LABEL = "Other values";
 export const NONE_LABEL = "None";
 
 /** Source kinds the picker distinguishes: folder fields need `children`. */
-export type OrganizerAxisSource = "children" | "descendants" | "smart-folder";
+type OrganizerAxisSource = "children" | "descendants" | "smart-folder";
 
 /** One entry of a Rows or Columns picker. */
 export interface OrganizerAxisChoice {

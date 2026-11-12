@@ -47,11 +47,11 @@ import {
 import { resolveOrderDrop, type OrderDropSource } from "./organizerOrderDrop";
 
 /** Pointer drags start after this many pixels (as the existing Organizer). */
-export const ORGANIZER_GRID_DRAG_DISTANCE = 8;
+const ORGANIZER_GRID_DRAG_DISTANCE = 8;
 /** Attribute the default focus return looks for on a card element. */
-export const ORGANIZER_CARD_ID_ATTRIBUTE = "data-organizer-card-id";
+const ORGANIZER_CARD_ID_ATTRIBUTE = "data-organizer-card-id";
 /** Attribute of the drag handle inside a card; focused first when present. */
-export const ORGANIZER_DRAG_HANDLE_ATTRIBUTE = "data-organizer-drag-handle";
+const ORGANIZER_DRAG_HANDLE_ATTRIBUTE = "data-organizer-drag-handle";
 
 const CELL_PREFIX = "cell:";
 const CARD_PREFIX = "card:";
@@ -203,9 +203,7 @@ function adjacentCellRect(
  *
  * Returns `undefined` (no move) when nothing lies that way.
  */
-export function createCoordinateGetter(
-  prefix: string,
-): KeyboardCoordinateGetter {
+function createCoordinateGetter(prefix: string): KeyboardCoordinateGetter {
   const isCells = prefix === CELL_PREFIX;
   return (
     event,
@@ -261,7 +259,7 @@ const prefixCollision =
     });
 
 /** What a drop resolved to, before any callback runs. */
-export interface OrganizerFieldDropContext {
+interface OrganizerFieldDropContext {
   card: OrganizerDropCard;
   from: OrganizerDropCoordinates;
   to: OrganizerDropCoordinates;

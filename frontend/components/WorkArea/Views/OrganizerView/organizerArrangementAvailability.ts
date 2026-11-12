@@ -22,7 +22,7 @@ import type {
 } from "../../../../src/lib/models/organizer-grid-types";
 
 /** One list that is either still loading or loaded with the ids it holds. */
-export type LoadableIds =
+type LoadableIds =
   | { state: "loading" }
   | { state: "loaded"; ids: ReadonlyArray<string> };
 
@@ -33,7 +33,7 @@ export interface AvailabilityField {
   deprecated?: boolean;
 }
 
-export type LoadableFields =
+type LoadableFields =
   | { state: "loading" }
   | { state: "loaded"; fields: ReadonlyArray<AvailabilityField> };
 

@@ -56,10 +56,10 @@ export const FOLDER_METADATA_WRITABLE_KEYS = [
  * keys to remove from `fieldValues`. It is accepted beside
  * {@link FOLDER_METADATA_WRITABLE_KEYS}, which is left as it was.
  */
-export const FOLDER_METADATA_CLEAR_KEY = "clearFieldKeys";
+const FOLDER_METADATA_CLEAR_KEY = "clearFieldKeys";
 
 /** Most keys one `clearFieldKeys` list may name. */
-export const MAX_CLEAR_FIELD_KEYS = 50;
+const MAX_CLEAR_FIELD_KEYS = 50;
 
 /** A validated client write. `resourceSubtype: null` clears the subtype. */
 interface FolderMetadataWrite {

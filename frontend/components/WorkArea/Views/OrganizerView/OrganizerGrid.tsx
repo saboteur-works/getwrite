@@ -55,7 +55,7 @@ export interface OrganizerGridProps {
 const ROW_HEADER_WIDTH = "8rem";
 const COLUMN_MIN_WIDTH = "14rem";
 
-export function alsoInOtherCellsText(count: number): string | null {
+function alsoInOtherCellsText(count: number): string | null {
   if (count <= 0) return null;
   return `also in ${count} other ${count === 1 ? "cell" : "cells"}`;
 }
