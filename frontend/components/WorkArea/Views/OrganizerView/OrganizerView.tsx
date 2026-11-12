@@ -148,7 +148,7 @@ export interface OrganizerViewProps {
   onToggleBody?: (show: boolean) => void;
   /** Optional className for outer container */
   className?: string;
-  /** Card cap for the grid; defaults to `ORGANIZER_GRID_CARD_CAP` (no cap until measured). */
+  /** Card cap for the grid; defaults to `ORGANIZER_GRID_CARD_CAP` (500). */
   cardCap?: number | null;
   /** Called when a drop finds the document gone, so the host can re-read the project. */
   onResourceGone?: () => void;

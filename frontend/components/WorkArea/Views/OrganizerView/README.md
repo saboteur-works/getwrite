@@ -35,7 +35,7 @@ Pure models (no React, Redux or `@dnd-kit`):
 - `organizerDropModel.ts`: a drag between cells becomes one field-write payload, a no-op or a refusal.
 - `organizerOrderDrop.ts`: a drop when Columns is `order`, mapped onto the full sibling order.
 - `organizerArrangementAvailability.ts`: whether a saved arrangement can be applied.
-- `organizerGridCap.ts`: `ORGANIZER_GRID_CARD_CAP` (currently `null`; the figure comes from `experiments/task-42.md` only) and `applyCardCap`.
+- `organizerGridCap.ts`: `ORGANIZER_GRID_CARD_CAP` (500, set from `experiments/task-42.md`) and `applyCardCap`.
 - `cardBody.ts`: card body and title resolution.
 
 Hooks:

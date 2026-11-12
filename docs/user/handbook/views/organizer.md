@@ -148,7 +148,7 @@ GetWrite announces the card picked up, the row and column it is over, and the dr
 
 ### When there are more cards than the grid shows
 
-The grid can show only so many cards at once. When it holds more, a line under it reads "N not shown. Narrow the source or the filters to reach them." N counts cards, not copies of a card. The cards left out are the last ones in resource-tree order.
+The grid shows at most 500 cards at once. When the source holds more, a line under it reads "N not shown. Narrow the source or the filters to reach them." N counts cards, not copies of a card. The cards left out are the last ones in resource-tree order.
 
 ### Save an arrangement
 

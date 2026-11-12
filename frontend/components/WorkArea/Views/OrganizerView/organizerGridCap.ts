@@ -6,13 +6,12 @@
  */
 
 /**
- * The card cap. `null` means no figure has been set: every card is shown and
- * no cap message appears. Otherwise a positive integer.
- *
- * The figure comes only from `specs/features/organizer-grid/experiments/task-42.md`
- * (the recorded large-project run). Do not set it from anywhere else.
+ * The card cap: 500 cards, set by the owner on 2026-11-12 from the recorded
+ * large-project runs (`specs/features/organizer-grid/experiments/task-42.md`,
+ * `task-42-measurement-desktop.md`, `task-42-measurement-desktop-2.md`).
+ * `null` would mean no cap. Change it only from a new recorded run.
  */
-export const ORGANIZER_GRID_CARD_CAP: number | null = null;
+export const ORGANIZER_GRID_CARD_CAP: number | null = 500;
 
 /** How a card count divides under a cap. */
 export interface CardCapResult {

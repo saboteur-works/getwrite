@@ -37,4 +37,18 @@ Run on 2026-11-11 and 2026-11-12 by the lead with the owner, outside the command
 
 ## Card cap
 
-The cap is not chosen yet. The owner sets it in `organizerGridCap.ts` from the desktop measurement; this section is filled in when that is done.
+Set by the owner on 2026-11-12: **500 cards** (`ORGANIZER_GRID_CARD_CAP` in `organizerGridCap.ts`), from two desktop measurements on `next dev`:
+
+- [task-42-measurement-desktop.md](task-42-measurement-desktop.md) (2026-11-11, `6dc21292`, before the fixes): 100 / 500 / 2000 cards.
+- [task-42-measurement-desktop-2.md](task-42-measurement-desktop-2.md) (2026-11-12, `70040c67`, after `457b2e68`): 250 / 500 / 2000 cards.
+
+Medians in ms (render after the last picker change, key press, drag):
+
+| Cards | Run 1 | Run 2 |
+|---|---|---|
+| 100 | 124 / 90 / 142 | — |
+| 250 | — | 252 / 177 / 217 |
+| 500 | 534 / 319 / 488 | 696 / 316 / 541 |
+| 2000 | 1108 / 340 / 1099 | 3164 / 1565 / 5128 |
+
+The two runs agree at 500. At 2000 they differ: in run 1 every excerpt request failed (the 1000-id route limit, fixed in `457b2e68`), and in run 2 with excerpts refused by a browser route the 2000-card key press was 454 and render 1709.5; run 2 also had three `next dev` memory restarts and a 2000-card query time of 1.5 to 15.2 s. 1000 cards was not measured. No separate Android figure: the Pixel was not timed. After setting the cap, `vitest run rganizer` passed (43 files, 687 passed, 1 expected fail); the "N not shown" line was not looked at in a running app.

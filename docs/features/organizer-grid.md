@@ -108,7 +108,7 @@ The last-used arrangement is kept per device in `localStorage` under `getwrite-o
 
 ## Card cap
 
-`ORGANIZER_GRID_CARD_CAP` in `organizerGridCap.ts` is `null`, so no card is held back and the "N not shown" line never appears in this build. The figure is to be set from `experiments/task-42.md` and nowhere else. When a cap is set, `buildOrganizerGridModel` shows at most that many cards (counted as cards, not appearances), in tree order, and the line reads "N not shown. Narrow the source or the filters to reach them." Excerpts are requested for shown cards only. `OrganizerView` takes an optional `cardCap` prop that overrides the constant.
+`ORGANIZER_GRID_CARD_CAP` in `organizerGridCap.ts` is 500, set by the owner on 2026-11-12 from the two desktop measurements (`experiments/task-42-measurement-desktop.md`, `task-42-measurement-desktop-2.md`; summarised in `experiments/task-42.md`); at 500 cards the measured desktop medians were about 0.3 to 0.7 s for render, key press and drag on `next dev`. No separate Android figure was set (the Pixel was not timed). `buildOrganizerGridModel` shows at most that many cards (counted as cards, not appearances), in tree order, and the line reads "N not shown. Narrow the source or the filters to reach them." Excerpts are requested for shown cards only. `OrganizerView` takes an optional `cardCap` prop that overrides the constant.
 
 ## Tests, stories and their status
 
