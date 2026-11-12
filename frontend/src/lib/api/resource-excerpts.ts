@@ -26,6 +26,9 @@ import { reportTransportValidationFailure } from "./transport-validation";
 // `../../store/transport/create-transport`).
 // ---------------------------------------------------------------------------
 
+/** The excerpts route refuses more ids than this per request (`MAX_RESOURCE_IDS`). */
+export const EXCERPT_BATCH_SIZE = 1000;
+
 /**
  * The excerpts-route-backed operation both platforms implement. Shared with
  * `../../store/transport/native-resource-excerpts-backend`, which imports
@@ -153,6 +156,10 @@ export async function fetchResourceExcerpts(
  * @param projectId - The project's on-disk directory basename.
  * @param resourceIds - Resource ids to fetch excerpts for.
  * @param maxChars - Maximum excerpt length to request.
+ *
+ * More than {@link EXCERPT_BATCH_SIZE} ids are requested in batches of at
+ * most that many and merged (the route refuses more per request); if any
+ * batch fails the whole call rejects.
  */
 export async function fetchResourceExcerptsOrThrow(
   projectId: string,
@@ -160,5 +167,17 @@ export async function fetchResourceExcerptsOrThrow(
   maxChars?: number,
 ): Promise<Record<string, string>> {
   const transport = await resolveResourceExcerptsTransport();
-  return transport.fetchOrThrow(projectId, resourceIds, maxChars);
+  const batches: string[][] = [];
+  for (let at = 0; at < resourceIds.length; at += EXCERPT_BATCH_SIZE) {
+    batches.push(resourceIds.slice(at, at + EXCERPT_BATCH_SIZE));
+  }
+  if (batches.length <= 1) {
+    return transport.fetchOrThrow(projectId, resourceIds, maxChars);
+  }
+  // One rejected batch rejects the whole read: a partial map would show the
+  // other batches' cards with bodies and this batch's as if they had none.
+  const maps = await Promise.all(
+    batches.map((batch) => transport.fetchOrThrow(projectId, batch, maxChars)),
+  );
+  return Object.assign({}, ...maps) as Record<string, string>;
 }

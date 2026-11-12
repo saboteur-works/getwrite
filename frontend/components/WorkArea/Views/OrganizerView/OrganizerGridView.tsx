@@ -267,7 +267,9 @@ export default function OrganizerGridView({
     source,
     shownTextIds,
     shownFolderIds: [],
-    isExcerptWanted: isShowingBody && cardBodyConfig?.source === "text-excerpt",
+    // The phone's grouped lists render no card body, so none is read for them.
+    isExcerptWanted:
+      !isPhone && isShowingBody && cardBodyConfig?.source === "text-excerpt",
     excerptLength: cardBodyConfig?.excerptLength ?? DEFAULT_CARD_EXCERPT_LENGTH,
   });
   const excerpts: Record<string, string> =

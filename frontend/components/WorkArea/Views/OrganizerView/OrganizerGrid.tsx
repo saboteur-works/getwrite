@@ -164,7 +164,11 @@ export default function OrganizerGrid({
       cellId: organizerCellId(rowKey, columnKey),
       resource,
       cardProps: getCardProps(placement.cardId),
-      alsoInOtherCellsText: alsoInOtherCellsText(placement.alsoInOtherCells),
+      // FR-5: the first appearance (reading order) is unmarked; each later
+      // one says how many other cells hold the same document.
+      alsoInOtherCellsText: alsoInOtherCellsText(
+        placement.appearance === 0 ? 0 : placement.alsoInOtherCells,
+      ),
     };
     return renderCard ? renderCard(info) : <DefaultCard info={info} />;
   };

@@ -130,7 +130,7 @@ describe("OrganizerGrid structure", () => {
     expect(onOpen).toHaveBeenCalledWith("c");
   });
 
-  it("shows also in N other cells for a duplicate card, and None and Other lines", () => {
+  it("marks only the later appearances of a duplicate card as also in N other cells, and shows the None line", () => {
     render(
       <OrganizerGrid
         model={model(none, tagCols)}
@@ -138,12 +138,31 @@ describe("OrganizerGrid structure", () => {
         getCardProps={noProps}
       />,
     );
-    expect(screen.getAllByText(/also in 1 other cell/).length).toBe(2);
+    // Two appearances of one card: the first (reading order) is unmarked.
+    expect(screen.getAllByText(/also in 1 other cell/).length).toBe(1);
     expect(
       screen
         .getAllByRole("columnheader")
         .map((h: HTMLElement) => h.textContent),
     ).toEqual(expect.arrayContaining(["None"]));
+  });
+
+  it("a card in three cells is unmarked in the first and says also in 2 other cells in the others", () => {
+    render(
+      <OrganizerGrid
+        model={model(
+          none,
+          field({ kind: "field", key: "tags" }, ["x", "y", "z"], {
+            a: ["x", "y", "z"],
+          }),
+        )}
+        resources={resources}
+        getCardProps={noProps}
+      />,
+    );
+    const first = screen.getAllByRole("gridcell")[0];
+    expect(within(first).queryByText(/also in/)).toBeNull();
+    expect(screen.getAllByText("also in 2 other cells").length).toBe(2);
   });
 
   it("with rows none and columns order, renders one cell with all cards", () => {

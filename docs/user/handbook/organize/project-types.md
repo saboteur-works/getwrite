@@ -56,9 +56,10 @@ _Coming in the next release._
 
 A project type can list [Organizer arrangements](../views/organizer.md) for new projects to start with. Each one has a name, a folder, and a choice for the rows and for the columns. The folder is named by its folder name in the type, and the arrangement can show just that folder or that folder and its subfolders.
 
-- The Project Type Manager does not show or edit arrangements. A type's file holds them, under the key `arrangements`. No built-in type has any.
+- The Project Type Manager does not show or edit arrangements. A type's file holds them, under the key `arrangements`. No built-in type has any. When you edit and save another part of a type in the manager, the arrangements in its file stay as they were.
+- Rows can be **None** or a field, and Columns can be **Order** or a field, as in the Organizer. A type that gives Columns **None** or Rows **Order** is not valid, and the manager says so when you try to save it. Its message reads "Arrangements must each have a name, a folder source, rows (none or a field) and columns (order or a field), with no repeated names."
 - A new project gets its own copy of each arrangement. You can rename or delete them like any you save yourself. Changing or deleting a type later never changes a project that already exists.
-- GetWrite leaves an arrangement out when the type has no folder by that name, when two arrangements share a name, or when it can't be applied. It does not tell you. The project is still created.
+- GetWrite leaves an arrangement out when the type has no folder by that name or when it can't be applied. It does not tell you. The project is still created.
 - An arrangement can't use a smart folder, because a new project has none.
 
 ### Unsaved changes

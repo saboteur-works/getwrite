@@ -211,4 +211,66 @@ describe("httpResourceExcerptsTransport.fetchOrThrow", () => {
       fetchResourceExcerptsOrThrow("project-1", ["r"]),
     ).rejects.toThrow();
   });
+
+  describe("fetchResourceExcerptsOrThrow batching", () => {
+    const manyIds = (n: number): string[] =>
+      Array.from({ length: n }, (_, i) => `r${i}`);
+    const bodyIds = (call: unknown[]): string[] =>
+      (
+        JSON.parse((call[1] as { body: string }).body) as {
+          resourceIds: string[];
+        }
+      ).resourceIds;
+
+    it("sends 2500 ids as batches of at most 1000 and merges the results", async () => {
+      const fetchMock = vi.fn(async (_url: string, init: { body: string }) => {
+        const { resourceIds } = JSON.parse(init.body) as {
+          resourceIds: string[];
+        };
+        return jsonResponse({
+          excerpts: Object.fromEntries(
+            resourceIds.map((id) => [id, `x ${id}`]),
+          ),
+        });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+
+      const result = await fetchResourceExcerptsOrThrow(
+        "project-1",
+        manyIds(2500),
+        200,
+      );
+
+      const sizes = fetchMock.mock.calls.map((c) => bodyIds(c).length);
+      expect(sizes).toEqual([1000, 1000, 500]);
+      expect(Object.keys(result)).toHaveLength(2500);
+      expect(result.r0).toBe("x r0");
+      expect(result.r2499).toBe("x r2499");
+    });
+
+    it("makes one request for 1000 ids", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ excerpts: {} }));
+      vi.stubGlobal("fetch", fetchMock);
+      await fetchResourceExcerptsOrThrow("project-1", manyIds(1000));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("rejects when one batch fails, instead of returning the other batches as the answer", async () => {
+      let call = 0;
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => {
+          call += 1;
+          return call === 2
+            ? jsonResponse({ error: "no" }, false)
+            : jsonResponse({ excerpts: { a: "b" } });
+        }),
+      );
+      await expect(
+        fetchResourceExcerptsOrThrow("project-1", manyIds(2500)),
+      ).rejects.toThrow();
+    });
+  });
 });

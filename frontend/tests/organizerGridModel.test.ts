@@ -193,6 +193,51 @@ describe("buildOrganizerGridModel: None and Other values", () => {
   });
 });
 
+describe("buildOrganizerGridModel: Other values only when used", () => {
+  const withOther = (
+    keys: string[],
+    values: Record<string, string>,
+  ): OrganizerGridAxisInput => {
+    const input = fieldAxis({ kind: "status" }, keys, values);
+    return {
+      ...input,
+      list: {
+        axis: { kind: "status" },
+        values: [
+          ...(input.list?.values ?? []),
+          {
+            key: "other",
+            kind: "other",
+            label: "Other values",
+            isDropTarget: false,
+          },
+        ],
+      },
+    };
+  };
+
+  it("omits a listed Other values line when every shown card has a listed value or none", () => {
+    const m = buildOrganizerGridModel({
+      cards: [card("a"), card("b")],
+      rows: withOther(["draft", "done"], { a: "draft" }),
+      columns: orderAxis,
+      cap: null,
+    });
+    expect(m.rows.map((r) => r.key)).toEqual(["draft", "done", "none"]);
+  });
+
+  it("shows it, with the list's label, once a shown card has an off-list value", () => {
+    const m = buildOrganizerGridModel({
+      cards: [card("a"), card("b")],
+      rows: withOther(["draft"], { a: "old", b: "draft" }),
+      columns: orderAxis,
+      cap: null,
+    });
+    expect(m.rows.map((r) => r.key)).toEqual(["draft", "other", "none"]);
+    expect(m.rows[1].label).toBe("Other values");
+  });
+});
+
 describe("buildOrganizerGridModel: duplicates", () => {
   it("places a multi-value card in each cell in tree order, marking later appearances", () => {
     const m = buildOrganizerGridModel({
@@ -217,6 +262,24 @@ describe("buildOrganizerGridModel: duplicates", () => {
       .find((p) => p.cardId === "b")!;
     expect(bPlacement.appearance).toBe(0);
     expect(bPlacement.alsoInOtherCells).toBe(0);
+  });
+
+  it("numbers appearances in the grid's reading order (row by row, then column by column)", () => {
+    const m = buildOrganizerGridModel({
+      cards: [card("a")],
+      rows: fieldAxis({ kind: "field", key: "r" }, ["r1", "r2"], {
+        a: ["r2", "r1"],
+      }),
+      columns: fieldAxis({ kind: "field", key: "c" }, ["c1", "c2"], {
+        a: ["c2", "c1"],
+      }),
+      cap: null,
+    });
+    const placed = m.cells
+      .flatMap((c) => c.placements)
+      .sort((x, y) => x.appearance - y.appearance)
+      .map((p) => `${p.appearance}:${p.rowKey}/${p.columnKey}`);
+    expect(placed).toEqual(["0:r1/c1", "1:r1/c2", "2:r2/c1", "3:r2/c2"]);
   });
 
   it("counts a card once however many cells it is in", () => {

@@ -245,17 +245,24 @@ function mount(options: { applyDrop?: boolean } = {}): Spies {
 const ROW_KEYS = ["Draft", "Done", "other", "none"];
 const COL_KEYS = ["One", "Two", "none"];
 
+// As in the real grid, cells differ in height (a tall one with a card in it, a
+// short empty one) and a card is smaller than its cell, at the top of it.
+const ROW_TOPS = [0, 300, 400, 460];
+const ROW_HEIGHTS = [300, 100, 60, 60];
 function rectOfCell(cell: Element): DOMRect {
   const r = ROW_KEYS.indexOf(cell.getAttribute("data-row-key") ?? "");
   const c = COL_KEYS.indexOf(cell.getAttribute("data-column-key") ?? "");
-  return new DOMRect(c * 100, r * 100, 100, 100);
+  return new DOMRect(c * 100, ROW_TOPS[r], 100, ROW_HEIGHTS[r]);
 }
 
 beforeEach(() => {
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
     function (this: Element) {
       const cell = this.closest("[data-cell-id]");
-      return cell ? rectOfCell(cell) : new DOMRect(0, 0, 0, 0);
+      if (!cell) return new DOMRect(0, 0, 0, 0);
+      const cellRect = rectOfCell(cell);
+      if (this === cell) return cellRect;
+      return new DOMRect(cellRect.left + 10, cellRect.top + 10, 80, 30);
     },
   );
 });
@@ -412,6 +419,29 @@ describe("Space lifts, arrows move, Space drops", () => {
       ],
     });
     expect(spies.onRefuse).not.toHaveBeenCalled();
+  });
+
+  it("one arrow press moves one cell: Down is the next row, Right the next column, including empty cells", async () => {
+    mount();
+    const log = recordAnnouncements();
+    const handle = handleOf("a");
+    handle.focus();
+    await drive(handle, ["Space"]);
+    await waitFor(() =>
+      expect(log.texts.at(-1)).toBe("Doc a is over row Draft, column One."),
+    );
+    const expected: Array<[string, string]> = [
+      ["ArrowDown", "Doc a is over row Done, column One."],
+      ["ArrowDown", "Doc a is over row Other values, column One."],
+      ["ArrowRight", "Doc a is over row Other values, column Two."],
+      ["ArrowUp", "Doc a is over row Done, column Two."],
+      ["ArrowLeft", "Doc a is over row Done, column One."],
+    ];
+    for (const [code, text] of expected) {
+      await drive(handle, [code]);
+      await waitFor(() => expect(log.texts.at(-1)).toBe(text));
+    }
+    log.stop();
   });
 
   it("puts focus on the dragged card's handle after a drop when the card is not remounted", async () => {

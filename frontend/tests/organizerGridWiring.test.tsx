@@ -38,6 +38,7 @@ import { ProjectLockedError } from "../src/lib/models/locked-access";
 vi.mock("../src/lib/api/resource-excerpts", () => ({
   fetchResourceExcerptsOrThrow: vi.fn().mockResolvedValue({}),
 }));
+import { fetchResourceExcerptsOrThrow } from "../src/lib/api/resource-excerpts";
 vi.mock("../src/lib/api/resources", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../src/lib/api/resources")>();
@@ -177,6 +178,7 @@ const ACT_SCHEMA = {
 function storeWith(
   resources: ReturnType<typeof doc>[],
   extraFolders: ReturnType<typeof folder>[] = [],
+  extraProject: Record<string, unknown> = {},
 ) {
   const store = makeStore();
   store.dispatch(
@@ -188,6 +190,7 @@ function storeWith(
       resources: [],
       statuses: ["Draft", "Final"],
       metadataSchema: ACT_SCHEMA,
+      ...extraProject,
     } as never),
   );
   store.dispatch(setSelectedProjectId(PROJECT_ID));
@@ -209,10 +212,10 @@ const statusOf = (store: ReturnType<typeof makeStore>, id: string): unknown =>
   store.getState().resources.resources.find((r) => r.id === id)?.userMetadata
     ?.status;
 
-const renderView = (store: ReturnType<typeof makeStore>) =>
+const renderView = (store: ReturnType<typeof makeStore>, showBody = false) =>
   render(
     <Provider store={store}>
-      <OrganizerView showBody={false} />
+      <OrganizerView showBody={showBody} />
     </Provider>,
   );
 
@@ -234,6 +237,7 @@ beforeEach(() => {
   viewport.tier = "desktop";
   capturedOnDragEnd = undefined;
   vi.mocked(setOrganizerFields).mockReset();
+  vi.mocked(fetchResourceExcerptsOrThrow).mockClear();
   vi.mocked(evaluateQueryAst).mockReset();
   vi.mocked(fetchSavedQueryList).mockReset();
   vi.mocked(toastService.info).mockClear();
@@ -498,5 +502,83 @@ describe("smart-folder source (FR-9)", () => {
     );
     expect(setOrganizerFields).toHaveBeenCalledTimes(1);
     noWritingLogOrRevisionCall();
+  });
+});
+
+describe("excerpt requests follow what the shown layout renders (fix 4)", () => {
+  const EXCERPT_BODY = {
+    organizerCardBody: { source: "text-excerpt", excerptLength: 120 },
+  };
+
+  it("requests excerpts for the shown text cards in the desktop grid", async () => {
+    const store = storeWith(
+      [doc("Alpha", 0, "Draft"), doc("Bravo", 1)],
+      [],
+      EXCERPT_BODY,
+    );
+    renderView(store, true);
+    pick("Rows", "status");
+    await screen.findAllByText("Alpha");
+    await waitFor(() =>
+      expect(fetchResourceExcerptsOrThrow).toHaveBeenCalled(),
+    );
+    const ids = vi.mocked(fetchResourceExcerptsOrThrow).mock.calls.at(-1)![1];
+    expect([...ids].sort()).toEqual(
+      [idOf(store, "Alpha"), idOf(store, "Bravo")].sort(),
+    );
+  });
+
+  it("requests none at phone width, where the grouped lists render no body", async () => {
+    viewport.tier = "phone";
+    const store = storeWith(
+      [doc("Alpha", 0, "Draft"), doc("Bravo", 1)],
+      [],
+      EXCERPT_BODY,
+    );
+    renderView(store, true);
+    // The default list (Rows none) still shows bodies on a phone; only the
+    // grouped lists do not, so count from the switch to the grid.
+    vi.mocked(fetchResourceExcerptsOrThrow).mockClear();
+    pick("Rows", "status");
+    await screen.findAllByText("Alpha");
+    await act(async () => {});
+    expect(fetchResourceExcerptsOrThrow).not.toHaveBeenCalled();
+  });
+
+  it("requests none on desktop when the card body is not set to excerpt", async () => {
+    const store = storeWith([doc("Alpha", 0, "Draft")], [], {
+      organizerCardBody: { source: "notes" },
+    });
+    renderView(store, true);
+    pick("Rows", "status");
+    await screen.findAllByText("Alpha");
+    expect(fetchResourceExcerptsOrThrow).not.toHaveBeenCalled();
+  });
+});
+
+describe("Other values is listed only when a shown card needs it (fix 6)", () => {
+  it("shows None but no Other values row when every card has a listed status or none", async () => {
+    const store = storeWith([doc("Alpha", 0, "Draft"), doc("Bravo", 1)]);
+    renderView(store);
+    pick("Rows", "status");
+    await screen.findAllByText("Alpha");
+    const headers = screen
+      .getAllByRole("rowheader")
+      .map((h: HTMLElement) => h.textContent);
+    expect(headers).toEqual(["Draft", "Final", "None"]);
+  });
+
+  it("shows Other values, before None, once a card has a status not on the list", async () => {
+    const store = storeWith([
+      doc("Alpha", 0, "Draft"),
+      doc("Bravo", 1, "Weird"),
+    ]);
+    renderView(store);
+    pick("Rows", "status");
+    await screen.findAllByText("Alpha");
+    const headers = screen
+      .getAllByRole("rowheader")
+      .map((h: HTMLElement) => h.textContent);
+    expect(headers).toEqual(["Draft", "Final", "Other values", "None"]);
   });
 });

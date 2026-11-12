@@ -161,7 +161,8 @@ describe("a11y: OrganizerGrid", () => {
     expect(
       screen.getByRole("columnheader", { name: "None" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("also in 1 other cell")).toHaveLength(2);
+    // The duplicate's first appearance is unmarked; the later one is marked.
+    expect(screen.getAllByText("also in 1 other cell")).toHaveLength(1);
     expect(
       screen.getByRole("gridcell", { name: "Draft, Two, empty" }),
     ).toBeInTheDocument();

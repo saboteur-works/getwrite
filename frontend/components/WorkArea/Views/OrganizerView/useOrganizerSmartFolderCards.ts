@@ -32,6 +32,8 @@ interface EvaluationInputs {
   queryId: string;
   directoryId: string;
   nonce: number;
+  /** Counts every change of the source's query id, so a result from an earlier selection never matches. */
+  activation: number;
   savedQueries: object;
 }
 
@@ -46,6 +48,7 @@ function sameInputs(a: EvaluationInputs, b: EvaluationInputs): boolean {
     a.queryId === b.queryId &&
     a.directoryId === b.directoryId &&
     a.nonce === b.nonce &&
+    a.activation === b.activation &&
     a.savedQueries === b.savedQueries
   );
 }
@@ -76,6 +79,17 @@ export function useOrganizerSmartFolderCards(
   const queryState = useAppSelector(selectQueryState);
   const [nonce, setNonce] = useState(0);
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+  // Each change of the query id (including away from a smart folder and
+  // back to the same one) starts a new activation. An evaluation kept from
+  // an earlier selection of the same smart folder therefore never reads as
+  // current: the grid shows loading until this selection's own answer
+  // arrives. Adjusted during render so no frame shows the old cards.
+  const [activation, setActivation] = useState(0);
+  const [activationQueryId, setActivationQueryId] = useState(queryId);
+  if (activationQueryId !== queryId) {
+    setActivationQueryId(queryId);
+    setActivation((n) => n + 1);
+  }
 
   const isListLoaded =
     selectedProjectId !== null &&
@@ -93,9 +107,9 @@ export function useOrganizerSmartFolderCards(
   const inputs = useMemo<EvaluationInputs | null>(
     () =>
       isPresent && queryId !== null && directoryId !== null && savedQueries
-        ? { queryId, directoryId, nonce, savedQueries }
+        ? { queryId, directoryId, nonce, activation, savedQueries }
         : null,
-    [isPresent, queryId, directoryId, nonce, savedQueries],
+    [isPresent, queryId, directoryId, nonce, activation, savedQueries],
   );
 
   useEffect(() => {

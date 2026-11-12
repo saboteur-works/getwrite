@@ -6,7 +6,12 @@
  *
  * Usage: node scripts/organizer-grid-fixture/generate.mjs --count <N> --out <dir> [--seed <int>]
  * The project lands in `<dir>/<projectId>/` (the directory name is the
- * project's UUID, as the project loader expects). Prints one JSON line.
+ * project's UUID, as the project loader expects). The project id is derived
+ * from the seed and the count, so projects of different sizes can share one
+ * projects directory; the same seed and count always give the same id.
+ * `project.json` carries `rootPath` (the absolute project directory), as a
+ * project created in the app does, so the Start page can open it.
+ * Prints one JSON line.
  */
 import { mkdirSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -30,6 +35,15 @@ function mulberry32(seed) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/** A version-4-shaped UUID drawn from `rand`. */
+function uuidFrom(rand) {
+  const hex = (n) =>
+    Array.from({ length: n }, () => Math.floor(rand() * 16).toString(16)).join(
+      "",
+    );
+  return `${hex(8)}-${hex(4)}-4${hex(3)}-${"89ab"[Math.floor(rand() * 4)]}${hex(3)}-${hex(12)}`;
 }
 
 function parseCount(raw) {
@@ -67,11 +81,16 @@ function main() {
     Array.from({ length: n }, () => Math.floor(rand() * 16).toString(16)).join(
       "",
     );
-  const uuid = () =>
-    `${hex(8)}-${hex(4)}-4${hex(3)}-${"89ab"[Math.floor(rand() * 4)]}${hex(3)}-${hex(12)}`;
+  const uuid = () => uuidFrom(rand);
   const stamp = "2026-01-01T00:00:00.000Z";
 
-  const projectId = uuid();
+  // The first draw of the main stream is still taken (and unused), so every
+  // other id and value is what it was before the project id depended on the
+  // count; the project id comes from its own stream keyed by seed and count.
+  uuid();
+  const projectId = uuidFrom(
+    mulberry32((Math.imul(Number(values.seed), 100003) + count) >>> 0),
+  );
   const root = path.resolve(values.out, projectId);
   if (existsSync(root) && readdirSync(root).length > 0) {
     throw new Error(`refusing to write into non-empty ${root}`);
@@ -181,6 +200,7 @@ function main() {
 
   writeJson(path.join(root, "project.json"), {
     id: projectId,
+    rootPath: root,
     name: `Organizer grid fixture (${count} generated cards)`,
     slug: `organizer-grid-fixture-${count}`,
     createdAt: stamp,

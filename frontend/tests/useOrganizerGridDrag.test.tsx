@@ -378,6 +378,108 @@ describe("keyboard drag over cells (field mode)", () => {
   });
 });
 
+/**
+ * Cells of different heights with a card smaller than its cell, as in the real
+ * grid (the card sits at the top of a tall cell). One arrow press must reach
+ * the adjacent cell in that direction (measured in a browser: 2 to 3 presses
+ * before, because the card's own cell centre lay below the card's centre).
+ */
+describe("keyboard drag: one arrow press is one cell", () => {
+  const ROW_KEYS = ["draft", "final", "other"];
+  const COL_KEYS = ["One", "Two", "Three"];
+  const ROW_TOPS = [0, 300, 400];
+  const ROW_HEIGHTS = [300, 100, 60];
+  const CELL_WIDTH = 200;
+
+  function Sized(props: {
+    options: UseOrganizerGridDragOptions;
+    cardRow: number;
+    cardCol: number;
+  }): React.ReactElement {
+    const drag = useOrganizerGridDrag(props.options);
+    return (
+      <DndContext {...drag.dndContextProps}>
+        {ROW_KEYS.flatMap((r, ri) =>
+          COL_KEYS.map((c, ci) => (
+            <Cell
+              key={`${r}${c}`}
+              rowKey={r}
+              columnKey={c}
+              rect={`${ci * CELL_WIDTH},${ROW_TOPS[ri]},${CELL_WIDTH},${ROW_HEIGHTS[ri]}`}
+            />
+          )),
+        )}
+        <Card
+          cardId="A"
+          rowKey={ROW_KEYS[props.cardRow]}
+          columnKey={COL_KEYS[props.cardCol]}
+          rect={`${props.cardCol * CELL_WIDTH + 10},${ROW_TOPS[props.cardRow] + 10},180,40`}
+        />
+      </DndContext>
+    );
+  }
+
+  async function dropAfter(
+    codes: string[],
+    from: [number, number],
+  ): Promise<{ rowKey: string; columnKey: string } | "own-cell"> {
+    const options = baseOptions({
+      // A card with no stored value, so a drop never reads as already there.
+      getCard: () => ({ id: "A", kind: "resource", userMetadata: {} }),
+    });
+    render(<Sized options={options} cardRow={from[0]} cardCol={from[1]} />);
+    await keyboardDrag("Drag A", ["Space", ...codes, "Space"]);
+    await new Promise((r) => setTimeout(r, 20));
+    const calls = vi.mocked(options.onFieldDrop).mock.calls;
+    const refused = vi.mocked(options.onRefuse).mock.calls;
+    if (calls.length === 1) return calls[0][1].to;
+    if (refused.length === 1) {
+      // "Other values" is a refusing target: its coordinates are the answer.
+      return { rowKey: "other", columnKey: COL_KEYS[from[1]] };
+    }
+    return "own-cell";
+  }
+
+  it("ArrowDown from the first row reaches the next row, not its own cell", async () => {
+    expect(await dropAfter(["ArrowDown"], [0, 0])).toEqual({
+      rowKey: "final",
+      columnKey: "One",
+    });
+  });
+
+  it("ArrowDown twice reaches the third row (an empty, refusing cell)", async () => {
+    expect(await dropAfter(["ArrowDown", "ArrowDown"], [0, 1])).toEqual({
+      rowKey: "other",
+      columnKey: "Two",
+    });
+  });
+
+  it("ArrowRight reaches the next column, ArrowLeft the previous one", async () => {
+    expect(await dropAfter(["ArrowRight"], [0, 0])).toEqual({
+      rowKey: "draft",
+      columnKey: "Two",
+    });
+    cleanup();
+    expect(await dropAfter(["ArrowLeft"], [0, 2])).toEqual({
+      rowKey: "draft",
+      columnKey: "Two",
+    });
+  });
+
+  it("ArrowUp from the second row reaches the first row", async () => {
+    expect(await dropAfter(["ArrowUp"], [1, 2])).toEqual({
+      rowKey: "draft",
+      columnKey: "Three",
+    });
+  });
+
+  it("an arrow with no cell that way does not move the card", async () => {
+    expect(await dropAfter(["ArrowUp"], [0, 0])).toBe("own-cell");
+    cleanup();
+    expect(await dropAfter(["ArrowLeft"], [0, 0])).toBe("own-cell");
+  });
+});
+
 describe("keyboard drag in order mode", () => {
   const orderOptions = (
     over: Partial<UseOrganizerGridDragOptions> = {},

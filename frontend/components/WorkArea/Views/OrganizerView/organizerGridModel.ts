@@ -64,7 +64,7 @@ function singleLine(key: string, label: string): OrganizerAxisValue {
   return { key, kind: "value", label, isDropTarget: false };
 }
 
-/** Lines of one axis: list values, then Other values (if used or listed), then None. */
+/** Lines of one axis: list values, then Other values (only if a shown card uses it), then None. */
 function buildAxisLines(
   input: OrganizerGridAxisInput,
   otherUsed: boolean,
@@ -80,7 +80,9 @@ function buildAxisLines(
   const values = list.values.filter((v) => v.kind === "value");
   const listedOther = list.values.find((v) => v.kind === "other");
   const lines = [...values];
-  if (listedOther || otherUsed) {
+  // Shown only when a shown card has an off-list value; a list that carries
+  // an Other entry (the wired view's does) only supplies its label.
+  if (otherUsed) {
     lines.push({
       key: OTHER_KEY,
       kind: "other",

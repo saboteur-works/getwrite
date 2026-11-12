@@ -1898,8 +1898,8 @@ describe("OrganizerView grid branch (Feature 109, Task 23)", () => {
     const headings = screen
       .getAllByRole("rowheader")
       .map((el: HTMLElement) => el.textContent);
-    // The axis model always lists "Other values" before "None" (Task 6).
-    expect(headings).toEqual(["Draft", "Final", "Other values", "None"]);
+    // No card has a status off the list, so there is no "Other values" row.
+    expect(headings).toEqual(["Draft", "Final", "None"]);
     expect(within(cellOf("Draft")).getByText("Alpha")).toBeInTheDocument();
     expect(within(cellOf("Final")).getByText("Bravo")).toBeInTheDocument();
     // Charlie has no status and the folder card has none: both in None.

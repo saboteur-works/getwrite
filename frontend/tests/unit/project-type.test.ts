@@ -170,6 +170,36 @@ describe("project-type arrangements key (Feature 109, FR-17)", () => {
     ).toBe(false);
   });
 
+  it("refuses Columns 'none' and Rows 'order' when the type is validated, with a message the Manager can show", () => {
+    for (const bad of [
+      { ...arrangement, columns: "none" },
+      { ...arrangement, rows: "order" },
+    ]) {
+      const res = parse([bad]);
+      expect(res.success).toBe(false);
+      if (!res.success) {
+        expect(res.issues.length).toBeGreaterThan(0);
+        expect(res.issues[0].path[0]).toBe("arrangements");
+        expect(res.issues[0].message).toMatch(
+          /rows \(none or a field\) and columns \(order or a field\)/,
+        );
+      }
+    }
+  });
+
+  it("accepts every allowed axis pair: Rows none or a field, Columns order or a field", () => {
+    const axes = [
+      { kind: "status" },
+      { kind: "subtype" },
+      { kind: "field", key: "k" },
+    ];
+    for (const rows of ["none", ...axes]) {
+      for (const columns of ["order", ...axes]) {
+        expect(parse([{ ...arrangement, rows, columns }]).success).toBe(true);
+      }
+    }
+  });
+
   it("refuses non-array, duplicate names, more than 50 and unknown keys", () => {
     expect(parse("Chapters").success).toBe(false);
     expect(

@@ -83,10 +83,10 @@ With **Rows** on **None**, **Columns** on **Order** and **Source** on **This fol
 Each row and column has a heading. They run in the order of the field's own list, then **Other values**, then **None**. Inside a cell, cards follow resource-tree order. For a field that points to other documents, the headings are the documents that the cards point to.
 
 - **None** holds the cards that have no value for the field. It comes last. It is always there, even when it is empty.
-- **Other values** holds the cards whose stored value is not in the field's list any more, such as a status you removed from the project. GetWrite shows these cards and does not change their value. You can't drop a card onto this row or column.
+- **Other values** holds the cards whose stored value is not in the field's list any more, such as a status you removed from the project. GetWrite shows these cards and does not change their value. You can't drop a card onto this row or column. It appears only when at least one card shown has such a value, and comes just before **None**.
 - An empty cell says "No documents".
 
-A field that can hold several values, such as a list you can pick more than one item from, puts the card in every matching cell. Each copy reads "also in 2 other cells" (or the number of cells that apply). The grid counts the card once.
+A field that can hold several values, such as a list you can pick more than one item from, puts the card in every matching cell. The first copy, reading the grid row by row and left to right, shows no note. Each later copy reads "also in 2 other cells" (or the number of other cells that apply). The grid counts the card once.
 
 The grid keeps your filters, **Hide bodies** and the card body setting.
 
@@ -98,7 +98,7 @@ The **Source** list offers:
 - **This folder and subfolders:** every document inside the folder and the folders below it, in resource-tree order. Folders do not appear as cards.
 - Each smart folder you have saved: the documents that match it.
 
-If a smart folder can't be read, the grid says so and offers **Retry**. If a smart folder or folder is gone, the grid says so. It does not switch to another source for you.
+While a smart folder is being read, the grid says "Loading the smart folder…" and shows no cards. It does not show the cards of a folder you looked at earlier. If a smart folder can't be read, the grid says so and offers **Retry**. If a smart folder or folder is gone, the grid says so. It does not switch to another source for you.
 
 ### Drag a card to change a field
 
@@ -142,7 +142,7 @@ On a screen narrower than 768 pixels, the grid shows grouped lists instead. Tabl
 1. Move into the grid with Tab, then use the arrow keys to move between cells. **Home** and **End** go to the first and last column.
 2. Press Enter on a cell to open its first card.
 3. To move a card, focus its handle and press Space or Enter to pick it up.
-4. Press the arrow keys to move between cells, then Space, Enter or Tab to drop it. Escape puts it back.
+4. Press the arrow keys to move between cells, then Space, Enter or Tab to drop it. Escape puts it back. Each press moves the card one cell: Up and Down to the row above or below, Left and Right to the column beside it, empty cells included. At the edge of the grid a press does nothing.
 
 GetWrite announces the card picked up, the row and column it is over, and the drop or cancel.
 
@@ -166,3 +166,5 @@ Arrangements belong to the project and show on every device that opens it. Apply
 If the folder, smart folder or field an arrangement uses is gone, the list marks it **Unavailable** with the reason and you can't apply it. You can still rename or delete it. GetWrite does not remove it for you.
 
 Each device remembers the arrangement you applied last in each project and applies it when you open the Organizer. If it is gone or can't be applied, you see the default board and a message. Choosing **Default** makes the device forget it.
+
+Choices you make in **Source**, **Rows** and **Columns** are remembered only when you save them as an arrangement. If you pick them without saving, and then reload GetWrite or open the project again, the Organizer starts on the default board. Save the choices as an arrangement to get them back.

@@ -270,4 +270,62 @@ describe("useOrganizerSmartFolderCards", () => {
     expect(result.current.state.status).toBe("loading");
     expect(evaluate).not.toHaveBeenCalled();
   });
+
+  it("shows loading, not the earlier ids, when the same smart folder is selected again", async () => {
+    const store = makeReadyStore();
+    await loadList(store, [savedQuery(QUERY_ID)]);
+    evaluate.mockResolvedValueOnce({ ids: ["old"] });
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string | null }) => useOrganizerSmartFolderCards(id),
+      {
+        wrapper: wrapperFor(store),
+        initialProps: { id: QUERY_ID as string | null },
+      },
+    );
+    await waitFor(() =>
+      expect(result.current.state).toEqual({ status: "ready", ids: ["old"] }),
+    );
+
+    rerender({ id: null });
+    let resolveSecond: (v: { ids: string[] }) => void = () => undefined;
+    evaluate.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSecond = resolve;
+      }),
+    );
+    rerender({ id: QUERY_ID });
+    expect(result.current.state).toEqual({ status: "loading" });
+    await act(async () => {
+      resolveSecond({ ids: ["new"] });
+    });
+    expect(result.current.state).toEqual({ status: "ready", ids: ["new"] });
+  });
+
+  it("ignores a result that arrives after a newer request for the same smart folder", async () => {
+    const store = makeReadyStore();
+    await loadList(store, [savedQuery(QUERY_ID)]);
+    let resolveFirst: (v: { ids: string[] }) => void = () => undefined;
+    evaluate.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFirst = resolve;
+      }),
+    );
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string | null }) => useOrganizerSmartFolderCards(id),
+      {
+        wrapper: wrapperFor(store),
+        initialProps: { id: QUERY_ID as string | null },
+      },
+    );
+    rerender({ id: null });
+    evaluate.mockResolvedValueOnce({ ids: ["fresh"] });
+    rerender({ id: QUERY_ID });
+    await waitFor(() =>
+      expect(result.current.state).toEqual({ status: "ready", ids: ["fresh"] }),
+    );
+    await act(async () => {
+      resolveFirst({ ids: ["stale"] });
+    });
+    expect(result.current.state).toEqual({ status: "ready", ids: ["fresh"] });
+  });
 });

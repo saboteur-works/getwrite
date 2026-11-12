@@ -207,7 +207,8 @@ export const TwoAxisGrid: Story = {
     await expect(
       canvas.getByRole("rowheader", { name: "None" }),
     ).toBeInTheDocument();
-    await expect(canvas.getAllByText("also in 1 other cell")).toHaveLength(2);
+    // The duplicate's first appearance is unmarked; the second is marked.
+    await expect(canvas.getAllByText("also in 1 other cell")).toHaveLength(1);
   },
 };
 

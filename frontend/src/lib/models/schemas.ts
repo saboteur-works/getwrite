@@ -1023,13 +1023,15 @@ const PROJECT_TYPE_MODULES_MESSAGE =
 
 /** Refusal text for a malformed `arrangements` list; names no client input. */
 const PROJECT_TYPE_ARRANGEMENTS_MESSAGE =
-  "Arrangements must each have a name, a folder source, rows and columns, with no repeated names.";
+  "Arrangements must each have a name, a folder source, rows (none or a field) and columns (order or a field), with no repeated names.";
 
 /**
  * Axis spelled as in `OrganizerAxisSchema`, with its own refusal text so a
- * nested unknown key is never echoed. `allowOrder` is true for Columns only.
+ * nested unknown key is never echoed. Rows offer `none` or a field, Columns
+ * offer `order` or a field (the arrangements core's rule), so a seed that the
+ * core would skip at creation is refused when the type is validated.
  */
-function seedAxisSchema(allowOrder: boolean) {
+function seedAxisSchema(position: "rows" | "columns") {
   const objects = z.union([
     z.strictObject(
       { kind: z.literal("status") },
@@ -1044,12 +1046,9 @@ function seedAxisSchema(allowOrder: boolean) {
       { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
     ),
   ]);
-  return z.union(
-    allowOrder
-      ? [z.literal("none"), z.literal("order"), objects]
-      : [z.literal("none"), objects],
-    { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
-  );
+  return z.union([z.literal(position === "rows" ? "none" : "order"), objects], {
+    error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE,
+  });
 }
 
 /**
@@ -1067,8 +1066,8 @@ const ProjectTypeArrangementSchema = z.strictObject(
       folderName: z.string().trim().min(1).max(200),
       scope: z.enum(["children", "descendants"]),
     }),
-    rows: seedAxisSchema(false),
-    columns: seedAxisSchema(true),
+    rows: seedAxisSchema("rows"),
+    columns: seedAxisSchema("columns"),
   },
   { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
 );

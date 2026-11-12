@@ -99,16 +99,114 @@ const ARROWS: Record<string, ArrowDirection> = {
   ArrowUp: [0, -1],
 };
 
+interface TargetRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** Length of the overlap of [aStart, aEnd] and [bStart, bEnd]; 0 when they only touch. */
+const overlap = (
+  aStart: number,
+  aEnd: number,
+  bStart: number,
+  bEnd: number,
+): number => Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));
+
 /**
- * Keyboard coordinate getter (Task 3): moves to the nearest droppable whose id
- * starts with `prefix` in the arrow's direction, a perpendicular offset
- * weighted 1000x so the same row or column wins before a nearer diagonal.
- * Assumes equal-size targets; returns `undefined` (no move) when none lies
- * that way.
+ * The cell the dragged card is in: the one whose rect holds the card's centre
+ * (the card starts inside its own cell and each move centres it in a cell),
+ * else the one with the nearest centre.
+ */
+function currentCellRect(
+  cells: readonly TargetRect[],
+  cx: number,
+  cy: number,
+): TargetRect | undefined {
+  const holding = cells.find(
+    (r) =>
+      cx >= r.left &&
+      cx <= r.left + r.width &&
+      cy >= r.top &&
+      cy <= r.top + r.height,
+  );
+  if (holding) return holding;
+  let nearest: TargetRect | undefined;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const r of cells) {
+    const distance = Math.hypot(
+      r.left + r.width / 2 - cx,
+      r.top + r.height / 2 - cy,
+    );
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearest = r;
+    }
+  }
+  return nearest;
+}
+
+/**
+ * The adjacent cell from `current` in `dir`: among the cells that start where
+ * the current one ends and share some of its column (for Up and Down) or row
+ * (for Left and Right), the nearest. Cell sizes may differ (a tall cell, an
+ * empty short one), so adjacency is by edges, not by distance between centres.
+ */
+function adjacentCellRect(
+  cells: readonly TargetRect[],
+  current: TargetRect,
+  dir: ArrowDirection,
+): TargetRect | undefined {
+  const right = current.left + current.width;
+  const bottom = current.top + current.height;
+  let best: TargetRect | undefined;
+  let bestGap = Number.POSITIVE_INFINITY;
+  for (const r of cells) {
+    if (r === current) continue;
+    const rRight = r.left + r.width;
+    const rBottom = r.top + r.height;
+    let gap: number;
+    let shares: number;
+    if (dir[1] !== 0) {
+      shares = overlap(current.left, right, r.left, rRight);
+      gap = dir[1] > 0 ? r.top - bottom : current.top - rBottom;
+    } else {
+      shares = overlap(current.top, bottom, r.top, rBottom);
+      gap = dir[0] > 0 ? r.left - right : current.left - rRight;
+    }
+    // A cell that overlaps the current one in the arrow's direction (gap
+    // clearly negative) is not "next".
+    if (shares <= 0 || gap < -1) continue;
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = r;
+    }
+  }
+  return best;
+}
+
+/**
+ * Keyboard coordinate getter. `prefix` selects the droppables it moves
+ * between.
+ *
+ * Over cells (`cell:`), one arrow press moves to the adjacent cell in that
+ * direction (the row above or below for Up and Down, the column left or right
+ * for Left and Right), including an empty cell, and does nothing at the
+ * grid's edge. The current cell is the one holding the card's centre, so a
+ * card smaller than its cell, or cells of different heights, do not make the
+ * first press land on the card's own cell.
+ *
+ * Over cards (`card:`, order mode), it moves to the nearest card in the
+ * arrow's direction, a perpendicular offset weighted 1000x so the same row or
+ * column wins before a nearer diagonal; the active card is skipped.
+ *
+ * Returns `undefined` (no move) when nothing lies that way.
  */
 export function createCoordinateGetter(
   prefix: string,
 ): KeyboardCoordinateGetter {
+  const isCells = prefix === CELL_PREFIX;
   return (
     event,
     { context: { active, collisionRect, droppableRects, droppableContainers } },
@@ -118,28 +216,37 @@ export function createCoordinateGetter(
     event.preventDefault();
     const cx = collisionRect.left + collisionRect.width / 2;
     const cy = collisionRect.top + collisionRect.height / 2;
-    let best: { x: number; y: number } | undefined;
-    let bestScore = Number.POSITIVE_INFINITY;
+    const centered = (r: TargetRect): { x: number; y: number } => ({
+      x: r.left + (r.width - collisionRect.width) / 2,
+      y: r.top + (r.height - collisionRect.height) / 2,
+    });
+    const targets: Array<TargetRect> = [];
     droppableContainers.getEnabled().forEach((container) => {
-      const id = String(container.id);
-      if (!id.startsWith(prefix) || container.id === active.id) return;
+      if (!String(container.id).startsWith(prefix)) return;
+      if (container.id === active.id) return;
       const r = droppableRects.get(container.id);
-      if (!r) return;
+      if (r) targets.push(r);
+    });
+    if (isCells) {
+      const current = currentCellRect(targets, cx, cy);
+      const next = current && adjacentCellRect(targets, current, dir);
+      return next && centered(next);
+    }
+    let best: TargetRect | undefined;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (const r of targets) {
       const dx = r.left + r.width / 2 - cx;
       const dy = r.top + r.height / 2 - cy;
       const along = dx * dir[0] + dy * dir[1];
-      if (along <= 1) return;
+      if (along <= 1) continue;
       const across = Math.abs(dx * dir[1]) + Math.abs(dy * dir[0]);
       const score = across * 1000 + along;
       if (score < bestScore) {
         bestScore = score;
-        best = {
-          x: r.left + (r.width - collisionRect.width) / 2,
-          y: r.top + (r.height - collisionRect.height) / 2,
-        };
+        best = r;
       }
-    });
-    return best;
+    }
+    return best && centered(best);
   };
 }
 
