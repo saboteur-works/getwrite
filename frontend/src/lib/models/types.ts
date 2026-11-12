@@ -1,5 +1,6 @@
 // Type definitions for GetWrite models
 // Follow docs/standards/typescript-implementation.md: no `any`, explicit types, and clear documentation.
+import type { OrganizerArrangement } from "./organizer-grid-types";
 
 /** UUID v4 represented as a string. Use for stable opaque identities. */
 export type UUID = string;
@@ -156,6 +157,11 @@ export interface ProjectConfig {
   modules?: Record<string, boolean>;
   /** Configures what Organizer cards render as their body text. */
   organizerCardBody?: OrganizerCardBodyConfig;
+  /**
+   * Saved Organizer grid arrangements (Feature 109, FR-14). Absent means none;
+   * a project that never saves one never gains the key.
+   */
+  organizerArrangements?: OrganizerArrangement[];
   /**
    * Id of the project's Inbox folder (Feature 106, FR-3). The Inbox is
    * identified by this id alone, not by name or the `special` flag. Absent

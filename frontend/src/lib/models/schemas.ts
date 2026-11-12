@@ -274,6 +274,54 @@ export const OrganizerCardBodyConfigSchema = z.object({
 });
 
 /**
+ * Saved Organizer grid arrangements (Feature 109, FR-14, OQ-2). Every object
+ * is strict so an unknown key is refused, never carried. Rows and Columns share
+ * the contract's one `OrganizerAxis` type, so this schema accepts `order` on
+ * Rows too; refusing it there (Columns only) is the arrangements core's job
+ * (Task 25). The
+ * limits (50 arrangements, name 1 to 100) mirror the constants in
+ * `organizer-grid-types.ts`, written as literals so this schema stays a leaf.
+ */
+const OrganizerAxisObjectSchema = z.union([
+  z.object({ kind: z.literal("status") }).strict(),
+  z.object({ kind: z.literal("subtype") }).strict(),
+  z.object({ kind: z.literal("field"), key: z.string().min(1) }).strict(),
+]);
+
+const OrganizerAxisSchema = z.union([
+  z.literal("none"),
+  z.literal("order"),
+  OrganizerAxisObjectSchema,
+]);
+
+const OrganizerSourceSchema = z.union([
+  z
+    .object({
+      kind: z.literal("folder"),
+      folderId: z.string().uuid(),
+      scope: z.enum(["children", "descendants"]),
+    })
+    .strict(),
+  z
+    .object({ kind: z.literal("smart-folder"), queryId: z.string().uuid() })
+    .strict(),
+]);
+
+export const OrganizerArrangementSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string().min(1).max(100),
+    source: OrganizerSourceSchema,
+    rows: OrganizerAxisSchema,
+    columns: OrganizerAxisSchema,
+  })
+  .strict();
+
+export const OrganizerArrangementListSchema = z
+  .array(OrganizerArrangementSchema)
+  .max(50);
+
+/**
  * Ordered list of resource-subtype labels (Feature 72, FR-2). Entries are
  * trimmed (the writer's case is kept) and order is preserved. A blank entry,
  * or two entries equal under `normalizeSubtypeLabel`, fails validation with a
@@ -387,6 +435,8 @@ export const ProjectConfigSchema = z.object({
    */
   modules: z.record(z.string(), z.boolean()).optional(),
   organizerCardBody: OrganizerCardBodyConfigSchema.optional(),
+  /** Saved Organizer grid arrangements (Feature 109, FR-14, OQ-2); at most 50. */
+  organizerArrangements: OrganizerArrangementListSchema.optional(),
   /** Inbox folder id (Feature 106, FR-3); a UUID, absent until first capture. */
   inboxFolderId: UUID.optional(),
 });

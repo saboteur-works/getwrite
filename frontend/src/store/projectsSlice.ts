@@ -24,6 +24,7 @@ import type {
   ProjectFeatureFlags,
   OrganizerCardBodyConfig,
 } from "../lib/models/types";
+import type { OrganizerArrangement } from "../lib/models/organizer-grid-types";
 import type {
   TypeMigrationEntry,
   OptionsMigrationEntry,
@@ -112,6 +113,8 @@ export interface StoredProject {
   modules?: Record<string, boolean>;
   /** Organizer card-body source configuration; absent means none configured. */
   organizerCardBody?: OrganizerCardBodyConfig;
+  /** Saved Organizer grid arrangements (`config.organizerArrangements`, Feature 109); absent means none. */
+  organizerArrangements?: OrganizerArrangement[];
   /**
    * Mention-jump highlight duration, in seconds (Entity mention navigation,
    * Task 12). Absent means the project has never set one —
@@ -176,6 +179,9 @@ export function buildStoredProject(
     features: project.config?.features,
     modules: project.config?.modules,
     organizerCardBody: project.config?.organizerCardBody,
+    ...(project.config?.organizerArrangements !== undefined
+      ? { organizerArrangements: project.config.organizerArrangements }
+      : {}),
     mentionHighlightDurationSeconds:
       project.config?.mentionHighlightDurationSeconds,
     ...(project.config?.inboxFolderId
@@ -1176,4 +1182,23 @@ export const selectActiveProjectOrganizerCardBody = (
 ): OrganizerCardBodyConfig | null => {
   const id = state?.projects?.selectedProjectId;
   return state?.projects?.projects?.[id]?.organizerCardBody ?? null;
+};
+
+/** One shared empty list so the selector returns a stable reference for none. */
+const EMPTY_ORGANIZER_ARRANGEMENTS: OrganizerArrangement[] = [];
+
+/**
+ * Selects the saved Organizer grid arrangements of the active project, or an
+ * empty list when no project is selected or it has none (Feature 109, FR-14).
+ *
+ * @param state - Redux root state (typed as `any` to avoid circular imports).
+ */
+export const selectActiveProjectOrganizerArrangements = (
+  state: any,
+): OrganizerArrangement[] => {
+  const id = state?.projects?.selectedProjectId;
+  return (
+    state?.projects?.projects?.[id]?.organizerArrangements ??
+    EMPTY_ORGANIZER_ARRANGEMENTS
+  );
 };

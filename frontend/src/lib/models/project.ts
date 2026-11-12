@@ -54,6 +54,11 @@ export function normalizeProjectConfig(config?: ProjectConfig): ProjectConfig {
     metadataRevision: config?.metadataRevision,
     features: config?.features,
     organizerCardBody: config?.organizerCardBody,
+    // Feature 109, FR-14: omitted when absent, so a project that never saves
+    // an arrangement never gains the key.
+    ...(config?.organizerArrangements !== undefined
+      ? { organizerArrangements: config.organizerArrangements }
+      : {}),
   };
 }
 
