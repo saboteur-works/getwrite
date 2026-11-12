@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchResourceExcerpts } from "../../../../src/lib/api/resource-excerpts";
+import { fetchResourceExcerptsOrThrow } from "../../../../src/lib/api/resource-excerpts";
 import {
   useFolderRowMetadata,
   type FolderRowMetadataState,
@@ -15,7 +15,8 @@ import type { OrganizerSource } from "../../../../src/lib/models/organizer-grid-
  * the sidecars already in Redux, for the cards that are shown after the cap
  * and the filters, and for no others:
  *
- * - text excerpts through `fetchResourceExcerpts`, for the shown text ids;
+ * - text excerpts through `fetchResourceExcerptsOrThrow` (the throwing variant; the
+ *   degrading `fetchResourceExcerpts` would arrive here as an empty map), for the shown text ids;
  * - folder sidecars through `useFolderRowMetadata`, for the shown folder
  *   cards, and only when folder cards are in the source (a folder source with
  *   the `children` scope). Descendants and smart-folder sources hold none.
@@ -84,7 +85,7 @@ export function useOrganizerShownCardData(
   useEffect(() => {
     if (requestKey === "") return;
     let isCurrent = true;
-    fetchResourceExcerpts(
+    fetchResourceExcerptsOrThrow(
       projectId,
       textKey.split(SEPARATOR),
       excerptLength,

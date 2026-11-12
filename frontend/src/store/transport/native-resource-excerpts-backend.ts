@@ -58,5 +58,12 @@ export function createNativeResourceExcerptsTransport(
         }
       });
     },
+
+    async fetchOrThrow(projectId, resourceIds, maxChars) {
+      // No try/catch: a core error (including an invalid projectId) rejects.
+      return run(() =>
+        fetchResourceExcerptsCore(projectId, resourceIds, maxChars),
+      );
+    },
   };
 }

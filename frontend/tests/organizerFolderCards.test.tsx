@@ -30,7 +30,7 @@ vi.mock("../src/lib/api/folder-metadata", () => ({
   getFolderMetadata: (...args: unknown[]) => getFolderMetadata(...args),
 }));
 vi.mock("../src/lib/api/resource-excerpts", () => ({
-  fetchResourceExcerpts: vi.fn().mockResolvedValue({}),
+  fetchResourceExcerptsOrThrow: vi.fn().mockResolvedValue({}),
 }));
 
 const PROJECT_ID = "33333333-3333-4333-8333-333333333333";

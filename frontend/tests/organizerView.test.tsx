@@ -31,9 +31,9 @@ import type {
 import { NO_STATUS_FILTER_VALUE } from "../components/WorkArea/Views/OrganizerView/organizerFilters";
 
 vi.mock("../src/lib/api/resource-excerpts", () => ({
-  fetchResourceExcerpts: vi.fn(),
+  fetchResourceExcerptsOrThrow: vi.fn(),
 }));
-import { fetchResourceExcerpts } from "../src/lib/api/resource-excerpts";
+import { fetchResourceExcerptsOrThrow } from "../src/lib/api/resource-excerpts";
 
 // Task 6: mocks the underlying HTTP transport function `persistReorder`
 // (`resourcesSlice.ts`'s thunk) ultimately calls, so tests can assert the
@@ -803,8 +803,8 @@ describe("OrganizerView card filtering (FR-1 through FR-11)", () => {
     expect(screen.getByText("Folder B Resource")).toBeTruthy();
   });
 
-  it("triggers no additional fetchResourceExcerpts call when a filter changes (FR-11)", async () => {
-    const mockFetch = vi.mocked(fetchResourceExcerpts);
+  it("triggers no additional fetchResourceExcerptsOrThrow call when a filter changes (FR-11)", async () => {
+    const mockFetch = vi.mocked(fetchResourceExcerptsOrThrow);
     mockFetch.mockClear();
     mockFetch.mockResolvedValue({});
 
@@ -1044,7 +1044,7 @@ describe("OrganizerView", () => {
   });
 
   it("fetches and renders excerpts for visible text cards when a project path is set", async () => {
-    const mockFetch = vi.mocked(fetchResourceExcerpts);
+    const mockFetch = vi.mocked(fetchResourceExcerptsOrThrow);
     const resource = createTextResource({
       name: "Dated Scene",
       plainText: "stale fallback content",
@@ -1074,7 +1074,7 @@ describe("OrganizerView", () => {
       </Provider>,
     );
 
-    // `fetchResourceExcerpts` is called with the directory basename of
+    // `fetchResourceExcerptsOrThrow` is called with the directory basename of
     // `rootPath` (the `projectId` tenant-scoped routes expect), not the
     // absolute `rootPath` itself — see `selectActiveProjectDirectoryId`'s
     // doc comment in `projectsSlice.ts` for the FR12 distinction.
@@ -1087,7 +1087,7 @@ describe("OrganizerView", () => {
   });
 
   it("does not fetch excerpts when card bodies are hidden", async () => {
-    const mockFetch = vi.mocked(fetchResourceExcerpts);
+    const mockFetch = vi.mocked(fetchResourceExcerptsOrThrow);
     mockFetch.mockClear();
     const resource = createTextResource({
       name: "Dated Scene",
@@ -1993,7 +1993,7 @@ describe("OrganizerView grid branch (Feature 109, Task 23)", () => {
         organizerCardBody: { source: "text-excerpt", excerptLength: 50 },
       } as any),
     );
-    vi.mocked(fetchResourceExcerpts).mockRejectedValue(
+    vi.mocked(fetchResourceExcerptsOrThrow).mockRejectedValue(
       new Error("no excerpts"),
     );
     renderGrid(store, { showBody: true });

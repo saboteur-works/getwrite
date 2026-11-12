@@ -12,7 +12,11 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { httpResourceExcerptsTransport } from "../../src/lib/api/resource-excerpts";
+import {
+  httpResourceExcerptsTransport,
+  fetchResourceExcerpts,
+  fetchResourceExcerptsOrThrow,
+} from "../../src/lib/api/resource-excerpts";
 import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 
 vi.mock("../../src/lib/api/transport-validation", () => ({
@@ -107,5 +111,104 @@ describe("httpResourceExcerptsTransport.fetch", () => {
       httpResourceExcerptsTransport.fetch("project-1", ["resource-1"]),
     ).resolves.toEqual({});
     expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+  });
+});
+
+describe("httpResourceExcerptsTransport.fetchOrThrow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("resolves to the parsed excerpts map on a well-formed response", async () => {
+    const excerpts = { "resource-1": "some excerpt text" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ excerpts })),
+    );
+    await expect(
+      httpResourceExcerptsTransport.fetchOrThrow("project-1", ["resource-1"]),
+    ).resolves.toEqual(excerpts);
+  });
+
+  it("rejects on a non-ok response with a message that echoes no body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({ error: SECRET_EXCERPT, excerpts: {} }, false),
+        ),
+    );
+    const failure = await httpResourceExcerptsTransport
+      .fetchOrThrow("project-1", ["resource-1"])
+      .then(
+        () => null,
+        (e: unknown) => e as Error,
+      );
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure?.message).not.toBe("");
+    expect(failure?.message).not.toContain(SECRET_EXCERPT);
+  });
+
+  it("rejects on a schema failure without echoing the body", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse({
+            excerpts: { "resource-1": { nested: SECRET_EXCERPT } },
+          }),
+        ),
+    );
+    const failure = await httpResourceExcerptsTransport
+      .fetchOrThrow("project-1", ["resource-1"])
+      .then(
+        () => null,
+        (e: unknown) => e as Error,
+      );
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure?.message).not.toContain(SECRET_EXCERPT);
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "resource-excerpts.fetchOrThrow",
+      expect.any(Array),
+    );
+  });
+
+  it("rejects on a network failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network down")),
+    );
+    await expect(
+      httpResourceExcerptsTransport.fetchOrThrow("project-1", ["resource-1"]),
+    ).rejects.toThrow();
+  });
+
+  it("leaves the degrading fetchResourceExcerpts returning {} on those inputs", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, false)));
+    await expect(fetchResourceExcerpts("project-1", ["r"])).resolves.toEqual(
+      {},
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ excerpts: { r: 42 } })),
+    );
+    await expect(fetchResourceExcerpts("project-1", ["r"])).resolves.toEqual(
+      {},
+    );
+  });
+
+  it("fetchResourceExcerptsOrThrow rejects through the resolved transport", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, false)));
+    await expect(
+      fetchResourceExcerptsOrThrow("project-1", ["r"]),
+    ).rejects.toThrow();
   });
 });

@@ -41,6 +41,18 @@ export interface ResourceExcerptsTransport {
     resourceIds: string[],
     maxChars?: number,
   ): Promise<Record<string, string>>;
+  /**
+   * Like {@link fetch}, but REJECTS on any failure (non-ok response, schema
+   * failure, network error, or an excerpts-core error on native) instead of
+   * returning `{}`, so a caller can tell "no excerpts" from "the read failed"
+   * (`docs/standards/failure-visibility.md`). The rejection message names the
+   * failure, never the response body. `fetch` is unchanged.
+   */
+  fetchOrThrow(
+    projectId: string,
+    resourceIds: string[],
+    maxChars?: number,
+  ): Promise<Record<string, string>>;
 }
 
 /**
@@ -71,6 +83,27 @@ export const httpResourceExcerptsTransport: ResourceExcerptsTransport = {
     } catch {
       return {};
     }
+  },
+
+  async fetchOrThrow(projectId, resourceIds, maxChars) {
+    const response = await fetch("/api/project-resources/excerpts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, resourceIds, maxChars }),
+    });
+    if (!response.ok) {
+      throw new Error(`Could not load card excerpts (${response.status}).`);
+    }
+    const data: unknown = await response.json();
+    const result = ResourceExcerptsResponseSchema.safeParse(data);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "resource-excerpts.fetchOrThrow",
+        result.error.issues,
+      );
+      throw new Error("Malformed card excerpts response.");
+    }
+    return result.data.excerpts ?? {};
   },
 };
 
@@ -110,4 +143,22 @@ export async function fetchResourceExcerpts(
 ): Promise<Record<string, string>> {
   const transport = await resolveResourceExcerptsTransport();
   return transport.fetch(projectId, resourceIds, maxChars);
+}
+
+/**
+ * Fetches text excerpts for the given resources, rejecting on any failure
+ * instead of degrading to `{}` like {@link fetchResourceExcerpts}. See
+ * {@link ResourceExcerptsTransport.fetchOrThrow}.
+ *
+ * @param projectId - The project's on-disk directory basename.
+ * @param resourceIds - Resource ids to fetch excerpts for.
+ * @param maxChars - Maximum excerpt length to request.
+ */
+export async function fetchResourceExcerptsOrThrow(
+  projectId: string,
+  resourceIds: string[],
+  maxChars?: number,
+): Promise<Record<string, string>> {
+  const transport = await resolveResourceExcerptsTransport();
+  return transport.fetchOrThrow(projectId, resourceIds, maxChars);
 }

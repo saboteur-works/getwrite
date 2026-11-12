@@ -8,9 +8,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { OrganizerSource } from "../src/lib/models/organizer-grid-types";
 
-const fetchResourceExcerpts = vi.fn();
+const fetchResourceExcerptsOrThrow = vi.fn();
 vi.mock("../src/lib/api/resource-excerpts", () => ({
-  fetchResourceExcerpts: (...args: unknown[]) => fetchResourceExcerpts(...args),
+  fetchResourceExcerptsOrThrow: (...args: unknown[]) =>
+    fetchResourceExcerptsOrThrow(...args),
 }));
 const getFolderMetadata = vi.fn();
 vi.mock("../src/lib/api/folder-metadata", () => ({
@@ -53,9 +54,9 @@ function input(
 }
 
 beforeEach(() => {
-  fetchResourceExcerpts.mockReset();
+  fetchResourceExcerptsOrThrow.mockReset();
   getFolderMetadata.mockReset();
-  fetchResourceExcerpts.mockImplementation(
+  fetchResourceExcerptsOrThrow.mockImplementation(
     async (_p: string, requested: string[]) =>
       Object.fromEntries(requested.map((id) => [id, `body ${id}`])),
   );
@@ -92,9 +93,11 @@ describe("useOrganizerShownCardData", () => {
     await waitFor(() => expect(result.current.excerpts.status).toBe("ready"));
     await waitFor(() => expect(result.current.folders.status).toBe("ready"));
 
-    expect(fetchResourceExcerpts).toHaveBeenCalledTimes(1);
-    expect(fetchResourceExcerpts.mock.calls[0][1]).toEqual(mixedShownTexts);
-    expect(fetchResourceExcerpts.mock.calls[0][2]).toBe(120);
+    expect(fetchResourceExcerptsOrThrow).toHaveBeenCalledTimes(1);
+    expect(fetchResourceExcerptsOrThrow.mock.calls[0][1]).toEqual(
+      mixedShownTexts,
+    );
+    expect(fetchResourceExcerptsOrThrow.mock.calls[0][2]).toBe(120);
     expect(getFolderMetadata).toHaveBeenCalledTimes(mixedShownFolders.length);
     const read = getFolderMetadata.mock.calls.map((c) => c[1] as string);
     expect([...read].sort()).toEqual([...mixedShownFolders].sort());
@@ -112,8 +115,10 @@ describe("useOrganizerShownCardData", () => {
     );
     await waitFor(() => expect(result.current.excerpts.status).toBe("ready"));
     rerender(input({ shownTextIds: ["b"], shownFolderIds: ["f2"] }));
-    await waitFor(() => expect(fetchResourceExcerpts).toHaveBeenCalledTimes(2));
-    expect(fetchResourceExcerpts.mock.calls[1][1]).toEqual(["b"]);
+    await waitFor(() =>
+      expect(fetchResourceExcerptsOrThrow).toHaveBeenCalledTimes(2),
+    );
+    expect(fetchResourceExcerptsOrThrow.mock.calls[1][1]).toEqual(["b"]);
     await waitFor(() =>
       expect(getFolderMetadata.mock.calls.map((c) => c[1])).toContain("f2"),
     );
@@ -124,7 +129,7 @@ describe("useOrganizerShownCardData", () => {
   });
 
   it("returns a failure state when the excerpt read rejects", async () => {
-    fetchResourceExcerpts.mockRejectedValue(new Error("excerpts down"));
+    fetchResourceExcerptsOrThrow.mockRejectedValue(new Error("excerpts down"));
     const { result } = renderHook(() => useOrganizerShownCardData(input()));
     await waitFor(() => expect(result.current.excerpts.status).toBe("failed"));
     expect(result.current.excerpts).toEqual({
@@ -134,7 +139,7 @@ describe("useOrganizerShownCardData", () => {
   });
 
   it("does not report a failed excerpt read as ready with an empty map", async () => {
-    fetchResourceExcerpts.mockRejectedValue("not an error");
+    fetchResourceExcerptsOrThrow.mockRejectedValue("not an error");
     const { result } = renderHook(() => useOrganizerShownCardData(input()));
     await waitFor(() => expect(result.current.excerpts.status).toBe("failed"));
     expect(result.current.excerpts).not.toHaveProperty("byId");
@@ -175,12 +180,12 @@ describe("useOrganizerShownCardData", () => {
       useOrganizerShownCardData(input({ projectId: "" })),
     );
     expect(noProject.result.current.excerpts.status).toBe("idle");
-    expect(fetchResourceExcerpts).not.toHaveBeenCalled();
+    expect(fetchResourceExcerptsOrThrow).not.toHaveBeenCalled();
   });
 
   it("discards a stale excerpt result for an earlier shown set", async () => {
     let resolveFirst: (v: Record<string, string>) => void = () => {};
-    fetchResourceExcerpts.mockImplementationOnce(
+    fetchResourceExcerptsOrThrow.mockImplementationOnce(
       () =>
         new Promise<Record<string, string>>((r) => {
           resolveFirst = r;
