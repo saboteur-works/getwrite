@@ -157,6 +157,52 @@ describe("native backend, unknown folder (Task 35, FR-3)", () => {
   });
 });
 
+describe("clearFieldKeys parity (Feature 109 Task 11)", () => {
+  const PID = "66666666-6666-4666-8666-666666666666";
+  const FID = "77777777-7777-4777-8777-777777777777";
+  const META = { fieldValues: { a: "1" }, clearFieldKeys: ["b"] };
+
+  it("HTTP sends the field inside metadata unchanged", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({ notes: "", fieldValues: {} }),
+      } as Response);
+    await updateFolderMetadata("p", "f", META);
+    expect(JSON.parse(String(spy.mock.calls[0][1]?.body)).metadata).toEqual(
+      META,
+    );
+  });
+
+  it("native hands the same field to the core, and native refuses a bad list with the message the route returns as 400", async () => {
+    const u = vi
+      .spyOn(core, "updateFolderMetadataCore")
+      .mockResolvedValue(VALUE);
+    const t = nativeBackend.createNativeFolderMetadataTransport({
+      fs: createFakeCapacitorFilesystem(),
+      projectsDir: "/projects",
+    });
+    await t.updateFolderMetadata("p", "f", META);
+    expect(u).toHaveBeenCalledWith("p", "f", META);
+    u.mockRestore();
+    const fake = createFakeCapacitorFilesystem();
+    const adapter = capacitorFsAdapter(fake);
+    await adapter.mkdir(`/projects/${PID}`, { recursive: true });
+    await adapter.writeFile(
+      `/projects/${PID}/project.json`,
+      JSON.stringify({ id: PID, name: "p" }),
+    );
+    const native = nativeBackend.createNativeFolderMetadataTransport({
+      fs: fake,
+      projectsDir: "/projects",
+    });
+    await expect(
+      native.updateFolderMetadata(PID, FID, { clearFieldKeys: [1] }),
+    ).rejects.toThrow("clearFieldKeys must be a list of non-blank strings");
+  });
+});
+
 describe("web-stub", () => {
   it("exports the same names as the native backend", () => {
     expect(Object.keys(webStub).sort()).toEqual(

@@ -282,6 +282,84 @@ describe("folder-metadata-core (Feature 102 Task 8)", () => {
     });
   });
 
+  it("clearFieldKeys removes only the named keys and keeps the others (Feature 109 Task 11)", async () => {
+    await updateFolderMetadataCore(PID, FID, {
+      notes: "keep",
+      resourceSubtype: "Act",
+      fieldValues: { mood: "calm", tone: "dry", pace: "slow" },
+    });
+    const out = await updateFolderMetadataCore(PID, FID, {
+      clearFieldKeys: ["mood", "pace"],
+    });
+    expect(out).toEqual({
+      notes: "keep",
+      fieldValues: { tone: "dry" },
+      resourceSubtype: "Act",
+    });
+    const raw = await readSidecarRaw();
+    expect(raw.userMetadata).toEqual({ tone: "dry", notes: "keep" });
+    expect(raw.resourceSubtype).toBe("Act");
+  });
+
+  it("clearFieldKeys on an absent key is a no-op and one write carries a set and a clear", async () => {
+    await updateFolderMetadataCore(PID, FID, { fieldValues: { a: "1" } });
+    const out = await updateFolderMetadataCore(PID, FID, {
+      fieldValues: { b: "2" },
+      clearFieldKeys: ["a", "never-stored"],
+    });
+    expect(out.fieldValues).toEqual({ b: "2" });
+  });
+
+  it("clearing the last key leaves a sidecar with no userMetadata", async () => {
+    await updateFolderMetadataCore(PID, FID, { fieldValues: { a: "1" } });
+    await updateFolderMetadataCore(PID, FID, { clearFieldKeys: ["a"] });
+    expect((await readSidecarRaw()).userMetadata).toBeUndefined();
+  });
+
+  it("refuses a bad clearFieldKeys without echoing input and keeps the stored value", async () => {
+    await updateFolderMetadataCore(PID, FID, { fieldValues: { a: "1" } });
+    const before = await readSidecarRaw();
+    const SECRET = "SECRET-KEY-VALUE";
+    const bad: unknown[] = [
+      "a",
+      [1],
+      [null],
+      [""],
+      ["  "],
+      ["notes"],
+      ["__proto__"],
+      [SECRET, SECRET],
+      Array.from({ length: 51 }, (_, i) => `k${i}${SECRET}`),
+      ["a", 7],
+    ];
+    for (const clearFieldKeys of bad) {
+      const err = await failureOf(
+        updateFolderMetadataCore(PID, FID, { clearFieldKeys }),
+      );
+      expect(err).toBeInstanceOf(InvalidFolderMetadataError);
+      expect((err as Error).message).not.toContain(SECRET);
+    }
+    const overlap = await failureOf(
+      updateFolderMetadataCore(PID, FID, {
+        fieldValues: { a: "2" },
+        clearFieldKeys: ["a"],
+      }),
+    );
+    expect(overlap).toBeInstanceOf(InvalidFolderMetadataError);
+    expect(await readSidecarRaw()).toEqual(before);
+  });
+
+  it("clearFieldKeys for an unknown folder is 404-class and creates no sidecar", async () => {
+    const UNKNOWN = "88888888-8888-4888-8888-888888888888";
+    const err = await failureOf(
+      updateFolderMetadataCore(PID, UNKNOWN, { clearFieldKeys: ["a"] }),
+    );
+    expect(err).toBeInstanceOf(FolderNotFoundError);
+    await expect(
+      stat(folderSidecarPathForProject(ROOT, UNKNOWN)),
+    ).rejects.toThrow();
+  });
+
   it("the folder sidecar has no body key", async () => {
     await updateFolderMetadataCore(PID, FID, { notes: "n" });
     const keys = Object.keys(await readSidecarRaw());
