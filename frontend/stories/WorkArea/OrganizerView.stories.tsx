@@ -6,6 +6,7 @@ import { Provider } from "react-redux";
 import OrganizerView from "../../components/WorkArea/Views/OrganizerView/OrganizerView";
 import projectsReducer from "../../src/store/projectsSlice";
 import resourcesReducer from "../../src/store/resourcesSlice";
+import queryReducer from "../../src/store/querySlice";
 import type { StoredProject } from "../../src/store/projectsSlice";
 import type {
   AnyResource,
@@ -48,7 +49,11 @@ const childResources: AnyResource[] = [0, 1, 2].map((i) => ({
 }));
 
 const selectedFolderStore = configureStore({
-  reducer: { projects: projectsReducer, resources: resourcesReducer },
+  reducer: {
+    projects: projectsReducer,
+    resources: resourcesReducer,
+    queries: queryReducer,
+  },
   preloadedState: {
     resources: {
       selectedResourceId: "org-folder",
@@ -161,7 +166,11 @@ const filtersChildResources: TextResource[] = [
 ];
 
 const filtersStore = configureStore({
-  reducer: { projects: projectsReducer, resources: resourcesReducer },
+  reducer: {
+    projects: projectsReducer,
+    resources: resourcesReducer,
+    queries: queryReducer,
+  },
   preloadedState: {
     projects: {
       selectedProjectId: "filters-proj",

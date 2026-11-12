@@ -56,3 +56,34 @@ Not covered: a drop on a card that is not the selected resource followed by an e
 - Storybook: the new story was type-checked only; not rendered, no axe run, no 360px check.
 - No device, paired-device or browser run; the split was checked by the unit and component tests only.
 - `pnpm test:e2e`, `next build` and `build:native` were not run.
+
+## 2026-11-11: e2e `organizer view displays resource cards` failed (0 articles, expected 3)
+
+**Observed (lead):** full `pnpm test:e2e`: 253 passed, 1 failed on all 3 retries,
+`e2e/organizer-view.e2e.spec.ts:22`, story `workarea-organizerview--with-selected-folder`,
+`getByRole("article")` count 0.
+
+**Measured:** rebuilt Storybook at HEAD 6dc21292, loaded the story in headless
+Chromium. The story threw during render:
+`TypeError: Cannot read properties of undefined (reading 'isLoadingQueries')`
+(from `organizerGridModel` chunk, reached through `OrganizerView`), and Storybook
+reported "Error rendering story". So 0 articles because nothing rendered.
+
+**Read (from code, not separately experimented):** `useOrganizerArrangements.ts`
+and `useOrganizerSmartFolderCards.ts` read `state.queries.isLoadingQueries`. The
+story's `selectedFolderStore` (and `filtersStore`) were built with only the
+`projects` and `resources` reducers, so there was no `queries` slice. The real
+store and the global Storybook preview store both register `queries`
+(`querySlice`). I did not run the component against a store that has `queries`
+and a modified component, so "the component did not regress" rests on the
+passing result below plus the unchanged `Default` story and the Organizer unit
+tests, not on a before/after bisect of the component.
+
+**Fix:** `frontend/stories/WorkArea/OrganizerView.stories.tsx`: added
+`queries: queryReducer` to both story-scoped stores (the second, `filtersStore`,
+had the same gap). No component change; the e2e assertion is untouched.
+
+**Results:** `playwright test e2e/organizer-view.e2e.spec.ts` 3/3 pass;
+`pnpm typecheck` clean; `pnpm lint` 0 errors (459 warnings); vitest on
+Organizer tests 43 files, 670 passed, 1 expected fail. Full `pnpm test:e2e` not
+re-run by me.
