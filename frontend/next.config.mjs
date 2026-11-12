@@ -284,6 +284,10 @@ const nextConfig = {
           // also lives in src/lib/api/ — same rule as above.
           "../../store/transport/native-folder-metadata-backend":
             "./src/store/transport/native-folder-metadata-backend.web-stub",
+          // Feature 109 Task 14: lib/api/organizer-field-write.ts (Task 13)
+          // also lives in src/lib/api/ — same rule as above.
+          "../../store/transport/native-organizer-field-write-backend":
+            "./src/store/transport/native-organizer-field-write-backend.web-stub",
           // folder-metadata-sources-core Task 28: lib/api/source-attachments.ts
           // also lives in src/lib/api/ — same rule as above.
           "../../store/transport/native-source-attachments-backend":
