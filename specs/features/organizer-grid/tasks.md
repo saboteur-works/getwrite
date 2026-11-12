@@ -58,7 +58,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 5
 **Notes:** Reads only (no edits): the Organizer view and tree builder, the page's `updateResource`, `sidecar.ts`, `project.ts`, `projectsSlice.ts`, `schemas.ts`, `project-types-static.ts` and `project-type.schema.json`; probes live in the scratchpad. Satisfies FR-1 (a), (b), (f), (g), (i). FR-1 (c) and (d) are Task 3. FR-1 (e) (excerpt and folder-sidecar read cost at 100, 500 and 2000 cards) and (h) (the card cap) need a generated large project and a device, so they are recorded in Task 42 (LEAD-RUN) with the fixture from Task 4; this is the one departure from FR-1's wording that the first task records them, and the index says so. Per the repo rule, this task writes measurements to `experiments/task-1.md`, not into `experiments.md` beyond the index; no other task edits `experiments.md` before Task 44. No build is run here (builds fail in worktrees).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: Contract: arrangement and grid types, constants, inert stubs
 **What:** Define the types-only contract (axis, source, arrangement, grid cells, drop and write inputs and results, operation inputs) with inert core stubs so models, cores, routes, transports, native backends and UI proceed as siblings.
@@ -67,7 +67,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-5, FR-7, FR-14 (shapes from OQ-2), FR-20. Types, constants and inert stubs only; no behaviour is merged, so it does not wait for Task 1. The stubs are replaced by Tasks 10 and 25, one file each. The Electron worker constraint applies (files under `lib/models/`).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: Spike record: FR-1 (c) smart-folder read and (d) dnd-kit keyboard drag
 **What:** Record, from throwaway probes that are not merged, how a smart folder's ids can be read without touching shared query state and whether dnd-kit keyboard drag moves a card between droppable cells of a two-dimensional layout.
@@ -76,7 +76,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 5
 **Notes:** Reads only (no edits): `query-transport-service.ts`, `querySlice.ts`, `saved-queries.ts`, the Organizer view and card; spike code lives in the scratchpad only. Satisfies FR-1 (c), (d). Its record decides the custom coordinate getter that Task 20 builds (OQ-9) and the query read Task 15 uses (OQ-14). Run in jsdom only: a jsdom spike is not evidence about touch or a device, and the record says so. Write nothing as a cause that was not separated.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Measurement fixture generator for large generated projects
 **What:** Add a script that writes a generated project of N text resources (spread over folders, with select, multiselect, status and subtype values) for the card-cap measurement.
@@ -85,7 +85,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Serves FR-1 (e), (h) and OQ-8 (generated cards). Reading the project format from `frontend/src/lib/models/` only; nothing under `projects/` is written by the task. Getting the generated project onto the Pixel 7 Pro (import) is the lead's step in Task 42.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Pure source model: tree order and source resolution
 **What:** Add a pure module that lists a folder's direct children, its descendants flattened in tree order (documents only) and a smart folder's cards in tree order, with the tree-order rule pinned by a test against the tree's own order.
@@ -94,7 +94,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-3, FR-5 (tree order); OQ-5 (the default keeps folders first, flattened uses tree order).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Pure axis model: offered fields and axis values
 **What:** Add a pure module that returns the fields a Rows or Columns picker offers for the cards' kind and the ordered value list of an axis field.
@@ -103,7 +103,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-4 (OQ-10, OQ-16). Reuses `isFieldVisibleForSubtype`, `getFieldsOfferedOnFolder`, `isFieldDeprecated`; read their source before use.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Pure grid model: placement, None, Other values, duplicates, cap, phone groups
 **What:** Add the pure `organizerGridModel.ts` that places cards into cells and rows and builds the phone grouping from cards, field values and axis value lists.
@@ -112,7 +112,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-2, FR-5, FR-10, FR-12 (model side). Takes the axis value lists as input (Task 6 produces them) and a cap number as a parameter, so it needs neither Task 6 nor Task 17.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Pure drop model: field drop to write payload and refusals
 **What:** Add a pure module that turns a drag from one cell to another into one field-write payload or a refusal with its reason.
@@ -121,7 +121,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-7, FR-8 (OQ-6, OQ-7, OQ-19). The payload type is Task 2's.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Pure order-drop model: reorder within one folder
 **What:** Add a pure module that maps a drop in an order-column layout onto the full unfiltered sibling order or a refusal.
@@ -130,7 +130,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-9 (OQ-15). Reads `useOrganizerCardReorder.ts` for the input shape; edits nothing else.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Field-write core: set named userMetadata keys and subtype in one sidecar write
 **What:** Replace the stub with a core that sets named `userMetadata` keys and `resourceSubtype` for one resource inside `mutateSidecar`, one write for many fields, re-validating values with the sidebar's rules.
@@ -139,7 +139,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-7, FR-13 (OQ-6, OQ-19). Validates before the lock; takes `projectId` and no path (`docs/standards/storage-context.md`, `security.md`). The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Folder metadata: explicit clearFieldKeys through core, route, client and native backend
 **What:** Add an optional `clearFieldKeys` to the folder metadata update so a folder card's field can be cleared, through the core, the route, the client transport and the native backend.
@@ -148,7 +148,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 3
 **Notes:** Satisfies FR-7 (OQ-6, folder cards). Edits no web-stub file: the stub is unchanged. The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Field-write route
 **What:** Add the route that exposes the field-write core under the storage context.
@@ -157,7 +157,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-7, FR-13. Compiles against Task 2's stub signature, so it does not wait for Task 10; its test uses a fake core.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Field-write client transport
 **What:** Add the client transport that calls the field-write route through `createTransport`.
@@ -166,7 +166,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-7, FR-13, FR-1(f) (inlining, checked in Task 41).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Field-write native backend with web stub
 **What:** Add the native backend for the field-write operation, its `.web-stub.ts` alias and the `next.config.mjs` alias entry.
@@ -175,7 +175,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-7, FR-13. `next.config.mjs` is edited by this task and then by Task 28 only, so Task 28 depends on this one. Device behaviour is unmeasured until Task 42.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Smart-folder source hook
 **What:** Add a hook that evaluates a smart-folder source into the grid's own local state with loading, failed, deleted and ready states.
@@ -184,7 +184,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2, 3
 **Estimate:** 5
 **Notes:** Satisfies FR-3, FR-9 (smart folder leaves), FR-15 (loading never unavailable); OQ-14. The probe findings of Task 3 decide the call used. Reads `query-transport-service.ts` and `querySlice.ts`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Shown-card data hook: excerpts and folder sidecars for shown cards only
 **What:** Add a hook that requests text excerpts and folder sidecars only for the cards that are shown after the cap and the filters.
@@ -193,7 +193,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-12 (OQ-18). Read both reused modules before use.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Card cap constant module
 **What:** Add a named constant module for the card cap that holds no figure until the owner sets one from the measurement record.
@@ -202,7 +202,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 1
 **Notes:** Satisfies FR-12 (the constant exists, the figure does not). Task 42 sets the figure in this file; Task 44 verifies it is set and cites the record.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Toolbar: Rows and Columns pickers and source select
 **What:** Add the toolbar component with the Rows picker, the Columns picker and the source select.
@@ -211,7 +211,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-2, FR-3, FR-19 (first-wave controls). Props-driven so it needs only Task 2's types. Read `OrganizerFilterBar.tsx` for the existing control conventions before writing.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Grid matrix component with ARIA grid and roving tabindex
 **What:** Add the matrix component that renders the cells, headings, cards and empty cells as an ARIA grid with roving tabindex and droppable cells.
@@ -220,7 +220,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2, 7
 **Estimate:** 5
 **Notes:** Satisfies FR-5, FR-11 (structure and arrows). The drag handle's Space lift and the coordinate getter are Task 20; this component only exposes the sortable and droppable ids that task consumes. The component takes the Task 7 model output as props. Read `OrganizerCard.tsx` and its stories before using a prop.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Drag hook: sensors, coordinate getter, announcements and drop routing
 **What:** Add the hook that sets up the pointer and keyboard sensors, the custom cell coordinate getter, the announcements and the drop routing to the field and order paths.
@@ -229,7 +229,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 3, 8, 9
 **Estimate:** 8
 **Notes:** Satisfies FR-9, FR-11 (OQ-9). The largest first-wave task: if Task 3 shows the custom getter needs more than one concern, the implementor splits the announcements into a second file within this task, not a new task. Callbacks are injected, so the write path (Task 22) is not a dependency.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Phone grouped lists component
 **What:** Add the phone layout that renders the grid model's groups as grouped lists with per-card column labels and no `role="grid"`.
@@ -238,7 +238,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 7
 **Estimate:** 3
 **Notes:** Satisfies FR-10 (OQ-1). The width switch (`useViewportTier` phone) is in Task 23. The first-paint flash caveat is recorded in Tasks 39 and 42, not claimed absent here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Field drop hook: non-optimistic write, live region and gone handling
 **What:** Add the hook that performs a field drop through the field-write transport or the folder metadata transport without moving the card until success and reports the outcome.
@@ -247,7 +247,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 8, 11, 13
 **Estimate:** 5
 **Notes:** Satisfies FR-7, FR-13 (OQ-6, OQ-19). Reads `SubtypeSection.tsx` for the toast text convention ("Couldn't save the subtype" precedent) and uses its own wording.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Wire the grid into the Organizer: default branch and grid branch
 **What:** Edit `OrganizerView.tsx` so the default arrangement stays today's wrapping list and the grid is a second branch fed by the pure models, hooks and components, with filters, the cap message and the phone switch.
@@ -256,7 +256,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 5, 6, 7, 15, 16, 17, 18, 19, 20, 21, 22
 **Estimate:** 5
 **Notes:** Satisfies FR-2, FR-3, FR-6, FR-9, FR-10, FR-12 (wiring). AppShell is not edited: it renders `<OrganizerView />` with no props. Only the two named existing test files may be extended, never made weaker. `OrganizerView.tsx` is edited by this task and Task 36 only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Config key plumbing: organizerArrangements through schema, types, normalizer, slice and selector
 **What:** Declare `config.organizerArrangements` in every place a config key is copied by name and add a selector over it.
@@ -265,7 +265,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1, 2
 **Estimate:** 3
 **Notes:** Satisfies FR-14 (FR-1(g) test). Task 1's record of the pre-change behaviour is the comparison. Hot files `types.ts`, `schemas.ts`, `lib/api/schemas.ts`, `project.ts`, `projectsSlice.ts`: Task 24, then Task 33 for `schemas.ts` and `lib/api/schemas.ts` only. The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Arrangements core: add, rename and delete with validation
 **What:** Replace the stub with the core for per-arrangement add, rename and delete, each a read-modify-write inside `updateProjectJson`.
@@ -274,7 +274,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2, 24
 **Estimate:** 5
 **Notes:** Satisfies FR-14, FR-20 (OQ-2, OQ-3). Precedents `saved-query-dispatch-core.ts`, `metadata-schema-dispatch-core.ts`, `saved-defaults-core.ts`. An arrangement whose source or field no longer exists is stored as written (availability is read-side, Task 29), never rewritten.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Arrangements dispatch route
 **What:** Add the single dispatch route for arrangement add, rename and delete.
@@ -283,7 +283,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-14. Compiles against Task 2's stub; its test uses a fake core.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Arrangements client transport
 **What:** Add the client transport for the arrangement operations through `createTransport`.
@@ -292,7 +292,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-14, FR-1(f).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Arrangements native backend with web stub
 **What:** Add the native backend for the arrangement operations, its web stub and the `next.config.mjs` alias.
@@ -301,7 +301,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2, 14
 **Estimate:** 3
 **Notes:** Satisfies FR-14. Depends on Task 14 only because both edit `next.config.mjs`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Pure availability model for saved arrangements
 **What:** Add a pure function that decides whether a saved arrangement is available and, if not, why, only after the folders, saved queries and metadata schema have loaded.
@@ -310,7 +310,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 3
 **Notes:** Satisfies FR-15 (OQ-2, OQ-14).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Last-used arrangement preference
 **What:** Add the per-device `localStorage` preference for the last-used arrangement id.
@@ -319,7 +319,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Satisfies FR-16 (OQ-4). Follows `frontend/src/lib/capture-preferences.ts` and `tests/unit/capture-preferences.test.ts`; read both first.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Arrangement controls component
 **What:** Add the toolbar controls to save, apply, rename and delete arrangements, showing the applied name, unavailable ones and errors.
@@ -328,7 +328,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 5
 **Notes:** Satisfies FR-14, FR-15, FR-19. Props-driven, takes Task 29's availability result type as a prop type from Task 2.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 32: Arrangements hook: list, operations, apply, dirty state and remembered fallback
 **What:** Add the hook that holds the arrangement list, calls the operations, applies an arrangement and falls back to the default with a message.
@@ -337,7 +337,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 24, 27, 29, 30
 **Estimate:** 5
 **Notes:** Satisfies FR-14, FR-15, FR-16, FR-19.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 33: Project type key: arrangements in the strict schema and its validation text
 **What:** Add the optional `arrangements` list to `ProjectTypeSchema`, the API schemas and the refusal-text tables, and to `project-type.schema.json` if Task 1 (i) shows it is needed.
@@ -346,7 +346,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 1, 2, 24
 **Estimate:** 3
 **Notes:** Satisfies FR-17 (OQ-12). `schemas.ts` and `lib/api/schemas.ts` are edited after Task 24 by dependency. The Manager editor files are not touched (no Manager UI in this feature). The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 34: Module seam: optional arrangements on ModuleManifestEntry
 **What:** Add an optional plain-data `arrangements` field to `ModuleManifestEntry` with a lookup for enabled modules, used by a test fixture only.
@@ -355,7 +355,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 2
 **Estimate:** 2
 **Notes:** Satisfies FR-17 (OQ-11). `registry.ts` is edited by this task only. The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 35: Seed arrangements at project creation
 **What:** Copy a type's and an enabled module's arrangements into a new project inside `createProjectFromType`, resolving folder names to ids with a second `project.json` write.
@@ -364,7 +364,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 25, 33, 34
 **Estimate:** 5
 **Notes:** Satisfies FR-18 (OQ-11, OQ-12). Uses the validation exported by Task 25 for the seeded values. The Electron worker constraint applies.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 36: Wire arrangements into the Organizer toolbar
 **What:** Edit `OrganizerView.tsx` to mount the arrangement controls and the arrangements hook and apply the applied arrangement's source, rows and columns.
@@ -373,7 +373,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 23, 31, 32
 **Estimate:** 3
 **Notes:** Satisfies FR-14, FR-15, FR-16, FR-19. `OrganizerView.tsx` is edited by Task 23 and then this task only.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 37: Storybook stories for the grid, phone groups, toolbar and arrangement controls
 **What:** Add stories for the grid states, the phone groups, the toolbar and the arrangement controls.
@@ -382,7 +382,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 18, 19, 21, 31
 **Estimate:** 3
 **Notes:** Satisfies FR-11, FR-19 (stories). Storybook and its a11y addon run only in Task 41 and 44 from the main checkout; a story that typechecks is not reported as a11y-clean.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 38: Grid a11y and keyboard tests
 **What:** Add the axe test and the keyboard tests for the grid and the drag hook.
@@ -391,7 +391,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 19, 20, 21
 **Estimate:** 5
 **Notes:** Satisfies FR-11. jsdom keyboard tests are not device evidence; the record says so.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 39: Browser test of the phone layout at 360px and 767px
 **What:** Add the Playwright spec that checks the phone grouped layout at 360px and 767px width against the built Storybook.
@@ -400,7 +400,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 37
 **Estimate:** 3
 **Notes:** Satisfies FR-10 (browser test). Not run by the orchestrator: report as not run. The first-paint flash is a caveat of the `useViewportTier` mechanism (OQ-1).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 40: Pins: default arrangement, drag integration and wiring
 **What:** Add integration tests that pin the default arrangement unchanged and the drag path end to end with fakes.
@@ -409,7 +409,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 36
 **Estimate:** 5
 **Notes:** Satisfies FR-2, FR-7, FR-9, FR-13 (pins). Fakes only: nothing here is device or paired-device evidence.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 41: LEAD-RUN: build, install and inlining check
 **What:** From the main checkout, outside the sandbox, build the native app, run the inlining grep and install the debug build on the Pixel 7 Pro, recording each result.
@@ -418,7 +418,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 14, 28, 35, 36, 37, 39, 40
 **Estimate:** 2
 **Notes:** LEAD-RUN, not for the orchestrator: the lead runs it with the owner outside the sandbox from the main checkout (builds fail in worktrees here; `adb` and Gradle can fail inside the sandbox, retry outside before filing a bug). Satisfies FR-1(f), FR-22.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 42: LEAD-RUN: device and paired-device runs and the card-cap measurement
 **What:** With the owner, run the grid on the physical Pixel 7 Pro and a paired device, run the card-cap measurement on the generated fixtures, record every FR-22 item as an observed value and set the card cap from the record.
@@ -427,7 +427,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 4, 38, 40, 41
 **Estimate:** 8
 **Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-1 (e), (h), FR-12, FR-22. Android and paired-device support MUST NOT be claimed until this is recorded. Record the driving method (by hand or `adb`). The cap is the owner's decision from the record, not a derived figure. No cause is written without an experiment that separated it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 43: Documentation updates for the organizer grid
 **What:** Apply the documentation changes FR-22 requires, with the scribe stage writing the prose, so that no document states an unmeasured result as fact.
@@ -436,7 +436,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 38, 40, 41
 **Estimate:** 5
 **Notes:** Satisfies FR-22 (documentation; OQ-13 option (a)). Prose is the scribe stage's job; the orchestrator passes it the files and the facts recorded by Tasks 1 to 41. It runs alongside the device run (Task 42), so it states no device, paired-device or card-cap result; Task 44 adds those. Hot files: `docs/`, `frontend/CLAUDE.md`, root `CLAUDE.md`, `android/CLAUDE.md`: Task 43 only, then Task 44 for the device-run results.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 44: LEAD-RUN: final suites exactly as CI runs them and close-out
 **What:** Run every CI command from the places the workflows run them, write the acceptance record with the Not verified list, add the device-run results and the card cap to the docs, and link the per-task results from `experiments.md`.
@@ -445,7 +445,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Depends on:** 42, 43
 **Estimate:** 5
 **Notes:** LEAD-RUN, not for the orchestrator. Satisfies FR-23. Tasks 1 to 41 are covered transitively through Tasks 42 and 43. Folding the device-run results into the docs is its own step after Task 42 is recorded.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 44
