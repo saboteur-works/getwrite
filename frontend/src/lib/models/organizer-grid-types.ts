@@ -67,7 +67,8 @@ export type OrganizerUnavailableReason =
   | "folder-missing"
   | "query-missing"
   | "field-missing"
-  | "field-not-axis-type";
+  | "field-not-axis-type"
+  | "axis-not-allowed";
 
 /** Availability of a saved arrangement; `pending` while inputs still load. */
 export type OrganizerArrangementAvailability =

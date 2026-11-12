@@ -67,7 +67,7 @@ const ARR_A: OrganizerArrangement = {
   name: "By status",
   source: { kind: "folder", folderId: FOLDER_ID, scope: "children" },
   rows: { kind: "status" },
-  columns: "none",
+  columns: { kind: "subtype" },
 };
 const ARR_B: OrganizerArrangement = {
   id: B_ID,
@@ -81,13 +81,13 @@ const ARR_SMART: OrganizerArrangement = {
   name: "Smart",
   source: { kind: "smart-folder", queryId: "q1" },
   rows: "none",
-  columns: "none",
+  columns: "order",
 };
 
 const DEFAULT_PICKS: OrganizerPicks = {
   source: { kind: "folder", folderId: FOLDER_ID, scope: "children" },
   rows: "none",
-  columns: "none",
+  columns: "order",
 };
 
 type Store = ReturnType<typeof makeStore>;
@@ -352,6 +352,41 @@ describe("apply", () => {
     expect(result.current.appliedId).toBeNull();
   });
 
+  it("apply(null) clears the remembered arrangement for this project", async () => {
+    const store = makeReadyStore([ARR_A]);
+    await loadQueries(store);
+    const { result } = setup(store);
+    await act(async () => {
+      result.current.apply(A_ID);
+    });
+    expect(readLastOrganizerArrangementId(DIRECTORY_ID)).toBe(A_ID);
+    await act(async () => {
+      result.current.apply(null);
+    });
+    expect(readLastOrganizerArrangementId(DIRECTORY_ID)).toBeNull();
+    expect(
+      window.localStorage.getItem(organizerArrangementStorageKey(DIRECTORY_ID)),
+    ).toBeNull();
+  });
+
+  it("reopening after Default shows the default, with no remembered arrangement applied", async () => {
+    const store = makeReadyStore([ARR_A]);
+    await loadQueries(store);
+    const first = setup(store);
+    await act(async () => {
+      first.result.current.apply(A_ID);
+    });
+    await act(async () => {
+      first.result.current.apply(null);
+    });
+    first.unmount();
+    const second = setup(store);
+    await act(async () => {});
+    expect(second.onApply).not.toHaveBeenCalled();
+    expect(second.result.current.appliedId).toBeNull();
+    expect(second.result.current.notice).toBeNull();
+  });
+
   it("refuses an unavailable arrangement with its message and applies nothing", async () => {
     const store = makeReadyStore([ARR_B]);
     await loadQueries(store);
@@ -422,7 +457,7 @@ describe("changed since applied", () => {
       result.current.apply(A_ID);
     });
     const same: OrganizerPicks = {
-      columns: "none" as OrganizerAxis,
+      columns: { kind: "subtype" } as OrganizerAxis,
       rows: { kind: "status" },
       source: {
         scope: "children",

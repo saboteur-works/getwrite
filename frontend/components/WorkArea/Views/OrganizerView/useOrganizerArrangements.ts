@@ -16,6 +16,7 @@ import {
   renameOrganizerArrangement,
 } from "../../../../src/lib/api/organizer-arrangements";
 import {
+  clearLastOrganizerArrangementId,
   organizerArrangementStorageKey,
   readLastOrganizerArrangementId,
   writeLastOrganizerArrangementId,
@@ -294,6 +295,8 @@ export function useOrganizerArrangements(
         onApplyRef.current(defaultPicksRef.current);
         setAppliedId(null);
         setNotice(null);
+        // Reopening the Organizer shows the default, not the last arrangement.
+        if (directoryId !== null) clearLastOrganizerArrangementId(directoryId);
         return { ok: true };
       }
       const arrangement = arrangements.find((a) => a.id === id);

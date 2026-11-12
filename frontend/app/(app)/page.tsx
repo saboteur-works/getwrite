@@ -554,8 +554,22 @@ export default function Home(): JSX.Element {
     // resurrects a cleared one: a key `undefined` in Redux is deleted from
     // the payload, otherwise the Redux value is used. Other keys are
     // deliberately not reconciled.
+    //
+    // Feature 109: an Organizer field drop patches Redux's `userMetadata`
+    // (and subtype) only. The updater builds the new `userMetadata` from the
+    // copy it is given, so for the selected resource it is given the Redux
+    // `userMetadata`; otherwise the whole-object write would put the older
+    // local values back (measured in tests/page-stale-sidecar-save.test.tsx).
     const applyUpdate = (r: AnyResource): AnyResource => {
-      const updated = updater(r);
+      const isSelected = selectedResource?.id === r.id;
+      const updated = updater(
+        isSelected
+          ? ({
+              ...r,
+              userMetadata: selectedResource.userMetadata,
+            } as AnyResource)
+          : r,
+      );
       if (!selectedResource || selectedResource.id !== updated.id) {
         return updated;
       }

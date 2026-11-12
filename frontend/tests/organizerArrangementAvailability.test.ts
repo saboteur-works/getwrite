@@ -95,6 +95,34 @@ describe("getArrangementAvailability", () => {
     expect(dep).toMatchObject({ reason: "field-not-axis-type" });
   });
 
+  it("reports a stored Columns none or Rows order as unavailable, not applied", () => {
+    const columnsNone = getArrangementAvailability(
+      arrangement({ rows: "none", columns: "none" }),
+      inputs(),
+    );
+    expect(columnsNone).toMatchObject({
+      status: "unavailable",
+      reason: "axis-not-allowed",
+    });
+    const rowsOrder = getArrangementAvailability(
+      arrangement({ rows: "order", columns: { kind: "status" } }),
+      inputs(),
+    );
+    expect(rowsOrder).toMatchObject({
+      status: "unavailable",
+      reason: "axis-not-allowed",
+    });
+  });
+
+  it("stays pending, not unavailable, for a Columns none while inputs load", () => {
+    expect(
+      getArrangementAvailability(
+        arrangement({ columns: "none" }),
+        inputs({ schema: { state: "loading" } }),
+      ),
+    ).toEqual({ status: "pending" });
+  });
+
   it("gives each reason a distinct non-empty message", () => {
     const msgs = [
       getArrangementAvailability(
@@ -113,9 +141,10 @@ describe("getArrangementAvailability", () => {
         arrangement({ rows: { kind: "field", key: "notes" } }),
         inputs(),
       ),
+      getArrangementAvailability(arrangement({ columns: "none" }), inputs()),
     ].map((r) => (r.status === "unavailable" ? r.message : ""));
     expect(msgs.every((m) => m.length > 0)).toBe(true);
-    expect(new Set(msgs).size).toBe(4);
+    expect(new Set(msgs).size).toBe(5);
   });
 
   it("echoes no stored key in the message", () => {

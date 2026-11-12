@@ -9,6 +9,8 @@ import OrganizerGridToolbar, {
   type OrganizerSmartFolderChoice,
 } from "../../components/WorkArea/Views/OrganizerView/OrganizerGridToolbar";
 import OrganizerArrangementControls from "../../components/WorkArea/Views/OrganizerView/OrganizerArrangementControls";
+import OrganizerToolbarArea from "../../components/WorkArea/Views/OrganizerView/OrganizerToolbarArea";
+import type { UseOrganizerPicksResult } from "../../components/WorkArea/Views/OrganizerView/useOrganizerPicks";
 import {
   buildOrganizerGridModel,
   buildOrganizerPhoneGroups,
@@ -434,4 +436,130 @@ function ArrangementControlsDemo(): JSX.Element {
 /** One arrangement is unavailable: its reason is shown in text and Apply is disabled. */
 export const ArrangementControls: Story = {
   render: () => <ArrangementControlsDemo />,
+};
+
+// ---------------------------------------------------------------------------
+// Whole toolbar (FR-19)
+// ---------------------------------------------------------------------------
+
+/** One arrangement stored with Columns "none", which the core no longer saves. */
+const WHOLE_TOOLBAR_ARRANGEMENTS: OrganizerArrangement[] = [
+  ...ARRANGEMENTS,
+  {
+    id: "a-3",
+    name: "Old columns choice",
+    source: FOLDER_SOURCE,
+    rows: STATUS_AXIS,
+    columns: "none",
+  },
+];
+
+const WHOLE_TOOLBAR_AVAILABILITY: Record<
+  string,
+  OrganizerArrangementAvailability
+> = {
+  ...AVAILABILITY,
+  "a-3": {
+    status: "unavailable",
+    reason: "axis-not-allowed",
+    message:
+      "This arrangement uses a Rows or Columns choice that cannot be applied.",
+  },
+};
+
+function WholeToolbarDemo(): JSX.Element {
+  const [rows, setRows] = useState<OrganizerAxis>("none");
+  const [columns, setColumns] = useState<OrganizerAxis>("order");
+  const [source, setSource] = useState<OrganizerSource>(FOLDER_SOURCE);
+  const [list, setList] = useState<OrganizerArrangement[]>(
+    WHOLE_TOOLBAR_ARRANGEMENTS,
+  );
+  const [appliedId, setAppliedId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const picks: UseOrganizerPicksResult = {
+    effectiveSource: source,
+    rowsAxis: rows,
+    columnsAxis: columns,
+    setRowsAxis: setRows,
+    setColumnsAxis: setColumns,
+    chooseSource: setSource,
+    selectArrangement: (id) => {
+      const target = list.find((a) => a.id === id);
+      if (id === null) {
+        setRows("none");
+        setColumns("order");
+        setSource(FOLDER_SOURCE);
+        setAppliedId(null);
+        setMessage(null);
+      } else if (
+        target &&
+        WHOLE_TOOLBAR_AVAILABILITY[id]?.status !== "unavailable"
+      ) {
+        setRows(target.rows);
+        setColumns(target.columns);
+        setSource(target.source);
+        setAppliedId(id);
+        setMessage(null);
+      } else {
+        setMessage("This arrangement cannot be applied.");
+      }
+    },
+    arrangementMessage: message,
+    arrangements: {
+      arrangements: list,
+      appliedId,
+      availability: WHOLE_TOOLBAR_AVAILABILITY,
+      isChanged: false,
+      notice: null,
+      error: null,
+      isBusy: false,
+      apply: () => ({ ok: true }),
+      save: async (name) => {
+        const id = `a-${list.length + 1}`;
+        setList([
+          ...list,
+          { id, name, source, rows, columns } as OrganizerArrangement,
+        ]);
+        return { ok: true, id };
+      },
+      rename: async (id, name) => {
+        setList(list.map((a) => (a.id === id ? { ...a, name } : a)));
+        return { ok: true, id };
+      },
+      remove: async (id) => {
+        setList(list.filter((a) => a.id !== id));
+        return { ok: true, id };
+      },
+    },
+  };
+  return (
+    <div className="p-4 max-w-[360px] sm:max-w-none">
+      <OrganizerToolbarArea
+        picks={picks}
+        folderId="folder-1"
+        cards={[]}
+        folderMetadataById={undefined}
+      />
+    </div>
+  );
+}
+
+/**
+ * The whole Organizer toolbar as the view lays it out: Rows and Columns
+ * pickers, the source select and the arrangement controls. One saved
+ * arrangement was stored with Columns "none"; it is listed as unavailable with
+ * its reason in text and cannot be applied. Narrow the viewport to 360px to
+ * check the touch layout.
+ */
+export const WholeToolbar: Story = {
+  render: () => <WholeToolbarDemo />,
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByLabelText("Rows")).toBeInTheDocument();
+    await expect(canvas.getByLabelText("Columns")).toBeInTheDocument();
+    await expect(canvas.getByLabelText("Source")).toBeInTheDocument();
+    await expect(
+      canvasElement.querySelector("[data-organizer-arrangements]"),
+    ).not.toBeNull();
+  },
 };

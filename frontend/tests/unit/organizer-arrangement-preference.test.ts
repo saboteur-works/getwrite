@@ -1,6 +1,7 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearLastOrganizerArrangementId,
   organizerArrangementStorageKey,
   readLastOrganizerArrangementId,
   writeLastOrganizerArrangementId,
@@ -78,5 +79,25 @@ describe("organizer-arrangement-preference", () => {
     expect(writeLastOrganizerArrangementId(PROJECT_A, "a/b")).toBe(false);
     expect(window.localStorage.length).toBe(0);
     expect(readLastOrganizerArrangementId("a/b")).toBeNull();
+  });
+
+  it("clears the remembered id for that project only", () => {
+    writeLastOrganizerArrangementId(PROJECT_A, ARRANGEMENT);
+    writeLastOrganizerArrangementId(PROJECT_B, ARRANGEMENT);
+    expect(clearLastOrganizerArrangementId(PROJECT_A)).toBe(true);
+    expect(readLastOrganizerArrangementId(PROJECT_A)).toBeNull();
+    expect(readLastOrganizerArrangementId(PROJECT_B)).toBe(ARRANGEMENT);
+  });
+
+  it("clears when nothing is stored, and refuses a malformed project id", () => {
+    expect(clearLastOrganizerArrangementId(PROJECT_A)).toBe(true);
+    expect(clearLastOrganizerArrangementId("a/b")).toBe(false);
+  });
+
+  it("returns false, without throwing, when the removal throws", () => {
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+    expect(clearLastOrganizerArrangementId(PROJECT_A)).toBe(false);
   });
 });

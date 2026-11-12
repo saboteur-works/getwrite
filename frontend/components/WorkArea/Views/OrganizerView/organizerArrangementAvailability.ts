@@ -58,6 +58,8 @@ const MESSAGES: Record<OrganizerUnavailableReason, string> = {
   "field-missing": "A field this arrangement groups by no longer exists.",
   "field-not-axis-type":
     "A field this arrangement groups by can no longer be used to group cards.",
+  "axis-not-allowed":
+    "This arrangement uses a Rows or Columns choice that cannot be applied.",
 };
 
 const unavailable = (
@@ -71,7 +73,12 @@ const unavailable = (
 function axisProblem(
   axis: OrganizerAxis,
   fields: ReadonlyArray<AvailabilityField>,
+  position: "rows" | "columns",
 ): OrganizerUnavailableReason | null {
+  // The core refuses to save Columns "none" or Rows "order"; a stored one
+  // (the schema still loads it) is shown as unavailable, never applied.
+  if (position === "columns" && axis === "none") return "axis-not-allowed";
+  if (position === "rows" && axis === "order") return "axis-not-allowed";
   if (typeof axis === "string" || axis.kind !== "field") return null;
   const field = fields.find((f) => f.key === axis.key);
   if (!field) return "field-missing";
@@ -107,7 +114,7 @@ export function getArrangementAvailability(
   }
 
   const problem =
-    axisProblem(arrangement.rows, schema.fields) ??
-    axisProblem(arrangement.columns, schema.fields);
+    axisProblem(arrangement.rows, schema.fields, "rows") ??
+    axisProblem(arrangement.columns, schema.fields, "columns");
   return problem ? unavailable(problem) : { status: "available" };
 }
