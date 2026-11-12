@@ -15,7 +15,11 @@
 export type EncryptedProjectRefusalReason = "encrypted" | "marker-unreadable";
 
 /** What the refused write was for; picks the message's wording. */
-export type EncryptedProjectRefusalSubject = "capture" | "claims" | "fields";
+export type EncryptedProjectRefusalSubject =
+  | "capture"
+  | "claims"
+  | "fields"
+  | "arrangements";
 
 const ERROR_NAME = "EncryptedProjectCaptureRefusedError";
 
@@ -34,6 +38,12 @@ const MESSAGES: Record<
       "Fields can't be changed in an encrypted project on this device. It cannot yet encrypt what it writes, so nothing was saved.",
     "marker-unreadable":
       "Fields can't be changed right now: this project's encryption marker could not be read, so the project was treated as encrypted. Nothing was saved. Try again.",
+  },
+  arrangements: {
+    encrypted:
+      "Arrangements can't be changed in an encrypted project on this device. It cannot yet encrypt what it writes, so nothing was saved.",
+    "marker-unreadable":
+      "Arrangements can't be changed right now: this project's encryption marker could not be read, so the project was treated as encrypted. Nothing was saved. Try again.",
   },
   claims: {
     encrypted:
