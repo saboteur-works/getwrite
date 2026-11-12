@@ -933,3 +933,42 @@ describe("project-type refusal messages are readable (Feature 90, FR-28 g)", () 
     }
   });
 });
+
+describe("project-type arrangements in the API schemas (Feature 109, FR-17)", () => {
+  const spec = {
+    id: "m",
+    name: "M",
+    folders: [{ name: "Chapters" }],
+    arrangements: [
+      {
+        name: "By status",
+        source: { kind: "folder", folderName: "Chapters", scope: "children" },
+        rows: { kind: "status" },
+        columns: "order",
+      },
+    ],
+  };
+
+  it("keeps arrangements on the list and write responses", () => {
+    const write = ProjectTypeWriteSuccessSchema.parse({
+      fileName: "m.json",
+      spec,
+    });
+    expect(write.spec.arrangements).toHaveLength(1);
+    const list = ProjectTypeListResponseSchema.parse({
+      entries: [{ spec, fileName: "m.json", source: "saved" }],
+      unusable: [],
+      savedStatus: "ok",
+    });
+    expect(list.entries[0]?.spec.arrangements).toHaveLength(1);
+  });
+
+  it("refuses a malformed arrangements list in a write response", () => {
+    expect(
+      ProjectTypeWriteSuccessSchema.safeParse({
+        fileName: "m.json",
+        spec: { ...spec, arrangements: [{ name: "x" }] },
+      }).success,
+    ).toBe(false);
+  });
+});

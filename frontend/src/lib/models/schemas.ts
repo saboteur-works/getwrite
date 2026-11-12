@@ -1014,11 +1014,75 @@ const PROJECT_TYPE_SECTION_LABELS: Record<string, string> = {
   subtypes: "Subtypes",
   wordCountGoal: "Word Count Goal",
   modules: "Modules",
+  arrangements: "Arrangements",
 };
 
 /** Refusal text for a malformed `modules` declaration; names no client input. */
 const PROJECT_TYPE_MODULES_MESSAGE =
   "Modules must list each module as on (true) or off (false).";
+
+/** Refusal text for a malformed `arrangements` list; names no client input. */
+const PROJECT_TYPE_ARRANGEMENTS_MESSAGE =
+  "Arrangements must each have a name, a folder source, rows and columns, with no repeated names.";
+
+/**
+ * Axis spelled as in `OrganizerAxisSchema`, with its own refusal text so a
+ * nested unknown key is never echoed. `allowOrder` is true for Columns only.
+ */
+function seedAxisSchema(allowOrder: boolean) {
+  const objects = z.union([
+    z.strictObject(
+      { kind: z.literal("status") },
+      { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
+    ),
+    z.strictObject(
+      { kind: z.literal("subtype") },
+      { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
+    ),
+    z.strictObject(
+      { kind: z.literal("field"), key: z.string().trim().min(1).max(200) },
+      { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
+    ),
+  ]);
+  return z.union(
+    allowOrder
+      ? [z.literal("none"), z.literal("order"), objects]
+      : [z.literal("none"), objects],
+    { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
+  );
+}
+
+/**
+ * One arrangement a project type seeds (Feature 109, FR-17). The folder has no
+ * id yet, so it is named by `folderName` (a name or its slug, resolved by
+ * `slugify` when the project is created). Same shape as the module registry's
+ * `ModuleArrangementSeed`. Folder sources only; no smart-folder source and no
+ * id (the project assigns one when it copies the seed).
+ */
+const ProjectTypeArrangementSchema = z.strictObject(
+  {
+    name: z.string().trim().min(1).max(100),
+    source: z.strictObject({
+      kind: z.literal("folder"),
+      folderName: z.string().trim().min(1).max(200),
+      scope: z.enum(["children", "descendants"]),
+    }),
+    rows: seedAxisSchema(false),
+    columns: seedAxisSchema(true),
+  },
+  { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
+);
+
+const ProjectTypeArrangementListSchema = z
+  .array(ProjectTypeArrangementSchema, {
+    error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE,
+  })
+  .max(50, PROJECT_TYPE_ARRANGEMENTS_MESSAGE)
+  .refine(
+    (list) =>
+      new Set(list.map((a) => a.name.toLowerCase())).size === list.length,
+    PROJECT_TYPE_ARRANGEMENTS_MESSAGE,
+  );
 
 /**
  * Per-parse fallback for refusals the schema gives no message of its own
@@ -1104,6 +1168,11 @@ export const ProjectTypeSchema = z
         error: PROJECT_TYPE_MODULES_MESSAGE,
       })
       .optional(),
+    /**
+     * Arrangements seeded into a new project (Feature 109, FR-17): folder
+     * sources named by name or slug; copied once at creation by a later task.
+     */
+    arrangements: ProjectTypeArrangementListSchema.optional(),
   })
   .strict()
   .superRefine((spec, ctx) => {

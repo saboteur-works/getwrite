@@ -99,3 +99,112 @@ describe("project-type modules declaration (Feature 108, FR-4)", () => {
     expect(res.success).toBe(false);
   });
 });
+
+describe("project-type arrangements key (Feature 109, FR-17)", () => {
+  const folders = [{ name: "Chapters" }, { name: "Research Notes" }];
+  const arrangement = {
+    name: "Scenes by status",
+    source: { kind: "folder", folderName: "Chapters", scope: "children" },
+    rows: { kind: "status" },
+    columns: "order",
+  };
+  const parse = (arrangements: unknown) =>
+    validateProjectType({ id: "m", name: "M", folders, arrangements });
+
+  it("keeps a valid list, by name or by slug, on the validated spec", () => {
+    const res = parse([
+      arrangement,
+      {
+        name: "Notes by field",
+        source: {
+          kind: "folder",
+          folderName: "research-notes",
+          scope: "descendants",
+        },
+        rows: "none",
+        columns: { kind: "field", key: "plot" },
+      },
+    ]);
+    expect(res.success).toBe(true);
+    if (res.success) expect(res.value.arrangements).toHaveLength(2);
+  });
+
+  it("leaves a spec without the key unchanged", () => {
+    const res = validateProjectType({ id: "m", name: "M", folders });
+    expect(res.success).toBe(true);
+    if (res.success) expect(res.value.arrangements).toBeUndefined();
+  });
+
+  it("accepts an empty list", () => {
+    expect(parse([]).success).toBe(true);
+  });
+
+  it("refuses a smart-folder source, so it is never stored", () => {
+    const res = parse([
+      { ...arrangement, source: { kind: "smart-folder", queryId: "x" } },
+    ]);
+    expect(res.success).toBe(false);
+  });
+
+  it("refuses rows 'order', a blank or over-long name, and a bad scope", () => {
+    expect(parse([{ ...arrangement, rows: "order" }]).success).toBe(false);
+    expect(parse([{ ...arrangement, name: "   " }]).success).toBe(false);
+    expect(parse([{ ...arrangement, name: "x".repeat(101) }]).success).toBe(
+      false,
+    );
+    expect(
+      parse([
+        {
+          ...arrangement,
+          source: { kind: "folder", folderName: "Chapters", scope: "all" },
+        },
+      ]).success,
+    ).toBe(false);
+    expect(
+      parse([
+        {
+          ...arrangement,
+          source: { kind: "folder", folderName: " ", scope: "children" },
+        },
+      ]).success,
+    ).toBe(false);
+  });
+
+  it("refuses non-array, duplicate names, more than 50 and unknown keys", () => {
+    expect(parse("Chapters").success).toBe(false);
+    expect(
+      parse([arrangement, { ...arrangement, name: " scenes BY status " }])
+        .success,
+    ).toBe(false);
+    expect(
+      parse(
+        Array.from({ length: 51 }, (_, i) => ({
+          ...arrangement,
+          name: `A${i}`,
+        })),
+      ).success,
+    ).toBe(false);
+    expect(parse([{ ...arrangement, id: "abc" }]).success).toBe(false);
+  });
+
+  it("names the key and no client input in a refusal", () => {
+    const secret = "SECRET_CLIENT_TEXT";
+    const cases: unknown[] = [
+      [{ ...arrangement, [secret]: 1 }],
+      [{ ...arrangement, rows: { kind: "status", [secret]: 1 } }],
+      [{ ...arrangement, source: { kind: secret } }],
+      [{ ...arrangement, columns: secret }],
+      [{ ...arrangement, name: secret.repeat(10) }],
+      secret,
+    ];
+    for (const c of cases) {
+      const res = parse(c);
+      expect(res.success).toBe(false);
+      if (!res.success) {
+        const text = res.issues.map((i) => i.message).join(" | ");
+        expect(text).not.toContain(secret);
+        expect(text).toContain("Arrangements");
+      }
+    }
+  });
+});
