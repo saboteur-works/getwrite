@@ -51,11 +51,22 @@ export const FOLDER_METADATA_WRITABLE_KEYS = [
   "resourceSubtype",
 ] as const;
 
+/**
+ * The optional `clearFieldKeys` payload key (Feature 109, FR-7, OQ-6): field
+ * keys to remove from `fieldValues`. It is accepted beside
+ * {@link FOLDER_METADATA_WRITABLE_KEYS}, which is left as it was.
+ */
+const FOLDER_METADATA_CLEAR_KEY = "clearFieldKeys";
+
+/** Most keys one `clearFieldKeys` list may name. */
+const MAX_CLEAR_FIELD_KEYS = 50;
+
 /** A validated client write. `resourceSubtype: null` clears the subtype. */
 interface FolderMetadataWrite {
   notes?: string;
   fieldValues?: Record<string, MetadataValue>;
   resourceSubtype?: string | null;
+  clearFieldKeys?: string[];
 }
 
 /** A folder metadata write was refused at the boundary. Map to HTTP 400. */
@@ -118,6 +129,38 @@ function validateFieldValues(value: unknown): Record<string, MetadataValue> {
 }
 
 /**
+ * Validates `clearFieldKeys`: a bounded list of distinct, non-blank,
+ * non-reserved strings. No message carries any part of the input.
+ */
+function validateClearFieldKeys(value: unknown): string[] {
+  const shape = "clearFieldKeys must be a list of non-blank strings";
+  if (!Array.isArray(value)) throw new InvalidFolderMetadataError(shape);
+  if (value.length > MAX_CLEAR_FIELD_KEYS) {
+    throw new InvalidFolderMetadataError(
+      `clearFieldKeys may name at most ${MAX_CLEAR_FIELD_KEYS} keys`,
+    );
+  }
+  const seen = new Set<string>();
+  for (const key of value) {
+    if (typeof key !== "string" || key.trim() === "") {
+      throw new InvalidFolderMetadataError(shape);
+    }
+    if (RESERVED_FIELD_KEYS.includes(key)) {
+      throw new InvalidFolderMetadataError(
+        "clearFieldKeys names a key that is not allowed",
+      );
+    }
+    if (seen.has(key)) {
+      throw new InvalidFolderMetadataError(
+        "clearFieldKeys must not repeat a key",
+      );
+    }
+    seen.add(key);
+  }
+  return [...seen];
+}
+
+/**
  * Refuses a write for an id that names no folder under `folders/`, or in a
  * project with no `project.json`. `project.json` is read first because an
  * absent `folders/` directory reads as no folders even when the project is
@@ -148,7 +191,10 @@ function validateWrite(payload: unknown): FolderMetadataWrite {
   if (!isPlainObject(payload)) {
     throw new InvalidFolderMetadataError("Folder metadata must be an object");
   }
-  const allowed: readonly string[] = FOLDER_METADATA_WRITABLE_KEYS;
+  const allowed: readonly string[] = [
+    ...FOLDER_METADATA_WRITABLE_KEYS,
+    FOLDER_METADATA_CLEAR_KEY,
+  ];
   for (const key of Object.keys(payload)) {
     if (!allowed.includes(key)) {
       throw new InvalidFolderMetadataError(
@@ -165,6 +211,15 @@ function validateWrite(payload: unknown): FolderMetadataWrite {
   }
   if ("fieldValues" in payload) {
     write.fieldValues = validateFieldValues(payload.fieldValues);
+  }
+  if (FOLDER_METADATA_CLEAR_KEY in payload) {
+    write.clearFieldKeys = validateClearFieldKeys(payload.clearFieldKeys);
+    const clearing = new Set(write.clearFieldKeys);
+    if (Object.keys(write.fieldValues ?? {}).some((k) => clearing.has(k))) {
+      throw new InvalidFolderMetadataError(
+        "clearFieldKeys must not name a key that fieldValues sets",
+      );
+    }
   }
   if ("resourceSubtype" in payload) {
     const subtype = payload.resourceSubtype;
@@ -208,6 +263,7 @@ function buildStored(
   subtype: string | null | undefined,
 ): { stored: Record<string, unknown>; value: FolderSidecarValue } {
   const fieldValues = { ...current.fieldValues, ...(write.fieldValues ?? {}) };
+  for (const key of write.clearFieldKeys ?? []) delete fieldValues[key];
   const notes = write.notes ?? current.notes;
   const resourceSubtype =
     subtype === undefined ? current.resourceSubtype : (subtype ?? undefined);

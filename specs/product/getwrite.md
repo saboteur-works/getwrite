@@ -371,6 +371,23 @@ with the app without hand-rewriting it (see OQ-90).
   The shape questions, OQ-188 to OQ-201, were resolved by the owner at Gate 1,
   2026-11-10. Citation formatting at compile (runway 11) and folklore variants
   (runway 14) are not this: see Out of Scope.)
+- US-50: As a writer planning a manuscript or a body of research, I want to lay
+  my documents out in a grid in the Organizer, with rows from one field (a
+  plotline, a suspect, a case strand) and columns from another field or from
+  document order, to move a card to another row or column to change that field,
+  and to save the arrangement under a name, so that I can see how my documents
+  relate along the dimension I care about and switch between those views without
+  re-picking them each time. [Next] (Added 2026-11-11; FR-176 to FR-189. Owner
+  decisions, 2026-11-04, note_57b557f0 "Decided", and build-order item 7 of
+  note_31c82491, "Grid layout in the Organizer" (runway item 6, note_a6991b90);
+  it builds on folder metadata (build-order item 6, Feature 102), which is
+  shipped. Read 2026-11-11, not run: the Organizer today is a flat, wrapping set
+  of cards for the direct children of the selected folder, with filters
+  (Feature 24, FR-26) and drag reorder (Feature 66, FR-21); there is no row or
+  column grouping. The shape questions, OQ-202 to OQ-217, were resolved by the owner at Gate 1, 2026-11-11. Derived
+  entity-mention rows and creating a document from an empty cell are deferred
+  by the owner; see Out of Scope. Story order against in-world order is a later
+  feature, not this one.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -2378,6 +2395,157 @@ with the app without hand-rewriting it (see OQ-90).
   assignment of a claim to another person. [US-49] (Added 2026-11-10. Owner
   batching, 2026-11-04, note_31c82491: run F pairs the claim ledger with
   folklore variants; run G holds citations at compile.)
+
+- FR-176: The grid MUST be a layout of the Organizer, not a new work-area view:
+  the work area keeps the views FR-13 lists, and the Organizer gains a Rows
+  picker and a Columns picker. Rows MUST offer "none" or a field. Columns MUST
+  offer "order" or a field. Cells MUST hold the same cards the Organizer shows
+  today, with the same per-project card body setting, the same filters
+  (FR-26) and the existing card behaviour of opening a document and opening a
+  subfolder by its card. Today's Organizer is the arrangement rows = none,
+  columns = order, scoped to the selected folder's direct children, and it MUST
+  remain the default arrangement: an existing project keeps today's Organizer
+  behaviour, with the pickers added. Whether the default is drawn by shared or
+  separate code is an implementation choice. [US-50] (Added 2026-11-11. Owner
+  decision, 2026-11-04, note_57b557f0 "Decided" items 1 and 3; OQ-207 resolved
+  2026-11-11. Read 2026-11-11, not run: `OrganizerView.tsx` renders a wrapping
+  set of cards for the direct children of the browsed folder.)
+- FR-177: The grid MUST be able to take its cards from the selected folder and
+  all its descendants, flattened in tree order, and MUST be able to take them
+  from a smart folder as an alternative source. The default source MUST remain
+  the selected folder's direct children, as today. The flattened descendant
+  scope MUST show documents only, with no folder cards. A smart-folder source
+  MUST follow the same drag rules as a folder source (FR-181, FR-182); when a
+  field drag makes a card stop matching the smart folder, the card MUST leave
+  the grid and a toast MUST say it left the smart folder. If the source folder
+  or smart folder of an arrangement is deleted, the arrangement MUST be shown
+  as unavailable (FR-183). [US-50] (Added 2026-11-11. Owner decision,
+  2026-11-04, note_57b557f0 "Decided" item 2: a manuscript's scenes usually sit
+  inside chapter folders. OQ-210, OQ-215 and OQ-216 resolved 2026-11-11.)
+- FR-178: A writer MUST be able to choose a field as the row axis and a field as
+  the column axis, and the axis MUST be able to be a select field, a multiselect
+  field, the document status, the resource subtype, a resource-reference field,
+  or a folder field. Text, number and date fields MUST NOT be offered as axes
+  (Out of Scope (Deferred)). A folder field is usable as an axis on folder cards
+  because folder metadata has shipped (FR-14 of Feature 102), and only in the
+  direct-children scope, since the flattened descendant scope shows documents
+  only (FR-177). A document outside a field's subtype scope MUST keep its stored
+  value for that field, as in OQ-66. A stored value that is not in the field's
+  list MUST be shown marked, never rewritten, and grouped in one "Other values"
+  row or column. A field that has no values to group by MUST NOT make the grid
+  fail. [US-50] (Added 2026-11-11. Owner decision, 2026-11-04, "Columns can be
+  order or a field at launch"; the field-type list is the note's proposal,
+  "select, multiselect, status, subtype, and reference fields", and the
+  folder-field line, "once folder metadata ships". OQ-204, OQ-215 and OQ-217
+  resolved 2026-11-11. Precedent: OQ-66, FR-80.)
+- FR-179: The grid MUST show each card in the row and column cell that its field
+  values name. A card with no value for an axis field MUST appear in a "None"
+  row or column that is always shown, even when empty. A card with several
+  values (a multiselect field) MUST appear in every matching cell, with duplicate
+  appearances marked as the same document, and its order within a cell MUST
+  follow tree order; no new stored order is kept. [US-50] (Added 2026-11-11.
+  The note proposes a card in every matching row and a "None" row or column;
+  OQ-205 and OQ-206 resolved 2026-11-11.)
+- FR-180: Filters MUST apply to the grid's cards as they do today (status, word
+  count, resource-reference fields, AND-combined, client-side), and a card the
+  filters hide MUST NOT be shown in any cell. Filter values MUST still reset on
+  folder navigation, as today, and a saved arrangement MUST NOT hold filters.
+  [US-50] (Added 2026-11-11. Owner decision, 2026-11-04: cells hold "the same
+  cards, card setting and filters". OQ-203 resolved 2026-11-11.)
+- FR-181: A writer MUST be able to drag a card to a cell in another row or
+  column, and doing so MUST set the value of that axis' field on the document,
+  written through the same path the metadata sidebar uses for that field, so
+  the same validation and the same refusals apply. A drag across both axes sets
+  both fields. A drag MUST change only those field values: not the document's
+  text, its place in the tree or its other fields. For a multiselect field, the
+  drag MUST move only the value of the row or column the card was dragged from,
+  and leave its other values. A drag onto the "None" row or column MUST clear
+  that field's value. A drag onto a cell whose field is out of the document's
+  subtype scope MUST be refused, with the reason shown. A failed write MUST be
+  shown as failed and the card MUST NOT be shown in the new cell as if it had
+  succeeded. A drag MUST record nothing beyond what the sidebar's field write
+  records: no writing-log entry and no revision of its own. [US-50] (Added
+  2026-11-11. Owner decision, 2026-11-04, "Decided" item 4. OQ-205, OQ-209 and
+  OQ-217 resolved 2026-11-11. `docs/standards/failure-visibility.md`: a failure
+  must not render as absence.)
+- FR-182: Dragging along the "order" axis MUST reorder a card only among cards in
+  the same folder, using the tree's existing reorder. A drag along "order" that
+  would put a card into a different folder MUST NOT move it: moving a document
+  between folders stays a tree operation, and the refusal MUST say so. Reorder
+  along "order" MUST be refused when the cards in the grid span several folders
+  (a flattened or smart-folder source), with the reason shown. Drag reorder MUST
+  stay off while a filter is active, as Feature 66 has it today. Dragging into a
+  derived axis MUST NOT be possible; the grid offers no derived axis at launch
+  (FR-189), and this rule is recorded for when one does. [US-50] (Added
+  2026-11-11. Owner decision, 2026-11-04, "Decided" item 4. OQ-203 and OQ-210
+  resolved 2026-11-11. Read 2026-11-11, not run: `useOrganizerCardReorder.ts`
+  is scoped to one parent folder and reorders the full unfiltered sibling
+  order; the drag handle is disabled while a filter is active.)
+- FR-183: A writer MUST be able to save the current arrangement (source, rows and
+  columns, and no filters) under a name, apply a saved arrangement, rename it,
+  and delete it. Saved arrangements MUST belong to the project, be shared by
+  every device that opens it, and be stored in the `project.json` config. An
+  arrangement whose source (folder or smart folder) or axis field no longer
+  exists MUST be shown as unavailable and MUST NOT be silently rewritten or
+  auto-deleted. The last-used arrangement MUST be remembered per device, not in
+  `project.json`; when the remembered arrangement is missing, the grid MUST fall
+  back to the default arrangement (FR-176). [US-50] (Added 2026-11-11. Owner
+  decision, 2026-11-04, "Decided" item 5: "named, per project". OQ-203,
+  OQ-207, OQ-211, OQ-212 and OQ-216 resolved 2026-11-11.)
+- FR-184: A project type MUST be able to supply saved arrangements, through an
+  optional arrangements list alongside `modules`, and a module MUST be able to
+  supply saved arrangements through a hook on the contribution seam
+  (FR-125 to FR-132), so that a new project of that type or with that module on
+  starts with them listed. A supplied arrangement MUST be copied into the
+  project at creation and then belong to the project, editable and deletable by
+  the writer; a later change to the type or module MUST NOT reach an existing
+  project. [US-50] (Added 2026-11-11. Owner decision, 2026-11-04, "Decided"
+  item 5: "seedable by project types and modules". OQ-211 resolved 2026-11-11.
+  Precedent: FR-163, where a project type declares starting modules and does
+  not affect an existing project.)
+- FR-185: The grid MUST be available wherever the Organizer is: on desktop, on
+  hosted web, on a paired device and on Android. A drag that sets a field MUST
+  be refused wherever the metadata sidebar's write for that field would be
+  refused, with the reason shown, and MUST NOT be a new paired-device limit
+  (the five existing limits do not include editing a field). A project that is
+  locked is not open, so the grid is not shown. A claim for Android or a paired
+  device MUST NOT be made until a recorded run on it shows it. [US-50] (Added
+  2026-11-11. The runtimes are those the spec covers. The last sentence follows
+  the pattern of FR-160. OQ-208 resolved 2026-11-11.)
+- FR-186: On a narrow (phone) screen, the grid MUST be shown as grouped lists,
+  one group per row value, with the columns shown as sub-groups or as a label
+  on each card (the choice is left to the feature spec), and MUST NOT hide a
+  card or make the Organizer unusable. [US-50] (Added 2026-11-11.
+  note_57b557f0, "Revisit at spec time": "likely fall back to grouped lists".
+  note_edd2e4d3: the app is already crowded on phones. OQ-202 resolved
+  2026-11-11.)
+- FR-187: The grid MUST be operable by keyboard alone: a keyboard user MUST be
+  able to move between cells, open a card, and move a card to another cell
+  without a pointer, and the grid MUST be exposed to assistive technology with
+  row and column structure. It MUST meet the working target of WCAG 2.1 AA
+  (`docs/standards/accessibility.md`). The form MUST be ARIA grid semantics,
+  arrow-key movement between cells, and the existing `@dnd-kit` keyboard drag;
+  a "Move to..." menu is not part of this feature (Out of Scope (Deferred)).
+  [US-50] (Added 2026-11-11. note_57b557f0: "ARIA grid semantics with keyboard
+  movement between cells". Keyboard drag in the Organizer exists today through
+  `@dnd-kit`. OQ-214 resolved 2026-11-11.)
+- FR-188: The grid MUST show at most a fixed number of cards, and MUST NOT
+  silently omit a card past it: the cards not shown MUST be reported with a
+  visible "N not shown" message. The figure MUST be set from a recorded run on
+  a large project in the feature's experiments, and MUST NOT be stated before
+  that run. [US-50] (Added 2026-11-11. A flattened scope can hold a whole
+  manuscript; no figure exists. OQ-213 resolved 2026-11-11.
+  `docs/standards/failure-visibility.md`.)
+- FR-189: This feature MUST NOT include derived, read-only rows from entity
+  mentions; creating a document from an empty cell with the row's and column's
+  values preset; a date or in-world-order axis, a Timeline comparison mode or a
+  richer date model (build-order items 8 and 9); text, number or date axes;
+  per-cell stored order; a "Move to..." menu; structure packs or a beats
+  overlay (runway 7); or changes to cross-folder moves, which stay in the
+  tree. [US-50] (Added 2026-11-11. Owner, 2026-11-04, note_57b557f0 "Later":
+  entity-mention rows and empty-cell create; build order in note_31c82491.
+  Gate 1, 2026-11-11 added the text, number and date axes, per-cell stored
+  order and "Move to..." menu deferrals.)
 
 ### Later Requirements
 
@@ -5498,6 +5666,134 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 (Raised 2026-11-10 for FR-166. From note_31c82491.)
 
+**OQ-202 (resolved): What does the Organizer grid do on a phone or narrow screen, where a matrix does not fit?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): at a narrow (phone) width the grid is shown as grouped lists, one group per row value, with columns as sub-groups or a per-card label (the detail is left to the feature spec); no card is hidden. Applied in FR-186.
+**Options:** (a) Fall back to grouped lists, one group per row value; consequence: reads well on a phone, a second layout to build and test. (b) Scroll the grid sideways; consequence: one layout, hard to use on a phone. (c) Offer the grid only above a width and keep today's Organizer below it; consequence: smallest, a phone writer has no grid.
+**Impact:** FR-186, FR-185; US-50. note_57b557f0 suggests grouped lists; note_edd2e4d3 records that the app is already crowded on phones.
+**Owner:** Product owner / designer.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-203 (resolved): Does a saved arrangement remember the Organizer's filters, do filter values still reset on folder navigation in the grid, and does reorder stay off while a filter is active?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): an arrangement holds scope (source), rows and columns only, not filters. Filter values still reset on folder navigation, and drag reorder stays off while a filter is active. Applied in FR-180, FR-182 and FR-183.
+**Options:** (a) An arrangement remembers scope, rows and columns only, and filters stay as today; consequence: matches today's reset. (b) An arrangement also remembers filter values; consequence: a named lens such as "unverified, this suspect", with saved state that can go stale when a status or field is renamed. (c) A choice at save time; consequence: most flexible, one more control.
+**Impact:** FR-180, FR-182, FR-183; US-50. Today filter values reset on folder navigation (Feature 24) and drag reorder is disabled while a filter is active (Feature 66).
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-204 (resolved): Which field types can be a row or column axis: only select, multiselect, status, subtype, reference fields and folder fields, or also text, number (as ranges) and date?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): an axis field is a select, multiselect, status, subtype, resource-reference or folder field; text, number and date fields are not axes (deferred). A field out of a document's subtype scope keeps its stored value, as in OQ-66. Applied in FR-178.
+**Options:** (a) The listed types only at launch; consequence: every axis has a finite set of values. (b) Add number ranges and date buckets; consequence: covers word count and dates, with bucket boundaries to define. (c) Add free text, grouped by exact value; consequence: easy to build, a row per typo. Also open: how a field hidden by the resource's subtype scope behaves as an axis (OQ-59 and OQ-66 keep such values and leave the Organizer unchanged).
+**Impact:** FR-178; US-50.
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-205 (resolved): How does a card with no value for an axis field appear, and can a drag onto that row or column clear the field?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): the grid always shows a "None" row or column for cards with no value in the axis field; dropping a card there clears the field. Applied in FR-179 and FR-181.
+**Options:** (a) A "None" row or column that is always shown; consequence: no card disappears, an empty row on a project where every card has a value. (b) Shown only when a card is in it; consequence: tidier, the cell to drag to is missing when it is needed. (c) Cards with no value are left out; consequence: simplest, silently drops cards, which FR-188's rule forbids. Related: a drag onto the "None" cell clears the value, or is refused.
+**Impact:** FR-179, FR-181; US-50.
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-206 (resolved): How does a card appear when it matches several rows or columns (a multiselect value), and is order kept per cell?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): a card with several values (multiselect) appears in every matching cell, its order within a cell follows tree order, and duplicates are marked as the same document; no new stored order. Per-cell stored order is deferred. Applied in FR-179 and FR-182.
+**Options:** (a) The card is in every matching cell, with its order within a cell taken from tree order; consequence: no extra storage, a writer cannot order one cell on its own. (b) The card is in every matching cell and its order is kept per cell; consequence: a writer can arrange each cell, with new stored state. (c) The card is in one cell only (its first value); consequence: no duplicates, hides the other values. Also open: how a duplicate card is marked so the writer knows it is one document.
+**Impact:** FR-179, FR-181, FR-182; US-50.
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-207 (resolved): Does the default arrangement for an existing project change at all, including the look of today's Organizer?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a), with the last-used arrangement remembered per device: an existing project keeps today's Organizer behaviour as the default arrangement (rows none, columns order, direct children), with the pickers added; whether the code path is shared is an implementation choice. The last-used arrangement is remembered per device, not in `project.json`, and a missing remembered arrangement falls back to the default. Applied in FR-176 and FR-183.
+**Options:** (a) Not at all: rows = none, columns = order, direct children, and the same cards, with the pickers added; consequence: no surprise for an existing writer. (b) The same arrangement, drawn by the grid's layout code; consequence: one code path, a risk of small visual change. (c) A layout chosen per project on first use; consequence: an extra step.
+**Impact:** FR-176; US-50. Also whether the chosen arrangement is remembered when the writer leaves and returns (the note does not say).
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-208 (resolved): Does a drag that sets a field need any rule beyond the metadata sidebar's own, for an encrypted or locked project and under the paired-device limits?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): a drag is a field edit and follows the metadata sidebar's refusals; there is no new paired-device limit; a locked project is not open, so no grid is shown. Applied in FR-185.
+**Options:** (a) None: the drag is a field edit and follows the sidebar's checks, and none of the five paired-device limits covers it; consequence: smallest. (b) The grid is read-only on a paired device; consequence: a safer paired device, a different experience from the sidebar. (c) A new paired-device limit for field edits by drag; consequence: another switch in a list that today has five.
+**Impact:** FR-185, FR-181; US-50.
+**Owner:** Product owner / security reviewer.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-209 (resolved): Does a drag that sets a field record anything: the writing log, a revision, or nothing?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): a drag records nothing beyond what the sidebar's field write records. Applied in FR-181.
+**Options:** (a) Nothing: a field value is metadata, not prose, as with the sidebar; consequence: matches the sidebar and the writing log's words-added meaning. (b) A writing-log entry; consequence: counts an edit that adds no words, which the log does not measure. (c) A revision; consequence: a snapshot for a change to a sidecar value, which revisions do not cover today. A field value written by a drag is the sidebar's write, so any difference from it would be new.
+**Impact:** FR-181; US-50.
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-210 (resolved): If a smart folder is the grid's source, what are the drag rules, and what does a drag do when the card then no longer matches the saved query?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): a smart-folder source follows the same drag rules as a folder source; a card that stops matching after a field drag leaves the grid with a toast saying it left the smart folder; reorder along order is refused when the cards span several folders. Applied in FR-177, FR-181 and FR-182.
+**Options:** (a) Same rules as a folder source; a card that stops matching leaves the grid after the write; consequence: consistent, the card seems to vanish. (b) A card that stops matching stays until the writer refreshes; consequence: no vanishing card, a grid that disagrees with its query. (c) Dragging is off for a smart-folder source; consequence: simplest, a smaller feature. Also: reorder along "order" with cards from several folders.
+**Impact:** FR-177, FR-181, FR-182; US-50.
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-211 (resolved): How are saved arrangements stored and seeded: in what project-type format and through which module hook, may a seeded arrangement be edited or deleted, and what happens to an existing project when a type or module is changed?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): a seeded arrangement, from a project type's optional arrangements list (alongside `modules`) or from a module hook, is copied into the project at creation and then belongs to the project, editable and deletable; later type or module changes do not reach existing projects. An arrangement whose field no longer exists is shown as unavailable and never silently rewritten. Applied in FR-183 and FR-184.
+**Options:** (a) A seeded arrangement is copied into the project and then belongs to it, editable and deletable; consequence: the writer owns it, a later change to the type does not reach it. (b) A seeded arrangement is read from the type or module and cannot be edited, only copied; consequence: stays current, harder to reason about. (c) Copied, with a reset to the original; consequence: both, more to build. Also open: the project-type format change, and what an arrangement does when its field no longer exists.
+**Impact:** FR-183, FR-184; US-50; the project-type format; the module seam (FR-125 to FR-132).
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-212 (resolved): Are saved arrangements the same for everyone and every device that opens the project, or kept per device?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): arrangements are per project, shared by every device, and stored in the `project.json` config. Applied in FR-183.
+**Options:** (a) Per project, for every device and tenant user; consequence: matches "per project" in the decision, a paired device changes what the desktop sees. (b) Per device, like the spelling switch; consequence: no cross-device surprise, an arrangement does not travel. (c) Per project, with the last-used one kept per device; consequence: both, two stores.
+**Impact:** FR-183; US-50.
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-213 (resolved): What size bounds does the grid have: how many cards, rows and columns can it show, and how does it behave past them?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): a fixed cap on the cards shown, with a visible "N not shown" message; the figure is set from a recorded run on a large project in the feature's experiments. Applied in FR-188.
+**Options:** (a) A fixed cap with a visible "N not shown" message; consequence: predictable, a writer may hit it. (b) Windowed rendering with no cap; consequence: no cap, more to build and to test for keyboard and screen-reader use. (c) Cap the number of distinct row or column values only; consequence: bounds the layout, not the card count. No measurement exists yet, so a figure needs an experiment on a large project before it is stated.
+**Impact:** FR-188; US-50.
+**Owner:** Product owner / engineering.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-214 (resolved): What is the accessible form of a two-dimensional grid with drag: a grid with row and column semantics and arrow-key movement, which keyboard drag, and which equivalent to dragging?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): ARIA grid semantics, arrow-key movement between cells, and the existing `@dnd-kit` keyboard drag; a "Move to..." menu is deferred (Out of Scope). Applied in FR-187.
+**Options:** (a) ARIA grid semantics, arrow keys between cells, and the existing keyboard drag; consequence: the note's proposal, the Organizer's drag already works by keyboard. (b) A "move to..." menu on each card that names a row and column; consequence: a drag-free path (compare FR-40's open equivalent), another control. (c) Both; consequence: most complete, most to test.
+**Impact:** FR-187; US-50.
+**Owner:** Product owner / accessibility reviewer.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-215 (resolved): When the grid takes a folder and its descendants, do folder cards appear as cards in the flattened list, or only documents?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): the flattened descendant scope shows documents only; folder-field axes apply in the direct-children scope only. Applied in FR-177 and FR-178.
+**Options:** (a) Documents only, because the descendants are being flattened; consequence: a clean sequence, folder fields are not usable as axes for folder cards in this scope. (b) Documents and folders; consequence: folder fields as axes work in the flattened scope, a mix of kinds in one sequence. (c) A choice per arrangement; consequence: flexible, another setting.
+**Impact:** FR-177, FR-178; US-50.
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-216 (resolved): Does a saved arrangement include its source (a folder, or a smart folder), or only the rows and columns, and what happens when that folder or smart folder is deleted?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a), with the last-used arrangement remembered per device: an arrangement includes its source (folder or smart folder); if the source is deleted, the arrangement is shown as unavailable and never auto-deleted. The last-used arrangement is remembered per device, not in `project.json`, and a missing remembered arrangement falls back to the default. Applied in FR-177 and FR-183.
+**Options:** (a) Rows and columns only, applied to whatever is selected; consequence: reusable, never dangling. (b) Also the source; consequence: a named lens that opens in the same place, which can point at a deleted folder or smart folder. (c) A choice at save time; consequence: flexible, another control.
+**Impact:** FR-177, FR-183; US-50.
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
+**OQ-217 (resolved): Can a writer change a field's value by dragging if the field is not offered for that document by the sidebar (out of its subtype scope), and what does the grid do with a stored value that is not in the field's list?**
+**Resolution:** Resolved (2026-11-11, Owner decision, Gate 1): option (a): a drag onto a field out of the document's subtype scope is refused with the reason shown; a stored value not in the field's list is shown marked, never rewritten, and grouped in one "Other values" row or column. Applied in FR-178 and FR-181.
+**Options:** (a) A cell for a document outside the field's scope refuses the drag, and a value not in the list is shown, marked, never rewritten (as with a status, FR-80); consequence: consistent with existing rules. (b) The drag sets the value anyway; consequence: a value the sidebar would hide. (c) The unknown value gets its own row or column; consequence: nothing is hidden, the layout grows.
+**Impact:** FR-178, FR-181; US-50. Precedent: OQ-59, OQ-66, FR-80.
+**Owner:** Product owner.
+
+(Raised 2026-11-11 for FR-176 to FR-189.)
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -5716,3 +6012,20 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   (FR-165; OQ-190): later. Today two sources are two claims.
 - A compile report of unverified claims, or an export of the ledger (FR-172;
   OQ-194): later. Nothing about claims appears in compile or export.
+- Derived, read-only rows from entity mentions, so that "where does each
+  suspect appear" needs no tagging (FR-189; Owner, 2026-11-04, note_57b557f0
+  "Later"): later. Read-only because mentions are detected, not authored; no
+  drag into such an axis (FR-182).
+- Creating a new document from an empty grid cell with that row's and column's
+  values preset (FR-189; Owner, 2026-11-04, note_57b557f0 "Later"): later.
+- A date or in-world-order axis, a Timeline comparison mode and a richer date
+  model (FR-189; note_31c82491, build-order items 8 and 9): later.
+- Structure packs and a beats overlay on the grid (FR-189; runway 7): later.
+- A "Move to..." menu on each grid card, naming a row and column, as a drag-free
+  path (FR-187; OQ-214, Owner decision, Gate 1, 2026-11-11): later. The first cut
+  has ARIA grid semantics, arrow-key movement and the `@dnd-kit` keyboard drag.
+- Number (as ranges), free-text and date axes on the grid (FR-178, FR-189;
+  OQ-204, Owner decision, Gate 1, 2026-11-11): later. Bucket boundaries and
+  exact-value grouping are not defined.
+- A stored order per grid cell (FR-179, FR-189; OQ-206, Owner decision, Gate 1,
+  2026-11-11): later. Order within a cell follows tree order.

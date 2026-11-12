@@ -11,11 +11,16 @@ import {
   MODULE_SLOT_KINDS,
   createModuleRegistry,
   isModuleEnabled,
+  type ModuleArrangementSeed,
   type ModuleManifestEntry,
 } from "../../src/lib/models/modules/registry";
 
 const MODULES_DIR = path.resolve(__dirname, "../../src/lib/models/modules");
 const FILES = ["registry.ts", "manifest.ts"];
+const UI_REGISTRY_FILE_PATH = path.resolve(
+  __dirname,
+  "../../components/Modules/uiRegistry.ts",
+);
 
 function source(file: string): string {
   return readFileSync(path.join(MODULES_DIR, file), "utf8");
@@ -151,6 +156,68 @@ describe("per-module default (Feature 108, FR-2)", () => {
 
   it("leaves the shipped Sources entry without defaultEnabled false", () => {
     expect(MODULE_MANIFEST[0].defaultEnabled).not.toBe(false);
+  });
+});
+
+const seedArrangement: ModuleArrangementSeed = {
+  name: "By status",
+  source: { kind: "folder", folderName: "Chapters", scope: "children" },
+  rows: { kind: "status" },
+  columns: "order",
+};
+const withArrangements: ModuleManifestEntry = {
+  id: "with-arrangements",
+  indexSteps: [],
+  arrangements: [seedArrangement],
+};
+const offWithArrangements: ModuleManifestEntry = {
+  id: "off-with-arrangements",
+  indexSteps: [],
+  defaultEnabled: false,
+  arrangements: [{ ...seedArrangement, name: "Off by default" }],
+};
+
+describe("module arrangements hook (Feature 109, FR-17, OQ-11)", () => {
+  const registry = createModuleRegistry([
+    ...MODULE_MANIFEST,
+    withArrangements,
+    offWithArrangements,
+  ]);
+
+  it("returns a module's arrangements when the module is enabled by default", () => {
+    expect(registry.arrangements({})).toEqual([seedArrangement]);
+  });
+
+  it("returns none for a module turned off explicitly", () => {
+    expect(
+      registry.arrangements({ modules: { "with-arrangements": false } }),
+    ).toEqual([]);
+  });
+
+  it("honours defaultEnabled false and an explicit config.modules entry", () => {
+    expect(registry.arrangements(undefined).map((a) => a.name)).toEqual([
+      "By status",
+    ]);
+    expect(
+      registry
+        .arrangements({ modules: { "off-with-arrangements": true } })
+        .map((a) => a.name),
+    ).toEqual(["By status", "Off by default"]);
+  });
+
+  it("returns none for a module without the field", () => {
+    const plain = createModuleRegistry([testModule]);
+    expect(plain.arrangements({})).toEqual([]);
+  });
+
+  it("is carried by no real manifest entry and adds no slot kind", () => {
+    for (const entry of MODULE_MANIFEST) {
+      expect(entry.arrangements).toBeUndefined();
+      expect(Object.keys(entry)).not.toContain("arrangements");
+    }
+    expect([...MODULE_SLOT_KINDS]).toEqual(["view"]);
+    const ui = readFileSync(UI_REGISTRY_FILE_PATH, "utf8");
+    expect(ui).not.toMatch(/arrangement/i);
   });
 });
 

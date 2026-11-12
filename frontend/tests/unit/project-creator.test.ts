@@ -537,4 +537,40 @@ describe("models/project-creator", () => {
       await removeDirRetry(tmp);
     }
   });
+
+  it("seeds a spec's arrangements as config.organizerArrangements with the created folder id (Feature 109, FR-18)", async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "getwrite-arr-seed-"));
+    try {
+      const spec = {
+        id: "test-arrangements",
+        name: "Arrangements Test",
+        folders: [{ name: "Workspace" }, { name: "Cast" }],
+        arrangements: [
+          {
+            name: "Cast by status",
+            source: { kind: "folder", folderName: "Cast", scope: "children" },
+            rows: { kind: "status" },
+            columns: "order",
+          },
+        ],
+      };
+      const { project, folders, projectPath } = await createAndAssertProject(
+        spec as Parameters<typeof createAndAssertProject>[0],
+        { projectRoot: tmp },
+      );
+      const stored = JSON.parse(
+        await fs.readFile(path.join(projectPath, "project.json"), "utf8"),
+      ) as { config: { organizerArrangements?: { source: unknown }[] } };
+      expect(stored.config.organizerArrangements).toHaveLength(1);
+      expect(stored.config.organizerArrangements?.[0].source).toEqual({
+        kind: "folder",
+        folderId: folders.find((f) => f.name === "Cast")?.id,
+        scope: "children",
+      });
+      expect(project.config?.organizerArrangements).toHaveLength(1);
+      await flushIndexer();
+    } finally {
+      await removeDirRetry(tmp);
+    }
+  });
 });

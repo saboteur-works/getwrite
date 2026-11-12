@@ -26,6 +26,9 @@ import { reportTransportValidationFailure } from "./transport-validation";
 // `../../store/transport/create-transport`).
 // ---------------------------------------------------------------------------
 
+/** The excerpts route refuses more ids than this per request (`MAX_RESOURCE_IDS`). */
+const EXCERPT_BATCH_SIZE = 1000;
+
 /**
  * The excerpts-route-backed operation both platforms implement. Shared with
  * `../../store/transport/native-resource-excerpts-backend`, which imports
@@ -37,6 +40,18 @@ export interface ResourceExcerptsTransport {
    * failure yields `{}` rather than throwing.
    */
   fetch(
+    projectId: string,
+    resourceIds: string[],
+    maxChars?: number,
+  ): Promise<Record<string, string>>;
+  /**
+   * Like {@link fetch}, but REJECTS on any failure (non-ok response, schema
+   * failure, network error, or an excerpts-core error on native) instead of
+   * returning `{}`, so a caller can tell "no excerpts" from "the read failed"
+   * (`docs/standards/failure-visibility.md`). The rejection message names the
+   * failure, never the response body. `fetch` is unchanged.
+   */
+  fetchOrThrow(
     projectId: string,
     resourceIds: string[],
     maxChars?: number,
@@ -71,6 +86,27 @@ export const httpResourceExcerptsTransport: ResourceExcerptsTransport = {
     } catch {
       return {};
     }
+  },
+
+  async fetchOrThrow(projectId, resourceIds, maxChars) {
+    const response = await fetch("/api/project-resources/excerpts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, resourceIds, maxChars }),
+    });
+    if (!response.ok) {
+      throw new Error(`Could not load card excerpts (${response.status}).`);
+    }
+    const data: unknown = await response.json();
+    const result = ResourceExcerptsResponseSchema.safeParse(data);
+    if (!result.success) {
+      reportTransportValidationFailure(
+        "resource-excerpts.fetchOrThrow",
+        result.error.issues,
+      );
+      throw new Error("Malformed card excerpts response.");
+    }
+    return result.data.excerpts ?? {};
   },
 };
 
@@ -110,4 +146,38 @@ export async function fetchResourceExcerpts(
 ): Promise<Record<string, string>> {
   const transport = await resolveResourceExcerptsTransport();
   return transport.fetch(projectId, resourceIds, maxChars);
+}
+
+/**
+ * Fetches text excerpts for the given resources, rejecting on any failure
+ * instead of degrading to `{}` like {@link fetchResourceExcerpts}. See
+ * {@link ResourceExcerptsTransport.fetchOrThrow}.
+ *
+ * @param projectId - The project's on-disk directory basename.
+ * @param resourceIds - Resource ids to fetch excerpts for.
+ * @param maxChars - Maximum excerpt length to request.
+ *
+ * More than {@link EXCERPT_BATCH_SIZE} ids are requested in batches of at
+ * most that many and merged (the route refuses more per request); if any
+ * batch fails the whole call rejects.
+ */
+export async function fetchResourceExcerptsOrThrow(
+  projectId: string,
+  resourceIds: string[],
+  maxChars?: number,
+): Promise<Record<string, string>> {
+  const transport = await resolveResourceExcerptsTransport();
+  const batches: string[][] = [];
+  for (let at = 0; at < resourceIds.length; at += EXCERPT_BATCH_SIZE) {
+    batches.push(resourceIds.slice(at, at + EXCERPT_BATCH_SIZE));
+  }
+  if (batches.length <= 1) {
+    return transport.fetchOrThrow(projectId, resourceIds, maxChars);
+  }
+  // One rejected batch rejects the whole read: a partial map would show the
+  // other batches' cards with bodies and this batch's as if they had none.
+  const maps = await Promise.all(
+    batches.map((batch) => transport.fetchOrThrow(projectId, batch, maxChars)),
+  );
+  return Object.assign({}, ...maps) as Record<string, string>;
 }

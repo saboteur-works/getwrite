@@ -252,3 +252,82 @@ describe("useProjectTypeDraftService module declaration (Feature 108, FR-5)", ()
     expect(result.current.canSave).toBe(true);
   });
 });
+
+describe("useProjectTypeDraftService keeps `arrangements` (Feature 109, FR-17)", () => {
+  // The Manager has no section for `arrangements`; a key it does not edit must
+  // survive an edit of another field and a save, or a save would silently
+  // remove a writer's seeds.
+  const arrangements = [
+    {
+      name: "Scenes by status",
+      source: { kind: "folder", folderName: "Drafts", scope: "children" },
+      rows: { kind: "status" },
+      columns: "order",
+    },
+  ];
+  const withArrangements: ProjectTypeTemplateFile[] = [
+    {
+      fileName: "mine.json",
+      definition: {
+        ...def("mine", "Mine"),
+        arrangements,
+      } as ProjectTypeDefinition,
+      source: "saved",
+    },
+  ];
+
+  it("a saved type carrying arrangements is saved with them after another field is edited", async () => {
+    const update = vi.fn(async (_id: string, spec: ProjectTypeDefinition) => ({
+      ok: true as const,
+      fileName: "mine.json",
+      spec,
+    }));
+    const transport: ProjectTypesTransport = {
+      list: vi.fn(),
+      create: vi.fn(),
+      update,
+      remove: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useProjectTypeDraftService(withArrangements, async () => transport),
+    );
+    act(() => {
+      result.current.updateSelectedDefinition((d) => ({
+        ...d,
+        description: "edited",
+      }));
+    });
+    act(() => result.current.handleWordCountGoalChange(1000));
+    expect(result.current.selectedItem?.hasChanges).toBe(true);
+
+    await act(async () => {
+      await result.current.handleSave();
+    });
+
+    const sent = update.mock.calls[0]?.[1] as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(sent.description).toBe("edited");
+    expect(sent.arrangements).toEqual(arrangements);
+    const kept = result.current.selectedItem?.definition as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(kept.arrangements).toEqual(arrangements);
+  });
+
+  it("the type loads into the draft with its arrangements, and a rename keeps them", () => {
+    const { result } = renderHook(() =>
+      useProjectTypeDraftService(withArrangements),
+    );
+    act(() => {
+      result.current.updateSelectedDefinition((d) => ({ ...d, name: "Other" }));
+    });
+    const edited = result.current.selectedItem?.definition as unknown as Record<
+      string,
+      unknown
+    >;
+    expect(edited.arrangements).toEqual(arrangements);
+  });
+});

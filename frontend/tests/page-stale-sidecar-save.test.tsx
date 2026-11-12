@@ -16,6 +16,9 @@ import {
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
 import { setupAppShellFetchStub } from "./helpers/appShellFetchStub";
 import type { AnyResource } from "../src/lib/models/types";
+import { setOrganizerFields } from "../src/lib/api/organizer-field-write";
+import { useOrganizerFieldDrop } from "../components/WorkArea/Views/OrganizerView/useOrganizerFieldDrop";
+import type { OrganizerDropRequest } from "../components/WorkArea/Views/OrganizerView/useOrganizerFieldDrop";
 
 /**
  * MEASUREMENT (Feature 72, Task 2, FR-32 reproduction half). No fix here.
@@ -73,6 +76,10 @@ vi.mock("../src/lib/api/resources", async () => {
     updateSidecar: (...args: unknown[]) => updateSidecarMock(...args),
   };
 });
+
+vi.mock("../src/lib/api/organizer-field-write", () => ({
+  setOrganizerFields: vi.fn(),
+}));
 
 vi.mock("../components/TipTapEditor", () => ({
   __esModule: true,
@@ -476,6 +483,87 @@ describe("page.tsx entity and goal keys are not put back by a later field edit (
       aliases: ["Town"],
       wordCountGoal: 900,
       userMetadata: { mood: "calm" },
+    });
+  });
+});
+
+/**
+ * Feature 109 post-integration fix 5. An Organizer field drop writes through
+ * `setOrganizerFields` and then patches Redux only (`useOrganizerFieldDrop`),
+ * not this page's local resource copies. The page's `updateResource` runs the
+ * sidebar's updater on its own copy, whose `userMetadata` is older, and sends
+ * the whole `userMetadata` object. The sidebar edit of a different field must
+ * keep the dropped value.
+ */
+describe("page.tsx sidebar edit after an Organizer field drop (Feature 109)", () => {
+  it("a dropped userMetadata field and status survive a later edit of another field", async () => {
+    vi.mocked(setOrganizerFields).mockResolvedValue({
+      status: "done",
+      resourceId: "res-1",
+    });
+    let dropFn: ((request: OrganizerDropRequest) => Promise<void>) | null =
+      null;
+    function DropHarness(): null {
+      const { drop } = useOrganizerFieldDrop({ projectId: "proj-dir-id" });
+      dropFn = drop;
+      return null;
+    }
+    const { default: Page } = await import("../app/(app)/page");
+    const store = makeStore();
+    render(
+      <Provider store={store}>
+        <TrashRefreshProvider>
+          <Page />
+          <DropHarness />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    await waitFor(() =>
+      expect(store.getState().resources.resources.length).toBe(1),
+    );
+    store.dispatch(setResourceId("res-1"));
+    const mood = await screen.findByLabelText("mood");
+
+    await act(async () => {
+      await dropFn!({
+        plan: {
+          kind: "write",
+          input: {
+            resourceId: "res-1",
+            changes: [
+              {
+                op: "set",
+                target: { kind: "field", key: "plotline" },
+                value: "Act one",
+              },
+              { op: "set", target: { kind: "status" }, value: "Draft" },
+            ],
+          },
+        },
+        card: { id: "res-1", kind: "resource", name: "Chapter One" },
+        destinationLabel: "Draft / Act one",
+      } as OrganizerDropRequest);
+    });
+    const afterDrop = store.getState().resources.resources[0] as AnyResource;
+    expect(afterDrop.userMetadata).toMatchObject({
+      plotline: "Act one",
+      status: "Draft",
+    });
+
+    fireEvent.change(mood, { target: { value: "calm" } });
+    await waitFor(() => expect(updateSidecarMock).toHaveBeenCalledTimes(1));
+
+    const payload = updateSidecarMock.mock.calls[0][2] as AnyResource;
+    expect(payload.userMetadata).toEqual({
+      plotline: "Act one",
+      status: "Draft",
+      mood: "calm",
+    });
+    const redux = store.getState().resources.resources[0] as AnyResource;
+    expect(redux.userMetadata).toEqual({
+      plotline: "Act one",
+      status: "Draft",
+      mood: "calm",
     });
   });
 });

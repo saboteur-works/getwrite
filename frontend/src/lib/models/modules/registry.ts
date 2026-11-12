@@ -11,6 +11,11 @@
  * field for resource types, Trash kinds, importers, permissions or
  * project-type keys (FR-11).
  */
+import type {
+  OrganizerArrangementDraft,
+  OrganizerAxis,
+  OrganizerFolderScope,
+} from "../organizer-grid-types";
 import type { ProjectConfig } from "../types";
 import { MODULE_MANIFEST } from "./manifest";
 
@@ -30,6 +35,21 @@ interface ModuleIndexStep {
   run(projectRoot: string): Promise<void>;
 }
 
+/**
+ * A module-supplied arrangement as plain data (Feature 109, FR-17, OQ-11).
+ * No id and no folder id exist before a project does, so the source names its
+ * folder; creation resolves the name to an id. A smart-folder source is not
+ * seedable (FR-18), so the type has no such variant.
+ */
+export interface ModuleArrangementSeed extends Pick<
+  OrganizerArrangementDraft,
+  "name"
+> {
+  source: { kind: "folder"; folderName: string; scope: OrganizerFolderScope };
+  rows: OrganizerAxis;
+  columns: OrganizerAxis;
+}
+
 export interface ModuleManifestEntry {
   /** Key used in `config.modules`. */
   id: string;
@@ -42,6 +62,12 @@ export interface ModuleManifestEntry {
    * on; only an explicit `false` makes it off until the writer turns it on.
    */
   defaultEnabled?: boolean;
+  /**
+   * Arrangements a new project starts with while this module is on
+   * (Feature 109, OQ-11). Plain data, not a slot kind. No shipped module
+   * sets it; only a test fixture does.
+   */
+  arrangements?: readonly ModuleArrangementSeed[];
 }
 
 type ModulesConfig = Pick<ProjectConfig, "modules">;
@@ -83,6 +109,8 @@ export interface ModuleRegistry {
   enabledViews(config: ModulesConfig | undefined): ModuleViewSlot[];
   /** Index steps of modules enabled for the given config. */
   indexSteps(config: ModulesConfig | undefined): ModuleIndexStep[];
+  /** Arrangement seeds of modules enabled for the given config. */
+  arrangements(config: ModulesConfig | undefined): ModuleArrangementSeed[];
 }
 
 /** Build a registry from a list of modules; a duplicate id is a programming error. */
@@ -105,5 +133,7 @@ export function createModuleRegistry(
     enabledViews: (config) =>
       enabled(config).flatMap((m) => (m.view ? [m.view] : [])),
     indexSteps: (config) => enabled(config).flatMap((m) => [...m.indexSteps]),
+    arrangements: (config) =>
+      enabled(config).flatMap((m) => [...(m.arrangements ?? [])]),
   };
 }

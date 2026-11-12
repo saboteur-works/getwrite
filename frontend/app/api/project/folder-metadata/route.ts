@@ -9,7 +9,8 @@
  *   values and subtype; an absent sidecar reads as empty and creates nothing.
  * - `PUT /api/project/folder-metadata` — body `{ projectId, folderId,
  *   metadata }`; `metadata` is validated by the core against its allowlist
- *   and its refusal message is the 400 error body.
+ *   and its refusal message is the 400 error body. `metadata` may carry
+ *   `clearFieldKeys` (Feature 109); the route passes it through unchanged.
  *
  * `projectId` and `folderId` are UUID-validated and the project root is
  * derived by the core; no client-supplied path is accepted. A PUT for a

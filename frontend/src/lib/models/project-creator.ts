@@ -58,6 +58,20 @@ import { createResourceOfType, writeResourceToFile } from "./resource";
 import { writeRevision } from "./revision";
 import { plainTextToTipTapDocument } from "./tiptap-doc";
 import { slugify } from "../utils";
+import {
+  createModuleRegistry,
+  type ModuleArrangementSeed,
+  type ModuleManifestEntry,
+} from "./modules/registry";
+import { MODULE_MANIFEST } from "./modules/manifest";
+import {
+  OrganizerArrangementRefusalError,
+  validateOrganizerArrangementDraft,
+} from "./organizer-arrangements-core";
+import {
+  ORGANIZER_ARRANGEMENT_LIMIT,
+  type OrganizerArrangement,
+} from "./organizer-grid-types";
 
 /**
  * Minimal spec types for project-type JSON files.
@@ -153,6 +167,25 @@ export interface ProjectTypeSpec {
    * 108, FR-4). Unknown ids are stored as given; absent or empty writes none.
    */
   modules?: Record<string, boolean>;
+  /**
+   * Organizer arrangements to seed on creation (Feature 109, FR-18). Each
+   * names its source folder; creation resolves the name to the created
+   * folder's id. Same element shape as a module's `ModuleArrangementSeed`.
+   */
+  arrangements?: ModuleArrangementSeed[];
+}
+
+/** Why a declared arrangement was left out of a new project. */
+type SkippedArrangementReason =
+  | "folder-not-found"
+  | "invalid"
+  | "duplicate-name"
+  | "limit-reached";
+
+/** An arrangement seed that was not written, with the reason (no folder id). */
+export interface SkippedArrangement {
+  name: string;
+  reason: SkippedArrangementReason;
 }
 
 /** Load and validate a project-type spec from a file path or an inline object. */
@@ -215,10 +248,14 @@ export async function createProjectFromType(options: {
   projectRoot: string;
   spec: ProjectTypeSpec | string;
   name?: string;
+  /** Module manifest whose arrangements are seeded; defaults to the build's. */
+  moduleManifest?: readonly ModuleManifestEntry[];
 }): Promise<{
   project: Project;
   folders: Folder[];
   resources: TextResource[];
+  /** Arrangement seeds not written, each with a reason; empty when none. */
+  skippedArrangements: SkippedArrangement[];
 }> {
   const { projectRoot, spec, name } = options;
 
@@ -368,7 +405,121 @@ export async function createProjectFromType(options: {
     }
   }
 
-  return { project, folders, resources };
+  const skippedArrangements = await seedArrangements({
+    project,
+    projectJsonPath,
+    folders,
+    specArrangements: specObj.arrangements ?? [],
+    manifest: options.moduleManifest ?? MODULE_MANIFEST,
+  });
+
+  return { project, folders, resources, skippedArrangements };
+}
+
+/** Folder id for a seed's folder name: `slugify` equality, first match. */
+function resolveSeedFolderId(
+  folderName: string,
+  folders: readonly Folder[],
+): string | undefined {
+  const wanted = slugify(folderName);
+  return folders.find((f) => f.slug === wanted)?.id;
+}
+
+/** Case-folded name key, the arrangements core's uniqueness rule. */
+function seedNameKey(seedName: string): string {
+  return seedName.trim().toLowerCase();
+}
+
+/**
+ * Builds the arrangements for a new project: the type's seeds, then the
+ * enabled modules' (a duplicate name loses to the earlier one). Each seed is
+ * resolved to a folder id and validated with the core's validator; a seed that
+ * cannot be written is returned with its reason and logged, never dropped
+ * silently. Returns the seeds left out.
+ */
+function buildSeededArrangements(params: {
+  folders: readonly Folder[];
+  specArrangements: readonly ModuleArrangementSeed[];
+  moduleSeeds: readonly ModuleArrangementSeed[];
+}): { arrangements: OrganizerArrangement[]; skipped: SkippedArrangement[] } {
+  const arrangements: OrganizerArrangement[] = [];
+  const skipped: SkippedArrangement[] = [];
+  const seen = new Set<string>();
+  for (const seedItem of [...params.specArrangements, ...params.moduleSeeds]) {
+    const skip = (reason: SkippedArrangementReason): void => {
+      skipped.push({ name: seedItem.name, reason });
+    };
+    const folderId = resolveSeedFolderId(
+      seedItem.source.folderName,
+      params.folders,
+    );
+    if (folderId === undefined) {
+      skip("folder-not-found");
+      continue;
+    }
+    let draft;
+    try {
+      draft = validateOrganizerArrangementDraft({
+        name: seedItem.name,
+        source: { kind: "folder", folderId, scope: seedItem.source.scope },
+        rows: seedItem.rows,
+        columns: seedItem.columns,
+      });
+    } catch (error) {
+      if (!(error instanceof OrganizerArrangementRefusalError)) throw error;
+      skip("invalid");
+      continue;
+    }
+    const key = seedNameKey(draft.name);
+    if (seen.has(key)) {
+      skip("duplicate-name");
+      continue;
+    }
+    if (arrangements.length >= ORGANIZER_ARRANGEMENT_LIMIT) {
+      skip("limit-reached");
+      continue;
+    }
+    seen.add(key);
+    arrangements.push({ id: generateUUID(), ...draft });
+  }
+  return { arrangements, skipped };
+}
+
+/**
+ * Seeds `config.organizerArrangements` after the folders exist, with a second
+ * `project.json` write. Writes nothing (and adds no key) when no seed
+ * resolved. Applies only at creation: nothing else calls this.
+ */
+async function seedArrangements(params: {
+  project: Project;
+  projectJsonPath: string;
+  folders: readonly Folder[];
+  specArrangements: readonly ModuleArrangementSeed[];
+  manifest: readonly ModuleManifestEntry[];
+}): Promise<SkippedArrangement[]> {
+  const moduleSeeds = createModuleRegistry(params.manifest).arrangements(
+    params.project.config,
+  );
+  if (params.specArrangements.length === 0 && moduleSeeds.length === 0) {
+    return [];
+  }
+  const { arrangements, skipped } = buildSeededArrangements({
+    folders: params.folders,
+    specArrangements: params.specArrangements,
+    moduleSeeds,
+  });
+  for (const s of skipped) {
+    console.warn(`arrangements: "${s.name}" not seeded (${s.reason})`);
+  }
+  if (arrangements.length > 0 && params.project.config !== undefined) {
+    params.project.config.organizerArrangements = arrangements;
+    await writeFile(
+      params.projectJsonPath,
+      JSON.stringify(params.project, null, 2),
+      "utf8",
+    );
+  }
+  return skipped;
 }
 
 const projectCreator = { createProjectFromType };

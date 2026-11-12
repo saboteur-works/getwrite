@@ -97,4 +97,15 @@ describe("native resource-excerpts transport — in-process backend reuses the s
     expect(excerpts[withContent]).toBe("Has content");
     expect(excerpts).not.toHaveProperty(withoutContent);
   });
+
+  it("fetchOrThrow rejects for an invalid projectId where fetch resolves {}", async () => {
+    const fs = createFakeCapacitorFilesystem();
+    const transport = createNativeResourceExcerptsTransport({
+      fs,
+      projectsDir: PROJECTS_DIR,
+    });
+    await expect(
+      transport.fetchOrThrow("not-a-uuid", [generateUUID()]),
+    ).rejects.toThrow();
+  });
 });

@@ -274,6 +274,54 @@ export const OrganizerCardBodyConfigSchema = z.object({
 });
 
 /**
+ * Saved Organizer grid arrangements (Feature 109, FR-14, OQ-2). Every object
+ * is strict so an unknown key is refused, never carried. Rows and Columns share
+ * the contract's one `OrganizerAxis` type, so this schema accepts `order` on
+ * Rows too; refusing it there (Columns only) is the arrangements core's job
+ * (Task 25). The
+ * limits (50 arrangements, name 1 to 100) mirror the constants in
+ * `organizer-grid-types.ts`, written as literals so this schema stays a leaf.
+ */
+const OrganizerAxisObjectSchema = z.union([
+  z.object({ kind: z.literal("status") }).strict(),
+  z.object({ kind: z.literal("subtype") }).strict(),
+  z.object({ kind: z.literal("field"), key: z.string().min(1) }).strict(),
+]);
+
+const OrganizerAxisSchema = z.union([
+  z.literal("none"),
+  z.literal("order"),
+  OrganizerAxisObjectSchema,
+]);
+
+const OrganizerSourceSchema = z.union([
+  z
+    .object({
+      kind: z.literal("folder"),
+      folderId: z.string().uuid(),
+      scope: z.enum(["children", "descendants"]),
+    })
+    .strict(),
+  z
+    .object({ kind: z.literal("smart-folder"), queryId: z.string().uuid() })
+    .strict(),
+]);
+
+const OrganizerArrangementSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string().min(1).max(100),
+    source: OrganizerSourceSchema,
+    rows: OrganizerAxisSchema,
+    columns: OrganizerAxisSchema,
+  })
+  .strict();
+
+export const OrganizerArrangementListSchema = z
+  .array(OrganizerArrangementSchema)
+  .max(50);
+
+/**
  * Ordered list of resource-subtype labels (Feature 72, FR-2). Entries are
  * trimmed (the writer's case is kept) and order is preserved. A blank entry,
  * or two entries equal under `normalizeSubtypeLabel`, fails validation with a
@@ -387,6 +435,8 @@ export const ProjectConfigSchema = z.object({
    */
   modules: z.record(z.string(), z.boolean()).optional(),
   organizerCardBody: OrganizerCardBodyConfigSchema.optional(),
+  /** Saved Organizer grid arrangements (Feature 109, FR-14, OQ-2); at most 50. */
+  organizerArrangements: OrganizerArrangementListSchema.optional(),
   /** Inbox folder id (Feature 106, FR-3); a UUID, absent until first capture. */
   inboxFolderId: UUID.optional(),
 });
@@ -964,11 +1014,74 @@ const PROJECT_TYPE_SECTION_LABELS: Record<string, string> = {
   subtypes: "Subtypes",
   wordCountGoal: "Word Count Goal",
   modules: "Modules",
+  arrangements: "Arrangements",
 };
 
 /** Refusal text for a malformed `modules` declaration; names no client input. */
 const PROJECT_TYPE_MODULES_MESSAGE =
   "Modules must list each module as on (true) or off (false).";
+
+/** Refusal text for a malformed `arrangements` list; names no client input. */
+const PROJECT_TYPE_ARRANGEMENTS_MESSAGE =
+  "Arrangements must each have a name, a folder source, rows (none or a field) and columns (order or a field), with no repeated names.";
+
+/**
+ * Axis spelled as in `OrganizerAxisSchema`, with its own refusal text so a
+ * nested unknown key is never echoed. Rows offer `none` or a field, Columns
+ * offer `order` or a field (the arrangements core's rule), so a seed that the
+ * core would skip at creation is refused when the type is validated.
+ */
+function seedAxisSchema(position: "rows" | "columns") {
+  const objects = z.union([
+    z.strictObject(
+      { kind: z.literal("status") },
+      { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
+    ),
+    z.strictObject(
+      { kind: z.literal("subtype") },
+      { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
+    ),
+    z.strictObject(
+      { kind: z.literal("field"), key: z.string().trim().min(1).max(200) },
+      { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
+    ),
+  ]);
+  return z.union([z.literal(position === "rows" ? "none" : "order"), objects], {
+    error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE,
+  });
+}
+
+/**
+ * One arrangement a project type seeds (Feature 109, FR-17). The folder has no
+ * id yet, so it is named by `folderName` (a name or its slug, resolved by
+ * `slugify` when the project is created). Same shape as the module registry's
+ * `ModuleArrangementSeed`. Folder sources only; no smart-folder source and no
+ * id (the project assigns one when it copies the seed).
+ */
+const ProjectTypeArrangementSchema = z.strictObject(
+  {
+    name: z.string().trim().min(1).max(100),
+    source: z.strictObject({
+      kind: z.literal("folder"),
+      folderName: z.string().trim().min(1).max(200),
+      scope: z.enum(["children", "descendants"]),
+    }),
+    rows: seedAxisSchema("rows"),
+    columns: seedAxisSchema("columns"),
+  },
+  { error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE },
+);
+
+const ProjectTypeArrangementListSchema = z
+  .array(ProjectTypeArrangementSchema, {
+    error: PROJECT_TYPE_ARRANGEMENTS_MESSAGE,
+  })
+  .max(50, PROJECT_TYPE_ARRANGEMENTS_MESSAGE)
+  .refine(
+    (list) =>
+      new Set(list.map((a) => a.name.toLowerCase())).size === list.length,
+    PROJECT_TYPE_ARRANGEMENTS_MESSAGE,
+  );
 
 /**
  * Per-parse fallback for refusals the schema gives no message of its own
@@ -1054,6 +1167,11 @@ export const ProjectTypeSchema = z
         error: PROJECT_TYPE_MODULES_MESSAGE,
       })
       .optional(),
+    /**
+     * Arrangements seeded into a new project (Feature 109, FR-17): folder
+     * sources named by name or slug; copied once at creation by a later task.
+     */
+    arrangements: ProjectTypeArrangementListSchema.optional(),
   })
   .strict()
   .superRefine((spec, ctx) => {

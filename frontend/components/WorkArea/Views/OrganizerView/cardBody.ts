@@ -128,3 +128,11 @@ export function resolveOrganizerCardBody(
       return undefined;
   }
 }
+
+/**
+ * Best-effort display title for a resource, mirroring `OrganizerCard.tsx`'s
+ * own derivation, so a drag-end announcement names the title the card shows.
+ */
+export function resolveCardTitle(resource: AnyResource): string {
+  return (resource as { title?: string }).title ?? resource.name ?? "Untitled";
+}

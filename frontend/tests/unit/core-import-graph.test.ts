@@ -191,4 +191,14 @@ describe("worker import graph (FR-4)", () => {
     expect(walk(registry).visited).toContain(manifest);
     expect(walk(manifest).visited).not.toContain(registry);
   });
+
+  it("registry.ts takes the arrangements hook's types by type-only import (Feature 109, FR-17)", () => {
+    const registry = path.join(LIB_DIR, "models/modules/registry.ts");
+    const text = readFileSync(registry, "utf8");
+    expect(text).toMatch(
+      /import type \{[^}]*\} from "\.\.\/organizer-grid-types"/,
+    );
+    expect(text).not.toMatch(/^import (?!type)[^;]*organizer-grid-types/m);
+    expect(walk(registry).offenders).toEqual([]);
+  });
 });

@@ -27,7 +27,11 @@ export interface FolderMetadataTransport {
     projectId: string,
     folderId: string,
   ): Promise<FolderSidecarValue>;
-  /** Merges a client write (`notes`, `fieldValues`, `resourceSubtype`). */
+  /**
+   * Merges a client write (`notes`, `fieldValues`, `resourceSubtype`); an
+   * optional `clearFieldKeys` list removes those keys from `fieldValues`
+   * (Feature 109). Both platforms pass `metadata` to the same core.
+   */
   updateFolderMetadata(
     projectId: string,
     folderId: string,

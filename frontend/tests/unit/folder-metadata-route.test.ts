@@ -241,6 +241,54 @@ describe("PUT /api/project/folder-metadata", () => {
   });
 });
 
+describe("PUT clearFieldKeys (Feature 109 Task 11)", () => {
+  it("clears only the named keys, passes the field to the core, 400 on a bad list, 404 on an unknown folder", async () => {
+    const { dir, id, root } = await setup();
+    const folderId = generateUUID();
+    await addFolder(root, folderId);
+    await withDir(dir, () =>
+      PUT(
+        put({
+          projectId: id,
+          folderId,
+          metadata: { fieldValues: { a: "1", b: "2" } },
+        }),
+      ),
+    );
+    const ok = await withDir(dir, () =>
+      PUT(
+        put({ projectId: id, folderId, metadata: { clearFieldKeys: ["a"] } }),
+      ),
+    );
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ notes: "", fieldValues: { b: "2" } });
+    expect(updateFolderMetadataCore).toHaveBeenLastCalledWith(id, folderId, {
+      clearFieldKeys: ["a"],
+    });
+    const bad = await withDir(dir, () =>
+      PUT(
+        put({
+          projectId: id,
+          folderId,
+          metadata: { clearFieldKeys: ["SECRET-X", "SECRET-X"] },
+        }),
+      ),
+    );
+    expect(bad.status).toBe(400);
+    expect(JSON.stringify(await bad.json())).not.toContain("SECRET-X");
+    const missing = await withDir(dir, () =>
+      PUT(
+        put({
+          projectId: id,
+          folderId: generateUUID(),
+          metadata: { clearFieldKeys: ["a"] },
+        }),
+      ),
+    );
+    expect(missing.status).toBe(404);
+  });
+});
+
 describe("locked project", () => {
   it("maps ProjectLockedError to 401 and MissingProjectKeyError to 409 on GET and PUT", async () => {
     const { dir, id } = await setup();

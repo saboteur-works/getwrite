@@ -180,6 +180,37 @@ const ApiOrganizerCardBodyConfigSchema = z.object({
   excerptLength: z.number().int().positive().optional(),
 });
 
+/**
+ * Saved Organizer grid arrangements (Feature 109, FR-14). Declared here or a
+ * project load strips the key. Shapes follow `OrganizerArrangementSchema`;
+ * the server has already validated, so this declares the shape without the
+ * bounds.
+ */
+const ApiOrganizerAxisObjectSchema = z.union([
+  z.object({ kind: z.literal("status") }),
+  z.object({ kind: z.literal("subtype") }),
+  z.object({ kind: z.literal("field"), key: z.string() }),
+]);
+
+const ApiOrganizerArrangementSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  source: z.union([
+    z.object({
+      kind: z.literal("folder"),
+      folderId: z.string(),
+      scope: z.enum(["children", "descendants"]),
+    }),
+    z.object({ kind: z.literal("smart-folder"), queryId: z.string() }),
+  ]),
+  rows: z.union([z.literal("none"), ApiOrganizerAxisObjectSchema]),
+  columns: z.union([
+    z.literal("none"),
+    z.literal("order"),
+    ApiOrganizerAxisObjectSchema,
+  ]),
+});
+
 export const ApiTagSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -218,6 +249,7 @@ const ApiProjectConfigSchema = z.object({
   // project load strips it; unknown ids are kept.
   modules: z.record(z.string(), z.boolean()).optional(),
   organizerCardBody: ApiOrganizerCardBodyConfigSchema.optional(),
+  organizerArrangements: z.array(ApiOrganizerArrangementSchema).optional(),
   // Inbox folder id (Feature 106, FR-3). Declared or a project load strips it.
   inboxFolderId: z.string().uuid().optional(),
   // Missing here meant a normal project load (GET /api/projects) silently
