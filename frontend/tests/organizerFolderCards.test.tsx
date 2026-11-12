@@ -201,6 +201,61 @@ describe("OrganizerView folder cards", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("places folder cards in the grid by their own subtype (Feature 109)", async () => {
+    getFolderMetadata.mockImplementation(async (_p: string, id: string) =>
+      id === "f-act" ? { ...empty, resourceSubtype: "Act" } : empty,
+    );
+    const store = makeStoreWithChildren("/x/proj-dir");
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: "/x/proj-dir",
+        folders: [],
+        resources: [],
+        subtypes: ["Act"],
+      } as any),
+    );
+    render(
+      <Provider store={store}>
+        <OrganizerView showBody />
+      </Provider>,
+    );
+    await waitFor(() => expect(getFolderMetadata).toHaveBeenCalledTimes(2));
+    await screen.findByText("Act One");
+    fireEvent.change(screen.getByLabelText("Rows"), {
+      target: { value: "subtype" },
+    });
+    const actRow = await screen.findByRole("gridcell", { name: /^Act, / });
+    expect(within(actRow).getByText("Act One")).toBeTruthy();
+    const noneRow = screen.getByRole("gridcell", { name: /^None, / });
+    expect(within(noneRow).getByText("Act Two")).toBeTruthy();
+    expect(within(noneRow).getByText("Scene")).toBeTruthy();
+    // One read per folder, not one per render or per axis change.
+    expect(getFolderMetadata).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows a failed folder read in the grid branch too, never an empty grid", async () => {
+    getFolderMetadata.mockImplementation(async (_p: string, id: string) => {
+      if (id === "f-plain") throw new Error("sidecar unreadable");
+      return empty;
+    });
+    render(
+      <Provider store={makeStoreWithChildren("/x/proj-dir")}>
+        <OrganizerView showBody />
+      </Provider>,
+    );
+    await screen.findByRole("alert");
+    fireEvent.change(screen.getByLabelText("Rows"), {
+      target: { value: "status" },
+    });
+    expect((await screen.findByRole("alert")).textContent).toMatch(
+      /sidecar unreadable/,
+    );
+    expect(screen.queryByText("Act Two")).toBeNull();
+    expect(screen.queryByText("This folder is empty.")).toBeNull();
+  });
+
   it("shows a failure, not missing folders, when a folder read fails", async () => {
     getFolderMetadata.mockImplementation(async (_p: string, id: string) => {
       if (id === "f-plain") throw new Error("sidecar unreadable");

@@ -1,11 +1,12 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   render,
   screen,
   fireEvent,
   waitFor,
   act,
+  within,
 } from "@testing-library/react";
 import { Provider } from "react-redux";
 import OrganizerView from "../components/WorkArea/Views/OrganizerView/OrganizerView";
@@ -48,6 +49,50 @@ vi.mock("../src/lib/api/resources", async (importOriginal) => {
   return { ...actual, reorderResources: vi.fn().mockResolvedValue(undefined) };
 });
 import { reorderResources } from "../src/lib/api/resources";
+
+// Feature 109, Task 23: the grid branch reads the viewport tier, evaluates a
+// smart-folder source through the query transport and reads child-folder
+// sidecars. Each is mocked at its transport seam.
+const viewport = vi.hoisted(() => ({ tier: "desktop" as string }));
+vi.mock("../src/lib/hooks/useViewportTier", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../src/lib/hooks/useViewportTier")>();
+  return { ...actual, default: () => viewport.tier };
+});
+vi.mock("../src/store/query-transport-service", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../src/store/query-transport-service")
+    >();
+  return { ...actual, evaluateQueryAst: vi.fn(), fetchSavedQueryList: vi.fn() };
+});
+import {
+  evaluateQueryAst,
+  fetchSavedQueryList,
+} from "../src/store/query-transport-service";
+import { loadSavedQueries } from "../src/store/querySlice";
+vi.mock("../src/lib/api/organizer-field-write", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../src/lib/api/organizer-field-write")
+    >();
+  return { ...actual, setOrganizerFields: vi.fn() };
+});
+import { setOrganizerFields } from "../src/lib/api/organizer-field-write";
+import {
+  cardDraggableId,
+  cellDroppableId,
+} from "../components/WorkArea/Views/OrganizerView/useOrganizerGridDrag";
+vi.mock("../src/lib/api/folder-metadata", () => ({
+  getFolderMetadata: vi
+    .fn()
+    .mockResolvedValue({
+      notes: "",
+      fieldValues: {},
+      resourceSubtype: undefined,
+    }),
+  updateFolderMetadata: vi.fn(),
+}));
 
 // Task 4 (drag-and-drop reordering): captures the `onDragEnd` handler
 // `OrganizerView` passes to `@dnd-kit/core`'s real `DndContext` (a thin
@@ -1738,5 +1783,386 @@ describe("OrganizerView lists an Inbox item as any resource (Feature 106, FR-16)
 
     expect(screen.getByText("Captured note")).toBeTruthy();
     expect(screen.queryByText("Elsewhere note")).toBeNull();
+  });
+});
+
+// ─── Feature 109, Task 23: the grid branch ────────────────────────────────────
+
+const SUB_ID = "44444444-4444-4444-8444-444444444444";
+const QUERY_ID = "55555555-5555-4555-8555-555555555555";
+
+function makeGridStore() {
+  const store = makeStore();
+  store.dispatch(
+    setProject({
+      id: PROJECT_ID,
+      name: "Proj",
+      rootPath: "/projects/p1",
+      folders: [],
+      resources: [],
+      statuses: ["Draft", "Final"],
+    } as any),
+  );
+  store.dispatch(setSelectedProjectId(PROJECT_ID));
+  store.dispatch(
+    setFolders([
+      makeFolder(FOLDER_ID, "Folder A"),
+      { ...makeFolder(SUB_ID, "Sub", FOLDER_ID), orderIndex: 5 },
+    ] as any),
+  );
+  const mk = (
+    name: string,
+    folderId: string,
+    orderIndex: number,
+    status?: string,
+  ) => ({
+    ...createTextResource({
+      name,
+      plainText: name,
+      folderId,
+      userMetadata: status ? { status } : {},
+    }),
+    orderIndex,
+  });
+  store.dispatch(
+    setResources([
+      mk("Alpha", FOLDER_ID, 0, "Draft"),
+      mk("Bravo", FOLDER_ID, 1, "Final"),
+      mk("Charlie", FOLDER_ID, 2),
+      mk("Deep", SUB_ID, 0, "Draft"),
+    ] as any),
+  );
+  store.dispatch(setSelectedResourceId(FOLDER_ID));
+  return store;
+}
+
+function renderGrid(
+  store = makeGridStore(),
+  props: Record<string, unknown> = {},
+) {
+  return render(
+    <Provider store={store}>
+      <OrganizerView showBody={false} {...props} />
+    </Provider>,
+  );
+}
+
+const pick = (label: string, value: string) =>
+  fireEvent.change(screen.getByLabelText(label), { target: { value } });
+
+const cellOf = (name: string) =>
+  screen.getByRole("gridcell", { name: new RegExp(`^${name}, `) });
+
+describe("OrganizerView grid branch (Feature 109, Task 23)", () => {
+  beforeEach(() => {
+    viewport.tier = "desktop";
+    vi.mocked(evaluateQueryAst).mockReset();
+    vi.mocked(fetchSavedQueryList).mockReset();
+  });
+
+  it("keeps today's list with the default picks: no grid and no phone groups", () => {
+    renderGrid();
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(screen.getByLabelText("Source")).toHaveValue("children");
+    expect(screen.getByLabelText("Rows")).toHaveValue("none");
+    expect(screen.getByLabelText("Columns")).toHaveValue("order");
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    expect(screen.getByText("Sub")).toBeInTheDocument();
+  });
+
+  it("renders the grid when a Rows field is chosen, placing cards by status", () => {
+    renderGrid();
+    pick("Rows", "status");
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    const headings = screen
+      .getAllByRole("rowheader")
+      .map((el: HTMLElement) => el.textContent);
+    // The axis model always lists "Other values" before "None" (Task 6).
+    expect(headings).toEqual(["Draft", "Final", "Other values", "None"]);
+    expect(within(cellOf("Draft")).getByText("Alpha")).toBeInTheDocument();
+    expect(within(cellOf("Final")).getByText("Bravo")).toBeInTheDocument();
+    // Charlie has no status and the folder card has none: both in None.
+    expect(within(cellOf("None")).getByText("Charlie")).toBeInTheDocument();
+    expect(within(cellOf("None")).getByText("Sub")).toBeInTheDocument();
+  });
+
+  it("shows grouped lists, with no grid role, below 768px", () => {
+    viewport.tier = "phone";
+    renderGrid();
+    pick("Rows", "status");
+    expect(screen.queryByRole("grid")).toBeNull();
+    expect(
+      screen.getByRole("group", { name: /Draft \(1\)/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the matrix on a tablet", () => {
+    viewport.tier = "tablet";
+    renderGrid();
+    pick("Rows", "status");
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+  });
+
+  it("lists descendants flattened, documents only, in tree order", () => {
+    renderGrid();
+    pick("Source", "descendants");
+    pick("Rows", "status");
+    expect(within(cellOf("Draft")).getByText("Alpha")).toBeInTheDocument();
+    expect(within(cellOf("Draft")).getByText("Deep")).toBeInTheDocument();
+    expect(screen.queryByText("Sub")).toBeNull();
+  });
+
+  it("follows the browsed folder live for This folder", () => {
+    const store = makeGridStore();
+    renderGrid(store);
+    pick("Rows", "status");
+    expect(screen.queryByText("Deep")).toBeNull();
+    act(() => {
+      store.dispatch(setSelectedResourceId(SUB_ID));
+    });
+    expect(screen.getByText("Deep")).toBeInTheDocument();
+    expect(screen.queryByText("Alpha")).toBeNull();
+  });
+
+  it("filters hide cards from every cell, with a no-match message distinct from an empty source", () => {
+    renderGrid();
+    pick("Rows", "status");
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    pick("Filter by status", "Draft");
+    expect(screen.queryByText("Bravo")).toBeNull();
+    expect(screen.queryByText("Charlie")).toBeNull();
+    expect(screen.getByText("Alpha")).toBeInTheDocument();
+    pick("Minimum words", "99");
+    expect(
+      screen.getByText("No cards match the current filters."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("This folder is empty.")).toBeNull();
+  });
+
+  it("resets filters on folder navigation in the grid branch", () => {
+    const store = makeGridStore();
+    renderGrid(store);
+    pick("Rows", "status");
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    pick("Filter by status", "Draft");
+    expect(screen.queryByText("Bravo")).toBeNull();
+    act(() => {
+      store.dispatch(setSelectedResourceId(SUB_ID));
+    });
+    act(() => {
+      store.dispatch(setSelectedResourceId(FOLDER_ID));
+    });
+    expect(screen.getByText("Bravo")).toBeInTheDocument();
+  });
+
+  it("reports an empty source, not an empty grid", () => {
+    const store = makeGridStore();
+    act(() => {
+      store.dispatch(setFolders([makeFolder(FOLDER_ID, "Folder A")] as any));
+      store.dispatch(setResources([] as any));
+    });
+    renderGrid(store);
+    pick("Rows", "status");
+    expect(screen.getByText("This folder is empty.")).toBeInTheDocument();
+    expect(screen.queryByRole("grid")).toBeNull();
+  });
+
+  it("says N not shown, and how to reach them, when a cap is set", () => {
+    renderGrid(makeGridStore(), { cardCap: 2 });
+    pick("Rows", "status");
+    const note = screen.getByText(/2 not shown/);
+    expect(note.textContent).toMatch(/narrow the source or the filters/i);
+  });
+
+  it("shows no cap message when no cap is set", () => {
+    renderGrid();
+    pick("Rows", "status");
+    expect(screen.queryByText(/not shown/)).toBeNull();
+  });
+
+  it("shows a failed excerpt read as a failure and keeps the cards", async () => {
+    const store = makeGridStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: "/projects/p1",
+        folders: [],
+        resources: [],
+        statuses: ["Draft", "Final"],
+        organizerCardBody: { source: "text-excerpt", excerptLength: 50 },
+      } as any),
+    );
+    vi.mocked(fetchResourceExcerpts).mockRejectedValue(
+      new Error("no excerpts"),
+    );
+    renderGrid(store, { showBody: true });
+    pick("Rows", "status");
+    expect(await screen.findByText(/no excerpts/)).toBeInTheDocument();
+    expect(screen.getAllByText("Alpha").length).toBeGreaterThan(0);
+  });
+
+  describe("field drop", () => {
+    function storeWithActField() {
+      const store = makeGridStore();
+      store.dispatch(
+        setProject({
+          id: PROJECT_ID,
+          name: "Proj",
+          rootPath: "/projects/p1",
+          folders: [],
+          resources: [],
+          statuses: ["Draft", "Final"],
+          metadataSchema: {
+            groups: [
+              {
+                id: "g",
+                label: "G",
+                fields: [
+                  {
+                    key: "act",
+                    label: "Act",
+                    type: "select",
+                    options: ["One", "Two"],
+                  },
+                ],
+              },
+            ],
+          },
+        } as any),
+      );
+      return store;
+    }
+
+    it("makes one write for a cell drop and announces the new cell", async () => {
+      vi.mocked(setOrganizerFields).mockReset();
+      vi.mocked(setOrganizerFields).mockResolvedValue({
+        status: "done",
+        resourceId: "x",
+      });
+      const store = storeWithActField();
+      const alphaId = store
+        .getState()
+        .resources.resources.find((r) => r.name === "Alpha")!.id;
+      renderGrid(store);
+      pick("Rows", "status");
+      pick("Columns", "field:act");
+      await act(async () => {
+        (capturedOnDragEnd as (e: unknown) => void)({
+          active: { id: cardDraggableId(alphaId, "Draft", "none") },
+          over: { id: cellDroppableId("Final", "One") },
+        });
+      });
+      expect(setOrganizerFields).toHaveBeenCalledTimes(1);
+      expect(setOrganizerFields).toHaveBeenCalledWith("p1", {
+        resourceId: alphaId,
+        changes: [
+          { target: { kind: "status" }, op: "set", value: "Final" },
+          { target: { kind: "field", key: "act" }, op: "set", value: "One" },
+        ],
+      });
+      expect(
+        await screen.findByText(/Alpha moved to row Final, column One/),
+      ).toBeInTheDocument();
+      // Redux holds the saved values now, so the card moved cells.
+      expect(
+        within(
+          screen.getByRole("gridcell", { name: "Final, One, 1 card" }),
+        ).getByText("Alpha"),
+      ).toBeInTheDocument();
+    });
+
+    it("says why a drop on Other values writes nothing", async () => {
+      vi.mocked(setOrganizerFields).mockReset();
+      const store = storeWithActField();
+      const alphaId = store
+        .getState()
+        .resources.resources.find((r) => r.name === "Alpha")!.id;
+      renderGrid(store);
+      pick("Rows", "status");
+      pick("Columns", "field:act");
+      await act(async () => {
+        (capturedOnDragEnd as (e: unknown) => void)({
+          active: { id: cardDraggableId(alphaId, "Draft", "none") },
+          over: { id: cellDroppableId("other", "One") },
+        });
+      });
+      expect(setOrganizerFields).not.toHaveBeenCalled();
+      expect(
+        screen.getByText(/not a value this field allows/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("smart-folder source", () => {
+    const query = {
+      id: QUERY_ID,
+      name: "Drafts",
+      definition: { op: "eq", field: "status", value: "draft" },
+    };
+
+    async function renderWithQuery(queries: unknown[]) {
+      const store = makeGridStore();
+      vi.mocked(fetchSavedQueryList).mockResolvedValueOnce({ queries } as any);
+      await store.dispatch(loadSavedQueries({ projectId: PROJECT_ID }));
+      renderGrid(store);
+      return store;
+    }
+
+    it("takes its cards from the matching ids, including other folders", async () => {
+      const store = makeGridStore();
+      const deepId = store
+        .getState()
+        .resources.resources.find((r) => r.name === "Deep")!.id;
+      vi.mocked(evaluateQueryAst).mockResolvedValue({ ids: [deepId] } as any);
+      vi.mocked(fetchSavedQueryList).mockResolvedValueOnce({
+        queries: [query],
+      } as any);
+      await store.dispatch(loadSavedQueries({ projectId: PROJECT_ID }));
+      renderGrid(store);
+      pick("Source", `smart:${QUERY_ID}`);
+      pick("Rows", "status");
+      expect(await screen.findByText("Deep")).toBeInTheDocument();
+      expect(screen.queryByText("Alpha")).toBeNull();
+    });
+
+    it("shows a failed evaluation with its message and a retry, never an empty grid", async () => {
+      vi.mocked(evaluateQueryAst).mockRejectedValue(new Error("query broke"));
+      await renderWithQuery([query]);
+      pick("Source", `smart:${QUERY_ID}`);
+      pick("Rows", "status");
+      expect(await screen.findByText(/query broke/)).toBeInTheDocument();
+      expect(screen.queryByRole("grid")).toBeNull();
+      expect(screen.queryByText("Alpha")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      await waitFor(() =>
+        expect(vi.mocked(evaluateQueryAst)).toHaveBeenCalledTimes(2),
+      );
+    });
+
+    it("says the smart folder no longer exists when the loaded list lacks it, with no fallback", async () => {
+      vi.mocked(evaluateQueryAst).mockResolvedValue({ ids: [] } as any);
+      const store = await renderWithQuery([query]);
+      pick("Source", `smart:${QUERY_ID}`);
+      pick("Rows", "status");
+      vi.mocked(fetchSavedQueryList).mockResolvedValueOnce({
+        queries: [],
+      } as any);
+      await act(async () => {
+        await store.dispatch(loadSavedQueries({ projectId: PROJECT_ID }));
+      });
+      expect(
+        await screen.findByText(/smart folder no longer exists/i),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Alpha")).toBeNull();
+    });
+
+    it("says it is loading while the evaluation is pending", async () => {
+      vi.mocked(evaluateQueryAst).mockReturnValue(new Promise(() => undefined));
+      await renderWithQuery([query]);
+      pick("Source", `smart:${QUERY_ID}`);
+      pick("Rows", "status");
+      expect(screen.getByText(/Loading the smart folder/)).toBeInTheDocument();
+    });
   });
 });

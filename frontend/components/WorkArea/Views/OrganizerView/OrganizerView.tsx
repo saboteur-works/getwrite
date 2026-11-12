@@ -1,8 +1,8 @@
 import React from "react";
 import type {
   AnyResource,
-  Folder,
   MetadataField,
+  MetadataValue,
   ResourceRef,
 } from "../../../../src/lib/models/types";
 import OrganizerCard, { type OrganizerCardProps } from "./OrganizerCard";
@@ -16,6 +16,7 @@ import {
 } from "../../../../src/store/resourcesSlice";
 import {
   selectActiveProjectStatuses,
+  selectActiveProjectSubtypes,
   selectActiveProjectOrganizerCardBody,
   selectActiveProjectDirectoryId,
   selectActiveProjectMetadataSchema,
@@ -28,7 +29,6 @@ import {
   resolveOrganizerCardBody,
   DEFAULT_CARD_EXCERPT_LENGTH,
 } from "./cardBody";
-import { fetchResourceExcerpts } from "../../../../src/lib/api/resource-excerpts";
 import {
   organizerFilterReducer,
   initialOrganizerFilterState,
@@ -36,13 +36,50 @@ import {
 } from "./organizerFilters";
 import { useOrganizerCardReorder } from "./useOrganizerCardReorder";
 import { useFolderRowMetadata } from "../../../../src/hooks/useFolderRowMetadata";
+import type { FolderRowMetadata } from "../../../../src/lib/folder-data-rows";
 import { withFolderFieldValues } from "./organizerFolderChildren";
+import useViewportTier from "../../../../src/lib/hooks/useViewportTier";
+import { selectSavedQueriesList } from "../../../../src/store/querySlice";
+import type {
+  OrganizerAxis,
+  OrganizerAxisValue,
+  OrganizerSource,
+} from "../../../../src/lib/models/organizer-grid-types";
+import { ORGANIZER_GRID_CARD_CAP } from "./organizerGridCap";
+import { ORGANIZER_FILTER_ACTIVE_REASON } from "./organizerOrderDrop";
+import { listChildrenSource, resolveOrganizerSource } from "./organizerSource";
+import { buildAxisValueList, getAxisChoices } from "./organizerAxisFields";
+import {
+  buildOrganizerGridModel,
+  buildOrganizerPhoneGroups,
+  type OrganizerGridAxisInput,
+  type OrganizerGridResult,
+} from "./organizerGridModel";
+import OrganizerGridToolbar from "./OrganizerGridToolbar";
+import OrganizerGrid, { type OrganizerGridCardInfo } from "./OrganizerGrid";
+import OrganizerGridCell, {
+  type OrganizerGridCellProps,
+} from "./OrganizerGridCell";
+import OrganizerPhoneGroups from "./OrganizerPhoneGroups";
+import {
+  useOrganizerSmartFolderCards,
+  type OrganizerSmartFolderState,
+} from "./useOrganizerSmartFolderCards";
+import { useOrganizerShownCardData } from "./useOrganizerShownCardData";
+import { useOrganizerFieldDrop } from "./useOrganizerFieldDrop";
+import {
+  cardDraggableId,
+  cellDroppableId,
+  useOrganizerGridDrag,
+} from "./useOrganizerGridDrag";
 import {
   closestCenter,
   DndContext,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  useDraggable,
+  useDroppable,
   useSensor,
   useSensors,
   type Announcements,
@@ -63,7 +100,52 @@ import { CSS } from "@dnd-kit/utilities";
 const DRAG_ACTIVATION_DISTANCE = 8;
 
 /** Copy shown as the drag handle's disabled-reason hint while a filter is active (FR-6). */
-const DRAG_DISABLED_WHILE_FILTERED_REASON = "Clear filters to reorder cards";
+const DRAG_DISABLED_WHILE_FILTERED_REASON = ORGANIZER_FILTER_ACTIVE_REASON;
+
+const DEFAULT_SOURCE: OrganizerSource = {
+  kind: "folder",
+  folderId: "",
+  scope: "children",
+};
+
+const NO_IDS: readonly string[] = [];
+const NO_EXCERPTS: Record<string, string> = {};
+
+/** A source that cannot show cards, with the text to say so (FR-3). */
+interface SourceProblem {
+  kind: "loading" | "failed" | "deleted" | "missing";
+  message: string;
+  retry?: () => void;
+}
+
+function describeSourceProblem(
+  source: OrganizerSource,
+  smart: OrganizerSmartFolderState,
+  isFolderMissing: boolean,
+): SourceProblem | null {
+  if (source.kind === "folder") {
+    return isFolderMissing && source.folderId !== ""
+      ? { kind: "missing", message: "This folder no longer exists." }
+      : null;
+  }
+  switch (smart.status) {
+    case "ready":
+      return null;
+    case "failed":
+      return {
+        kind: "failed",
+        message: `The smart folder could not be read: ${smart.message}`,
+        retry: smart.retry,
+      };
+    case "deleted":
+      return {
+        kind: "deleted",
+        message: "This smart folder no longer exists. Choose another source.",
+      };
+    default:
+      return { kind: "loading", message: "Loading the smart folder…" };
+  }
+}
 
 /**
  * Wraps a single `OrganizerCard` with `@dnd-kit/sortable`'s `useSortable`,
@@ -140,6 +222,80 @@ function asResourceRefName(value: unknown): string | undefined {
   return undefined;
 }
 
+/** A cell that registers itself as a drop target (every cell, so a refused drop says why). */
+function DroppableGridCell(props: OrganizerGridCellProps): JSX.Element {
+  const { setNodeRef, isOver } = useDroppable({
+    id: cellDroppableId(props.rowKey, props.columnKey),
+  });
+  return (
+    <OrganizerGridCell {...props} droppableRef={setNodeRef} isOver={isOver} />
+  );
+}
+
+/**
+ * One appearance of a card in the grid: draggable by its handle and, with
+ * Columns `order`, also a drop target (Task 20: order drops target cards).
+ */
+function DraggableGridCard({
+  info,
+  isOrderMode,
+}: {
+  info: OrganizerGridCardInfo;
+  isOrderMode: boolean;
+}): JSX.Element {
+  const id = cardDraggableId(
+    info.cardId,
+    info.placement.rowKey,
+    info.placement.columnKey,
+  );
+  const drag = useDraggable({ id });
+  const drop = useDroppable({ id, disabled: !isOrderMode });
+  const setRef = (element: HTMLElement | null): void => {
+    drag.setNodeRef(element);
+    drop.setNodeRef(element);
+  };
+  return (
+    <div data-organizer-card-id={info.cardId} className="flex flex-col gap-1">
+      <OrganizerCard
+        resource={info.resource}
+        {...info.cardProps}
+        cardRef={setRef}
+        dragHandleAttributes={drag.attributes}
+        dragHandleListeners={drag.listeners}
+        dragStyle={{ opacity: drag.isDragging ? 0.4 : undefined }}
+      />
+      {info.alsoInOtherCellsText && (
+        <p className="text-xs text-gw-secondary">{info.alsoInOtherCellsText}</p>
+      )}
+    </div>
+  );
+}
+
+/** Moves focus to a card's drag handle (the first button in its header). */
+function focusCardHandle(cardId: string): void {
+  document
+    .querySelector<HTMLElement>(
+      `[data-organizer-card-id="${window.CSS.escape(cardId)}"] button`,
+    )
+    ?.focus();
+}
+
+/** The value an axis reads from a card: status, subtype or a field. */
+function storedValueOf(
+  axis: OrganizerAxis,
+  card: AnyResource,
+  folderSubtype: string | undefined,
+): MetadataValue | undefined {
+  if (typeof axis === "string") return undefined;
+  if (axis.kind === "status") return card.userMetadata?.status;
+  if (axis.kind === "subtype") {
+    return card.type === "folder"
+      ? folderSubtype
+      : (card as { resourceSubtype?: string }).resourceSubtype;
+  }
+  return card.userMetadata?.[axis.key];
+}
+
 export interface OrganizerViewProps {
   /** Whether to show the body/content of each resource */
   showBody?: boolean;
@@ -147,6 +303,10 @@ export interface OrganizerViewProps {
   onToggleBody?: (show: boolean) => void;
   /** Optional className for outer container */
   className?: string;
+  /** Card cap for the grid; defaults to `ORGANIZER_GRID_CARD_CAP` (no cap until measured). */
+  cardCap?: number | null;
+  /** Called when a drop finds the document gone, so the host can re-read the project. */
+  onResourceGone?: () => void;
 }
 
 /**
@@ -158,8 +318,11 @@ export default function OrganizerView({
   showBody = true,
   onToggleBody,
   className = "",
+  cardCap = ORGANIZER_GRID_CARD_CAP,
+  onResourceGone,
 }: OrganizerViewProps): JSX.Element {
   const dispatch = useAppDispatch();
+  const viewportTier = useViewportTier();
   const resources = useAppSelector(
     (s) => selectResources(s.resources),
     shallowEqual,
@@ -196,10 +359,28 @@ export default function OrganizerView({
     (s) => s.projects.projects[s.projects.selectedProjectId ?? ""] ?? null,
   );
 
+  const subtypes = useAppSelector(
+    (s) => selectActiveProjectSubtypes(s),
+    shallowEqual,
+  );
+  const savedQueries = useAppSelector(selectSavedQueriesList, shallowEqual);
+
   const [isShowingBody, setIsShowingBody] = React.useState(showBody);
-  // Text content for `text-excerpt` cards, fetched on demand for the visible
-  // folder children only (store resources don't carry their content).
-  const [excerpts, setExcerpts] = React.useState<Record<string, string>>({});
+
+  // The arrangement: source, Rows and Columns. Local state here; the saved
+  // arrangements wiring (Task 36) drives these through the setters. A folder
+  // source follows the browsed folder live unless `isSourcePinned`.
+  const [source, setSource] = React.useState<OrganizerSource>(DEFAULT_SOURCE);
+  const [isSourcePinned, setIsSourcePinned] = React.useState(false);
+  const [rowsAxis, setRowsAxis] = React.useState<OrganizerAxis>("none");
+  const [columnsAxis, setColumnsAxis] = React.useState<OrganizerAxis>("order");
+  // Folder values written by a drop, until the next folder read replaces them.
+  const [folderSaved, setFolderSaved] = React.useState<{
+    key: string;
+    byId: Record<string, FolderRowMetadata>;
+  }>({ key: "", byId: {} });
+  const [dropMessage, setDropMessage] = React.useState<string | null>(null);
+  const [overlayWidth, setOverlayWidth] = React.useState<number | null>(null);
 
   // Collapse state for the filter bar itself (FR-12) and, nested within it,
   // the advanced-filters disclosure (FR-14). Deliberately session-only local
@@ -218,9 +399,6 @@ export default function OrganizerView({
     });
   }, [onToggleBody]);
 
-  const getEffectiveFolderParentId = (folder: Folder) =>
-    folder.parentId ?? folder.folderId ?? null;
-
   // The folder currently being browsed in the Organizer grid (FR-7). This is
   // deliberately separate from the globally-selected resource: it only ever
   // syncs from `selectedResourceId` when that id resolves to an actual
@@ -238,33 +416,79 @@ export default function OrganizerView({
 
   const selectedFolder = folders.find((f) => f.id === browsingFolderId) ?? null;
 
-  const childFolders = selectedFolder
-    ? folders
-        .filter((f) => getEffectiveFolderParentId(f) === selectedFolder.id)
-        .sort((a, b) => a.orderIndex - b.orderIndex)
-    : [];
-
-  const childResources = selectedFolder
-    ? resources
-        .filter((r) => r.folderId === selectedFolder.id)
-        .sort((a, b) => a.orderIndex - b.orderIndex)
-    : [];
-
-  const allChildren: AnyResource[] = [...childFolders, ...childResources];
+  // The effective source: a folder source follows the browsed folder unless
+  // pinned (Task 36 pins a saved arrangement's folder).
+  const browsedFolderIdForSource = selectedFolder?.id ?? "";
+  const effectiveSource: OrganizerSource = React.useMemo(
+    () =>
+      source.kind === "folder" && !isSourcePinned
+        ? { ...source, folderId: browsedFolderIdForSource }
+        : source,
+    [source, isSourcePinned, browsedFolderIdForSource],
+  );
+  const smartFolder = useOrganizerSmartFolderCards(
+    effectiveSource.kind === "smart-folder" ? effectiveSource.queryId : null,
+  );
+  // Everything in `folders` is a folder, so it is tagged as one for the
+  // source model, which tells folders from documents by `type`.
+  const allItems: AnyResource[] = React.useMemo(
+    () => [
+      ...folders.map((f) =>
+        f.type === "folder" ? f : { ...f, type: "folder" as const },
+      ),
+      ...resources,
+    ],
+    [folders, resources],
+  );
+  const resolvedSource = React.useMemo(
+    () =>
+      resolveOrganizerSource(
+        effectiveSource,
+        allItems,
+        smartFolder.state.status === "ready"
+          ? smartFolder.state.ids
+          : undefined,
+      ),
+    [effectiveSource, allItems, smartFolder.state],
+  );
+  const allChildren: AnyResource[] = resolvedSource.cards;
+  // The browsed folder's full, unfiltered direct children: what a reorder
+  // rewrites, whichever source the grid shows.
+  const siblingCards = React.useMemo(
+    () =>
+      selectedFolder
+        ? listChildrenSource(selectedFolder.id, allItems).cards
+        : [],
+    [selectedFolder, allItems],
+  );
 
   // Child folders' sidecar metadata (Feature 102, FR-14): subtype for the
-  // card, field values for the filters. No request without a project
-  // directory or child folders. A failed read is shown, never dropped.
+  // card, field values for the filters and the axes. No request without a
+  // project directory or folder cards. A failed read is shown, never dropped.
+  // Read for every folder card of the source (not only the shown ones),
+  // since the filters and the axis values need them (OQ-18 allows one read
+  // per folder).
   const childFolderIdsKey = projectId
-    ? childFolders.map((f) => f.id).join(",")
+    ? allChildren
+        .filter((c) => c.type === "folder")
+        .map((c) => c.id)
+        .join(",")
     : "";
   const childFolderIds = React.useMemo(
     () => (childFolderIdsKey === "" ? [] : childFolderIdsKey.split(",")),
     [childFolderIdsKey],
   );
   const folderMetadata = useFolderRowMetadata(projectId ?? "", childFolderIds);
-  const folderMetadataById =
-    folderMetadata.status === "ready" ? folderMetadata.byId : undefined;
+  const folderMetadataById = React.useMemo(
+    () =>
+      folderMetadata.status === "ready"
+        ? {
+            ...folderMetadata.byId,
+            ...(folderSaved.key === childFolderIdsKey ? folderSaved.byId : {}),
+          }
+        : undefined,
+    [folderMetadata, folderSaved, childFolderIdsKey],
+  );
   const isFolderReadFailed = folderMetadata.status === "failed";
   // Same ids and order as `allChildren`; folders carry their field values so
   // the existing filters apply to them.
@@ -340,45 +564,123 @@ export default function OrganizerView({
       (value) => value !== undefined && value !== "",
     );
 
-  // Only text resources have content.txt to excerpt. Keyed as a stable string
-  // so the effect re-runs only when the visible set actually changes.
   const cardBodySource = cardBodyConfig?.source;
   const excerptLength = cardBodyConfig?.excerptLength;
-  const textIdsKey = childResources
-    .filter((r) => r.type === "text")
-    .map((r) => r.id)
-    .join(",");
 
-  React.useEffect(() => {
-    // Skip the fetch entirely when bodies are hidden, not text-excerpt mode, or
-    // there's nothing to read — the excerpts would never be displayed.
-    if (
-      !isShowingBody ||
-      cardBodySource !== "text-excerpt" ||
-      !projectId ||
-      textIdsKey === ""
-    ) {
-      setExcerpts({});
-      return;
-    }
-    let isCancelled = false;
-    void fetchResourceExcerpts(
-      projectId,
-      textIdsKey.split(","),
-      excerptLength ?? DEFAULT_CARD_EXCERPT_LENGTH,
-    ).then((result) => {
-      if (!isCancelled) setExcerpts(result);
-    });
-    return () => {
-      isCancelled = true;
-    };
-  }, [isShowingBody, cardBodySource, excerptLength, projectId, textIdsKey]);
+  // The default arrangement (Rows none, Columns order, direct children) stays
+  // today's wrapping list; every other combination is the grid branch.
+  const isDefaultArrangement =
+    rowsAxis === "none" &&
+    columnsAxis === "order" &&
+    effectiveSource.kind === "folder" &&
+    effectiveSource.scope === "children";
+  const isPhone = viewportTier === "phone";
+  // Why the source shows nothing: never read as an empty source, never
+  // replaced by another source.
+  const sourceProblem = describeSourceProblem(
+    effectiveSource,
+    smartFolder.state,
+    resolvedSource.missingIds.length > 0,
+  );
+
+  const axisChoices = getAxisChoices({
+    schema: metadataSchema,
+    source:
+      effectiveSource.kind === "smart-folder"
+        ? "smart-folder"
+        : effectiveSource.scope,
+    documentSubtypes: allChildren
+      .filter((c) => c.type !== "folder")
+      .map((c) => (c as { resourceSubtype?: string }).resourceSubtype),
+    folderSubtypes: allChildren
+      .filter((c) => c.type === "folder")
+      .map((c) => folderMetadataById?.[c.id]?.resourceSubtype),
+    position: "rows",
+    other: "none",
+  });
+
+  const axisInput = (axis: OrganizerAxis): OrganizerGridAxisInput => ({
+    axis,
+    list:
+      typeof axis === "string"
+        ? null
+        : buildAxisValueList({
+            axis,
+            schema: metadataSchema,
+            statuses,
+            subtypes,
+            presentValues:
+              axis.kind === "field"
+                ? filterableChildren.map((c) => c.userMetadata?.[axis.key])
+                : [],
+          }),
+    values: new Map(
+      visibleChildren.map((c) => [
+        c.id,
+        storedValueOf(axis, c, folderMetadataById?.[c.id]?.resourceSubtype),
+      ]),
+    ),
+  });
+  const gridModel: OrganizerGridResult | null =
+    isDefaultArrangement ||
+    sourceProblem !== null ||
+    visibleChildren.length === 0
+      ? null
+      : buildOrganizerGridModel({
+          cards: visibleChildren.map((c) => ({
+            id: c.id,
+            kind: c.type === "folder" ? "folder" : "resource",
+          })),
+          rows: axisInput(rowsAxis),
+          columns: axisInput(columnsAxis),
+          cap: cardCap,
+        });
+  const cardsById = new Map(filterableChildren.map((c) => [c.id, c]));
+
+  // Excerpts for the shown text cards only: the whole source in the default
+  // list (a filter change never refetches there), the cards left after the
+  // cap and the filters in the grid (FR-12). Folder sidecars are read above,
+  // for every folder card, so none are requested here.
+  const shownTextIds = (
+    isDefaultArrangement
+      ? allChildren.map((c) => c.id)
+      : (gridModel?.shownCardIds ?? [])
+  ).filter((id) => cardsById.get(id)?.type === "text");
+  const shownData = useOrganizerShownCardData({
+    projectId: projectId ?? "",
+    source: effectiveSource,
+    shownTextIds,
+    shownFolderIds: NO_IDS,
+    isExcerptWanted: isShowingBody && cardBodySource === "text-excerpt",
+    excerptLength: excerptLength ?? DEFAULT_CARD_EXCERPT_LENGTH,
+  });
+  const excerpts: Record<string, string> =
+    shownData.excerpts.status === "ready"
+      ? shownData.excerpts.byId
+      : NO_EXCERPTS;
 
   const handleOpen = (id: string) => dispatch(setSelectedResourceId(id));
 
   const handleSelect = (id: string) => {
     dispatch(setSuppressNextViewAutoSwitch(true));
     dispatch(setSelectedResourceId(id));
+  };
+
+  /** Card props for the grid: body, folder subtype, selection, open and select. */
+  const cardPropsFor = (id: string): Partial<OrganizerCardProps> => {
+    const card = cardsById.get(id);
+    if (!card) return {};
+    return {
+      showBody: isShowingBody,
+      body: resolveOrganizerCardBody(card, cardBodyConfig, {
+        notesEnabled: isNotesEnabled,
+        textExcerpt: excerpts[id],
+      }),
+      folderSubtype: folderMetadataById?.[id]?.resourceSubtype,
+      isSelected: id === selectedResourceId,
+      onOpen: () => handleOpen(id),
+      onSelect: () => handleSelect(id),
+    };
   };
 
   // Task 3's reorder function, scoped to the currently browsed folder. Called
@@ -391,7 +693,105 @@ export default function OrganizerView({
     currentProject,
     projectDirectoryId: projectId,
     browsedFolderId: selectedFolder?.id ?? "",
-    allChildren,
+    allChildren: siblingCards,
+  });
+
+  // Grid drags (Tasks 20 and 22): a field drop is one write through
+  // `useOrganizerFieldDrop`; an order drop is the existing reorder; a refusal
+  // is shown in text. A smart-folder source re-evaluates after each save.
+  const refreshSmartFolder = smartFolder.refresh;
+  const fieldDrop = useOrganizerFieldDrop({
+    projectId: projectId ?? "",
+    onGone: () => {
+      refreshSmartFolder();
+      onResourceGone?.();
+    },
+    onFolderSaved: (folderId, value) =>
+      setFolderSaved((prev) => ({
+        key: childFolderIdsKey,
+        byId: {
+          ...(prev.key === childFolderIdsKey ? prev.byId : {}),
+          [folderId]: value,
+        },
+      })),
+  });
+  const lastDroppedCardId = React.useRef<string | null>(null);
+  const isSmartSource = effectiveSource.kind === "smart-folder";
+  // Runs once per saved drop (keyed on the state object), with the latest
+  // closure: re-evaluate a smart-folder source, then hand focus back to the
+  // card, which now sits in its new cell.
+  const afterSave = React.useRef<() => void>(() => undefined);
+  afterSave.current = () => {
+    if (isSmartSource) refreshSmartFolder();
+    if (lastDroppedCardId.current) focusCardHandle(lastDroppedCardId.current);
+  };
+  const dropState = fieldDrop.state;
+  React.useEffect(() => {
+    if (dropState.status === "saved") afterSave.current();
+  }, [dropState]);
+
+  const schemaFields = React.useMemo(
+    () => metadataSchema.groups.flatMap((group) => group.fields),
+    [metadataSchema],
+  );
+  const axisLines = (
+    axis: OrganizerAxis,
+    lines: OrganizerAxisValue[] | undefined,
+  ) => ({ axis, values: typeof axis === "string" || !lines ? [] : lines });
+  const gridDrag = useOrganizerGridDrag({
+    rows: axisLines(rowsAxis, gridModel?.rows),
+    columns: axisLines(columnsAxis, gridModel?.columns),
+    fields: schemaFields,
+    statuses,
+    subtypes,
+    getCard: (cardId) => {
+      const card = cardsById.get(cardId);
+      if (!card) return undefined;
+      return {
+        id: cardId,
+        kind: card.type === "folder" ? "folder" : "resource",
+        resourceSubtype:
+          card.type === "folder"
+            ? folderMetadataById?.[cardId]?.resourceSubtype
+            : (card as { resourceSubtype?: string }).resourceSubtype,
+        userMetadata: card.userMetadata,
+      };
+    },
+    getCardTitle: (cardId) => {
+      const card = cardsById.get(cardId);
+      return card ? resolveCardTitle(card) : "Card";
+    },
+    orderDrop: {
+      source: isSmartSource
+        ? { kind: "smart-folder" }
+        : { kind: "folder", scope: effectiveSource.scope },
+      filterActive: isAnyFilterActive,
+      siblingIds: siblingCards.map((card) => card.id),
+      getRowCardIds: (rowKey) =>
+        (gridModel?.cells ?? [])
+          .filter((cell) => cell.rowKey === rowKey)
+          .flatMap((cell) => cell.placements.map((p) => p.cardId)),
+    },
+    onFieldDrop: (input, context) => {
+      setDropMessage(null);
+      lastDroppedCardId.current = context.card.id;
+      const card = cardsById.get(context.card.id);
+      void fieldDrop.drop({
+        plan: { kind: "write", input },
+        card: {
+          id: context.card.id,
+          kind: context.card.kind,
+          name: card ? resolveCardTitle(card) : "Card",
+        },
+        destinationLabel: context.cellLabel,
+      });
+    },
+    onOrderDrop: (newChildIds) => {
+      setDropMessage(null);
+      reorderChildren(newChildIds);
+    },
+    onRefuse: setDropMessage,
+    focusCard: focusCardHandle,
   });
 
   const sensors = useSensors(
@@ -501,6 +901,25 @@ export default function OrganizerView({
         </Button>
       </div>
 
+      {selectedFolder && (
+        <div className="mb-4">
+          <OrganizerGridToolbar
+            fieldChoices={axisChoices.filter((c) => typeof c.axis !== "string")}
+            rows={rowsAxis}
+            columns={columnsAxis}
+            onRowsChange={setRowsAxis}
+            onColumnsChange={setColumnsAxis}
+            source={effectiveSource}
+            folderId={selectedFolder.id}
+            smartFolders={savedQueries.map((q) => ({ id: q.id, name: q.name }))}
+            onSourceChange={(next) => {
+              setSource(next);
+              setIsSourcePinned(false);
+            }}
+          />
+        </div>
+      )}
+
       {selectedFolder && allChildren.length > 0 && (
         <OrganizerFilterBar
           filterState={filterState}
@@ -522,17 +941,54 @@ export default function OrganizerView({
         </p>
       )}
 
+      {selectedFolder && shownData.excerpts.status === "failed" && (
+        <p role="alert" className="text-sm text-gw-secondary mb-3">
+          Card excerpts could not be loaded: {shownData.excerpts.message}
+        </p>
+      )}
+
+      {!isDefaultArrangement && !isPhone && (
+        <div role="status" className="text-sm text-gw-secondary mb-2">
+          {dropMessage ?? fieldDrop.announcement}
+          {fieldDrop.state.status === "failed" && (
+            <Button
+              variant="secondary"
+              className="ml-2"
+              onClick={() => void fieldDrop.retry()}
+            >
+              Retry
+            </Button>
+          )}
+        </div>
+      )}
+
       {!selectedFolder ? (
         <p className="text-sm text-gw-secondary">
           Select a folder to view its contents.
         </p>
+      ) : sourceProblem ? (
+        <div
+          role={sourceProblem.kind === "failed" ? "alert" : "status"}
+          className="text-sm text-gw-secondary flex items-center gap-3"
+        >
+          <p>{sourceProblem.message}</p>
+          {sourceProblem.retry && (
+            <Button variant="secondary" onClick={sourceProblem.retry}>
+              Retry
+            </Button>
+          )}
+        </div>
       ) : allChildren.length === 0 ? (
-        <p className="text-sm text-gw-secondary">This folder is empty.</p>
+        <p className="text-sm text-gw-secondary">
+          {isSmartSource
+            ? "No documents match this smart folder."
+            : "This folder is empty."}
+        </p>
       ) : isAnyFilterActive && visibleChildren.length === 0 ? (
         <p className="text-sm text-gw-secondary">
           No cards match the current filters.
         </p>
-      ) : (
+      ) : isDefaultArrangement ? (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -597,6 +1053,55 @@ export default function OrganizerView({
             ) : null}
           </DragOverlay>
         </DndContext>
+      ) : gridModel === null ? null : isPhone ? (
+        <OrganizerPhoneGroups
+          groups={buildOrganizerPhoneGroups(gridModel)}
+          resourcesById={Object.fromEntries(cardsById)}
+          rowsNone={rowsAxis === "none"}
+          selectedId={selectedResourceId}
+          onSelect={handleSelect}
+          onOpen={handleOpen}
+        />
+      ) : (
+        <DndContext
+          {...gridDrag.dndContextProps}
+          onDragStart={(event) => {
+            setOverlayWidth(event.active.rect.current.initial?.width ?? null);
+            gridDrag.dndContextProps.onDragStart(event);
+          }}
+        >
+          <OrganizerGrid
+            model={gridModel}
+            resources={cardsById}
+            getCardProps={cardPropsFor}
+            CellComponent={DroppableGridCell}
+            renderCard={(info) => (
+              <DraggableGridCard
+                info={info}
+                isOrderMode={columnsAxis === "order"}
+              />
+            )}
+          />
+          <DragOverlay>
+            {gridDrag.activeCardId && cardsById.get(gridDrag.activeCardId) ? (
+              <div style={{ width: overlayWidth ?? undefined }}>
+                <OrganizerCard
+                  resource={cardsById.get(gridDrag.activeCardId)!}
+                  {...cardPropsFor(gridDrag.activeCardId)}
+                  onOpen={undefined}
+                  onSelect={undefined}
+                />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      )}
+
+      {gridModel && gridModel.notShownCount > 0 && (
+        <p role="status" className="text-sm text-gw-secondary mt-3">
+          {gridModel.notShownCount} not shown. Narrow the source or the filters
+          to reach them.
+        </p>
       )}
     </div>
   );
