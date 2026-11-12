@@ -78,24 +78,11 @@ describe("inert core stubs", () => {
     expect(input.changes).toEqual([]);
   });
 
-  it("the arrangement stubs are exported and throw not implemented", async () => {
-    await expect(
-      addOrganizerArrangementCore("p1", {
-        name: "x",
-        source: { kind: "smart-folder", queryId: "q" },
-        rows: "none",
-        columns: "order",
-      }),
-    ).rejects.toThrow("not implemented");
-    await expect(
-      renameOrganizerArrangementCore("p1", { id: "a", name: "y" }),
-    ).rejects.toThrow("not implemented");
-    await expect(
-      deleteOrganizerArrangementCore("p1", { id: "a" }),
-    ).rejects.toThrow("not implemented");
-    expect(() => validateOrganizerArrangementDraft({})).toThrow(
-      "not implemented",
-    );
+  it("the arrangement cores are exported (Task 25 replaced the stubs; behaviour is in organizer-arrangements-core.test.ts)", () => {
+    expect(typeof addOrganizerArrangementCore).toBe("function");
+    expect(typeof renameOrganizerArrangementCore).toBe("function");
+    expect(typeof deleteOrganizerArrangementCore).toBe("function");
+    expect(typeof validateOrganizerArrangementDraft).toBe("function");
   });
 });
 
