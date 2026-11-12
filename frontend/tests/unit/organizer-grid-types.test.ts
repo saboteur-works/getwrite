@@ -72,11 +72,10 @@ describe("organizer-grid-types shapes", () => {
 });
 
 describe("inert core stubs", () => {
-  it("setOrganizerFieldsCore is exported and throws not implemented", async () => {
+  it("setOrganizerFieldsCore is exported (Task 10 replaced the stub; behaviour is in organizer-field-write-core.test.ts)", () => {
     const input: OrganizerFieldWriteInput = { resourceId: "r1", changes: [] };
-    await expect(setOrganizerFieldsCore("p1", input)).rejects.toThrow(
-      "not implemented",
-    );
+    expect(typeof setOrganizerFieldsCore).toBe("function");
+    expect(input.changes).toEqual([]);
   });
 
   it("the arrangement stubs are exported and throw not implemented", async () => {
