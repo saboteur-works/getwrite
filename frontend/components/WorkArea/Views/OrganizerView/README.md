@@ -1,141 +1,73 @@
-# OrganizerView + OrganizerCard
+# OrganizerView
 
-Last Updated: 2026-03-11
+The Organizer Work Area view. It shows the cards of one folder, or of a smart folder, either as today's wrapping list or as a grid of rows and columns chosen by field. Feature 109 added the grid; the feature record is `docs/features/organizer-grid.md`, the writer's page is `docs/user/handbook/views/organizer.md`.
 
-This document describes the Organizer feature components:
+## Two branches
 
-- `OrganizerView` (`frontend/components/WorkArea/Views/OrganizerView/OrganizerView.tsx`)
-- `OrganizerCard` (`frontend/components/WorkArea/Views/OrganizerView/OrganizerCard.tsx`)
+`OrganizerView.tsx` is the host. It owns the header (title, **Hide bodies**), the browsed folder, the filters and the toolbar, then picks one branch:
 
-## Overview
+- **Default arrangement** (Rows `none`, Columns `order`, source = direct children of the browsed folder): the wrapping, sortable list of `OrganizerCard`s, folders first, then resources, each by `orderIndex`. A pointer or keyboard drag reorders inside the folder through `useOrganizerCardReorder`; it is off while a filter is active ("Clear filters to reorder cards").
+- **Every other combination**: `OrganizerGridView.tsx`.
 
-The Organizer feature renders project resources grouped by folder hierarchy.
-
-- `OrganizerView` is responsible for tree traversal, expansion state, and body-visibility toggle state.
-- `OrganizerCard` is responsible for presenting an individual resource summary.
-
-Together, they provide a nested, browseable organizer layout with optional preview text.
-
-## Component Responsibilities
-
-### OrganizerView
-
-`OrganizerView`:
-
-- Reads folders and resources from Redux selectors (`selectFolders`, `selectResources`).
-- Computes root folders and child folders for hierarchical rendering.
-- Maintains expansion state per folder (`expandedFolders: Set<string>`).
-- Maintains local body visibility state (`showBodyState`) for all rendered cards.
-- Renders folders recursively and indents nested levels.
-- Passes each resource to `OrganizerCard`.
-
-### OrganizerCard
-
-`OrganizerCard`:
-
-- Renders title, type label, updated date, optional body preview, and metadata footer.
-- Uses fallback display logic for title and status values.
-- Is purely presentational and controlled through props.
+Source, Rows and Columns picks live in `useOrganizerPicks.ts` (and its saved-arrangement wiring). Filters (`organizerFilters.ts`, `OrganizerFilterBar.tsx`), the card body setting and **Hide bodies** apply to both branches. Nothing is stored in the view; arrangements are project data (see below).
 
 ## Props
 
-### OrganizerViewProps
+`OrganizerView` takes no resources: it reads `selectFolders`, `selectResources`, the selected folder and the project from Redux.
 
-| Prop           | Type                      | Required         | Default     | Description                                                                          |
-| -------------- | ------------------------- | ---------------- | ----------- | ------------------------------------------------------------------------------------ |
-| `resources`    | `AnyResource[]`           | Yes (type-level) | —           | Present in API for compatibility; current rendering source is Redux state selectors. |
-| `showBody`     | `boolean`                 | No               | `true`      | Initial state for showing resource body previews.                                    |
-| `onToggleBody` | `(show: boolean) => void` | No               | `undefined` | Callback invoked when the body-visibility toggle is pressed.                         |
-| `className`    | `string`                  | No               | `""`        | Extra classes applied to outer container.                                            |
+| Prop             | Type                      | Default                   | Meaning                                                                          |
+| ---------------- | ------------------------- | ------------------------- | -------------------------------------------------------------------------------- |
+| `showBody`       | `boolean`                 | `true`                    | Initial state of the body toggle.                                                |
+| `onToggleBody`   | `(show: boolean) => void` | none                      | Called when **Hide bodies** or **Show bodies** is pressed.                       |
+| `className`      | `string`                  | `""`                      | Extra classes on the outer container.                                            |
+| `cardCap`        | `number \| null`          | `ORGANIZER_GRID_CARD_CAP` | Card cap for the grid. `null` means no cap.                                      |
+| `onResourceGone` | `() => void`              | none                      | Called when a drop finds the document gone, so the host can re-read the project. |
 
-### OrganizerCardProps
+`OrganizerCard` props are documented in `OrganizerCard.tsx`; the card is presentational and controlled. It shows the title, the resource type, a date, an optional body, the stored status (no status line when none is stored) and, for a folder, its subtype. `body` comes from `resolveOrganizerCardBody` in `cardBody.ts`, driven by `config.organizerCardBody`.
 
-| Prop       | Type          | Required | Default | Description                              |
-| ---------- | ------------- | -------- | ------- | ---------------------------------------- |
-| `resource` | `AnyResource` | Yes      | —       | Resource to render.                      |
-| `showBody` | `boolean`     | No       | `true`  | Whether body preview text should render. |
+## Files
 
-## Rendering & Data Flow
+Pure models (no React, Redux or `@dnd-kit`):
 
-## 1) Folder hierarchy
+- `organizerSource.ts`: the source's cards in tree order (children, descendants, smart folder).
+- `organizerAxisFields.ts`: which fields Rows and Columns offer, and the lines of one axis (list values, "Other values", "None").
+- `organizerGridModel.ts`: places cards in cells; builds the phone groups.
+- `organizerDropModel.ts`: a drag between cells becomes one field-write payload, a no-op or a refusal.
+- `organizerOrderDrop.ts`: a drop when Columns is `order`, mapped onto the full sibling order.
+- `organizerArrangementAvailability.ts`: whether a saved arrangement can be applied.
+- `organizerGridCap.ts`: `ORGANIZER_GRID_CARD_CAP` (currently `null`; the figure comes from `experiments/task-42.md` only) and `applyCardCap`.
+- `cardBody.ts`: card body and title resolution.
 
-`OrganizerView` computes:
+Hooks:
 
-- Root folders: folders where `folderId` is absent/falsey.
-- Child folders: folders whose `folderId` equals the current folder id.
+- `useOrganizerSourceData.ts`: resolves the source, reads folder sidecars, reports a missing, loading or failed source.
+- `useOrganizerSmartFolderCards.ts`: evaluates a smart folder into local state (no `querySlice` change).
+- `useOrganizerShownCardData.ts`: excerpts for the shown text cards; a failed read is `failed`, not empty.
+- `useOrganizerPicks.ts`: source, rows and columns state and the arrangement wiring.
+- `useOrganizerArrangements.ts`: saved list, availability, applied arrangement, last-used (per device).
+- `useOrganizerGridDrag.ts`: sensors, coordinate getter, announcements, drop routing. Writes nothing.
+- `useOrganizerFieldDrop.ts`: runs a field write; the card stays in its old cell until it succeeds; retry on failure.
+- `useOrganizerSmartDropFollowUp.ts`: after a drop in a smart folder, re-reads, toasts when the card left, restores focus.
+- `useOrganizerCardReorder.ts`, `organizerFolderChildren.ts`, `organizerFilters.ts`: the existing reorder, children and filter code.
 
-It recursively renders each folder branch through `renderFolderTree(folder, depth)`.
+Components:
 
-## 2) Indentation
+- `OrganizerGridView.tsx`: the grid branch (model, drag, drop status line, phone groups, "N not shown").
+- `OrganizerGrid.tsx` and `OrganizerGridCell.tsx`: the ARIA grid and its droppable cells.
+- `OrganizerPhoneGroups.tsx`: the grouped lists shown below 768px (`useViewportTier`); no drag.
+- `OrganizerToolbarArea.tsx`, `OrganizerGridToolbar.tsx`, `OrganizerArrangementControls.tsx`: the Source, Rows and Columns selects and the **Arrangements** controls.
+- `OrganizerStateMessage.tsx`: source-problem, empty and no-match texts for both branches.
+- `OrganizerCard.tsx`, `OrganizerFilterBar.tsx`.
 
-Each nested level increases left offset:
+## Behaviour to know
 
-- `marginLeft = depth * 1.5rem`
+- With Rows `none` and Columns `order` the grid is one list in tree order; it is the default only with the children source.
+- A card with several values appears in every matching cell; each appearance reads "also in N other cells". The cap, when set, counts cards, not appearances.
+- A drop writes through `setOrganizerFields` (`lib/api/organizer-field-write.ts`). A folder card is written through `updateFolderMetadata`, clearing with `clearFieldKeys`. Refusals and failures show as text and a toast.
+- Reorder stays a tree operation: with Columns `order` a drop reorders inside one folder only, and is refused for the descendants and smart-folder sources.
+- Saved arrangements are `config.organizerArrangements`; the last-used one is a per-device `localStorage` key (`lib/organizer-arrangement-preference.ts`).
+- Stories: `stories/WorkArea/OrganizerGrid.stories.tsx`. Tests: `frontend/tests/organizer*.test.tsx`, `use Organizer*` hook tests, `tests/a11y/organizerGrid*.test.tsx`.
 
-This visually nests subfolders under their parents.
+## Not measured
 
-## 3) Expansion gating
-
-Folder content only renders while expanded:
-
-- Folder resources grid
-- Child folders
-- Empty-state message (`No resources or subfolders`) when both are empty
-
-## 4) Resource mapping
-
-For each expanded folder, direct resources are filtered by `folderId` and mapped to `OrganizerCard`.
-
-## 5) Card field derivation
-
-`OrganizerCard` resolves fields in this order:
-
-- Title: `resource.title ?? resource.name ?? "Untitled"`
-- Body preview: `resource.metadata?.notes`
-- Updated date: `resource.updatedAt ?? resource.createdAt`
-- Status: the stored `userMetadata.status` only; a document with no stored status shows no Status line (there is no default status). A stored value that is not in the project list still shows.
-- Word count: `resource.metadata?.wordCount ?? "unknown"`
-
-## Interaction Behavior
-
-### Folder expand/collapse
-
-Clicking a folder row toggles its id in `expandedFolders`:
-
-- Expanded: `ChevronDown`
-- Collapsed: `ChevronRight`
-
-### Body visibility toggle
-
-The header toggle button:
-
-- Flips local `showBodyState`
-- Calls `onToggleBody(nextState)` when callback is provided
-- Switches icon/text:
-  - `EyeClosed` + `Hide bodies` when bodies are visible
-  - `Eye` + `Show bodies` when bodies are hidden
-
-## Example Usage
-
-```tsx
-import OrganizerView from "./OrganizerView/OrganizerView";
-
-export function Example(): JSX.Element {
-  return (
-    <OrganizerView
-      resources={[]}
-      showBody={true}
-      onToggleBody={(show) => {
-        console.log("showBody:", show);
-      }}
-      className="h-full"
-    />
-  );
-}
-```
-
-## Notes
-
-- Current implementation depends on Redux for resources/folders; the `resources` prop is currently not used as the source of truth.
-- Body preview in `OrganizerCard` is based on `metadata.notes`, not `plainText`.
-- Folder count label currently displays direct children count as `direct resources + direct child folders`.
+First paint of the phone layout, focus after a drop in a real browser, the 360px layout, and a screen reader were not measured. Device and card-cap results are in `specs/features/organizer-grid/experiments/task-42.md`.

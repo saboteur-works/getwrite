@@ -60,6 +60,10 @@ A module may own derived-index steps (`indexSteps`). They run:
 
 The Sources module owns no index (`indexSteps: []`). The step mechanism is exercised by a test-only registry (`__setIndexerModuleRegistryForTests`). Annotation indexing is core, not module-owned. Prose diagnostics are not rebuilt by the shared function (OQ-11, deferred).
 
+## Arrangements hook (Feature 109)
+
+A manifest entry may carry `arrangements?: readonly ModuleArrangementSeed[]` (`registry.ts`, model side): Organizer arrangements a new project starts with while the module is on. It is plain data, not a slot kind, so `uiRegistry.ts` is unchanged and `MODULE_SLOT_KINDS` is still `["view"]`. A seed is `{ name, source: { kind: "folder", folderName, scope }, rows, columns }`: it names its folder because no folder id exists before the project does, and there is no smart-folder variant. `createModuleRegistry(manifest).arrangements(config)` returns the seeds of enabled modules (the same `enabled()` rule as `indexSteps`, so `moduleDefaultEnabled` and an explicit `config.modules` entry both apply). `createProjectFromType` calls it after the type's own seeds, so on a duplicate name the type's arrangement wins. No shipped module sets it; only a test fixture does. The seed type imports `organizer-grid-types` with `import type` only (`core-import-graph.test.ts`). See [organizer-grid.md](./organizer-grid.md).
+
 ## Adding a module
 
 1. Add a manifest entry in `manifest.ts` (no React, JSX or JSON imports). Set `defaultEnabled: false` if the module should be off for a project with no entry.

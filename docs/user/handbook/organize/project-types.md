@@ -50,6 +50,17 @@ In the **Project Type Manager**, the **Modules** section has one choice for each
 - A type that lists a module with anything other than on or off is refused with a message and not saved.
 - An older version of GetWrite can't use a saved type that sets modules. It lists the file as one that could not be used.
 
+### Start new projects with Organizer arrangements
+
+_Coming in the next release._
+
+A project type can list [Organizer arrangements](../views/organizer.md) for new projects to start with. Each one has a name, a folder, and a choice for the rows and for the columns. The folder is named by its folder name in the type, and the arrangement can show just that folder or that folder and its subfolders.
+
+- The Project Type Manager does not show or edit arrangements. A type's file holds them, under the key `arrangements`. No built-in type has any.
+- A new project gets its own copy of each arrangement. You can rename or delete them like any you save yourself. Changing or deleting a type later never changes a project that already exists.
+- GetWrite leaves an arrangement out when the type has no folder by that name, when two arrangements share a name, or when it can't be applied. It does not tell you. The project is still created.
+- An arrangement can't use a smart folder, because a new project has none.
+
 ### Unsaved changes
 
 If a type has unsaved edits and you close the manager, go back, or select another type, an **Unsaved changes** prompt lists the types with edits. Choose **Keep editing**, **Discard** or **Save**. Pressing Escape or clicking outside the prompt also keeps you editing. If a save is refused, you stay in the manager.
