@@ -93,6 +93,17 @@ vi.mock("../src/lib/api/organizer-arrangements", async (importOriginal) => {
 import { addOrganizerArrangement } from "../src/lib/api/organizer-arrangements";
 import { organizerArrangementStorageKey } from "../src/lib/organizer-arrangement-preference";
 import type { OrganizerArrangement } from "../src/lib/models/organizer-grid-types";
+vi.mock("../src/lib/toast-service", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../src/lib/toast-service")>();
+  const toastService = {
+    ...actual.toastService,
+    info: vi.fn(),
+    error: vi.fn(),
+  };
+  return { ...actual, toastService, default: toastService };
+});
+import { toastService } from "../src/lib/toast-service";
 vi.mock("../src/lib/api/folder-metadata", () => ({
   getFolderMetadata: vi
     .fn()
@@ -2177,6 +2188,168 @@ describe("OrganizerView grid branch (Feature 109, Task 23)", () => {
   });
 });
 
+describe("OrganizerView grid wiring fixes (Feature 109, fix-wiring)", () => {
+  const query = {
+    id: QUERY_ID,
+    name: "Drafts",
+    definition: { op: "eq", field: "status", value: "draft" },
+  };
+
+  function storeWithActField() {
+    const store = makeGridStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_ID,
+        name: "Proj",
+        rootPath: "/projects/p1",
+        folders: [],
+        resources: [],
+        statuses: ["Draft", "Final"],
+        metadataSchema: {
+          groups: [
+            {
+              id: "g",
+              label: "G",
+              fields: [
+                {
+                  key: "act",
+                  label: "Act",
+                  type: "select",
+                  options: ["One", "Two"],
+                },
+              ],
+            },
+          ],
+        },
+      } as any),
+    );
+    return store;
+  }
+
+  const idOf = (store: ReturnType<typeof makeGridStore>, name: string) =>
+    store.getState().resources.resources.find((r) => r.name === name)!.id;
+
+  async function dropAlphaOnFinalOne(
+    store: ReturnType<typeof makeGridStore>,
+  ): Promise<void> {
+    await act(async () => {
+      (capturedOnDragEnd as (e: unknown) => void)({
+        active: { id: cardDraggableId(idOf(store, "Alpha"), "Draft", "none") },
+        over: { id: cellDroppableId("Final", "One") },
+      });
+    });
+  }
+
+  async function renderSmartGrid(evaluations: string[][]) {
+    const store = storeWithActField();
+    vi.mocked(setOrganizerFields).mockReset();
+    vi.mocked(setOrganizerFields).mockResolvedValue({
+      status: "done",
+      resourceId: "x",
+    });
+    vi.mocked(toastService.info).mockClear();
+    vi.mocked(evaluateQueryAst).mockReset();
+    for (const names of evaluations) {
+      vi.mocked(evaluateQueryAst).mockResolvedValueOnce({
+        ids: names.map((n) => idOf(store, n)),
+      } as any);
+    }
+    vi.mocked(fetchSavedQueryList).mockReset();
+    vi.mocked(fetchSavedQueryList).mockResolvedValueOnce({
+      queries: [query],
+    } as any);
+    await store.dispatch(loadSavedQueries({ projectId: PROJECT_ID }));
+    renderGrid(store);
+    pick("Source", `smart:${QUERY_ID}`);
+    pick("Rows", "status");
+    pick("Columns", "field:act");
+    await screen.findByText("Alpha");
+    return store;
+  }
+
+  describe("Gap 1: a card that stops matching leaves the smart folder with a toast (FR-9)", () => {
+    it("removes the card and toasts a message naming it when the re-evaluation no longer returns it", async () => {
+      const store = await renderSmartGrid([["Alpha", "Deep"], ["Deep"]]);
+      await dropAlphaOnFinalOne(store);
+      await waitFor(() => expect(screen.queryByText("Alpha")).toBeNull());
+      expect(screen.getByText("Deep")).toBeInTheDocument();
+      await waitFor(() => expect(toastService.info).toHaveBeenCalledTimes(1));
+      const message = vi.mocked(toastService.info).mock.calls[0][0];
+      expect(message).toMatch(/Alpha/);
+      expect(message).toMatch(/left the smart folder/i);
+    });
+
+    it("makes no toast when the card still matches after the drop", async () => {
+      const store = await renderSmartGrid([
+        ["Alpha", "Deep"],
+        ["Alpha", "Deep"],
+      ]);
+      await dropAlphaOnFinalOne(store);
+      await waitFor(() =>
+        expect(vi.mocked(evaluateQueryAst)).toHaveBeenCalledTimes(2),
+      );
+      expect(
+        await screen.findByRole("gridcell", { name: "Final, One, 1 card" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Alpha")).toBeInTheDocument();
+      expect(toastService.info).not.toHaveBeenCalled();
+    });
+
+    it("makes no toast when the re-evaluation fails (the failed state speaks for itself)", async () => {
+      const store = await renderSmartGrid([["Alpha", "Deep"]]);
+      vi.mocked(evaluateQueryAst).mockRejectedValueOnce(new Error("boom"));
+      await dropAlphaOnFinalOne(store);
+      expect(await screen.findByText(/boom/)).toBeInTheDocument();
+      expect(toastService.info).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Gap 2: focus returns to the moved card's handle after a drop (FR-11)", () => {
+    const handleOf = (id: string) =>
+      document.querySelector<HTMLElement>(
+        `[data-organizer-card-id="${id}"] button`,
+      );
+
+    it("focuses the handle of the card in its new cell (children source)", async () => {
+      const store = storeWithActField();
+      vi.mocked(setOrganizerFields).mockReset();
+      vi.mocked(setOrganizerFields).mockResolvedValue({
+        status: "done",
+        resourceId: "x",
+      });
+      renderGrid(store);
+      pick("Rows", "status");
+      pick("Columns", "field:act");
+      const alphaId = idOf(store, "Alpha");
+      await dropAlphaOnFinalOne(store);
+      const inNewCell = await screen.findByRole("gridcell", {
+        name: "Final, One, 1 card",
+      });
+      await waitFor(() => {
+        const handle = handleOf(alphaId);
+        expect(handle).not.toBeNull();
+        expect(inNewCell).toContainElement(handle);
+        expect(handle).toHaveAttribute("aria-label", "Drag to reorder");
+        expect(document.activeElement).toBe(handle);
+      });
+    });
+
+    it("focuses the handle after the smart-folder re-evaluation settles (card still matches)", async () => {
+      const store = await renderSmartGrid([
+        ["Alpha", "Deep"],
+        ["Alpha", "Deep"],
+      ]);
+      const alphaId = idOf(store, "Alpha");
+      await dropAlphaOnFinalOne(store);
+      await waitFor(() => {
+        const handle = handleOf(alphaId);
+        expect(handle).not.toBeNull();
+        expect(document.activeElement).toBe(handle);
+      });
+    });
+  });
+});
+
 describe("OrganizerView arrangements (Feature 109, Task 36)", () => {
   const DIR_ID = "66666666-6666-4666-8666-666666666666";
   const ARR_ID = "77777777-7777-4777-8777-777777777777";
@@ -2241,6 +2414,29 @@ describe("OrganizerView arrangements (Feature 109, Task 36)", () => {
     renderGrid(await loadedStore());
     expect(screen.getByText("Applied: Default")).toBeInTheDocument();
     expect(screen.queryByText(/Showing the default arrangement/)).toBeNull();
+  });
+
+  it("shows an arrangement on a smart folder as could not be checked, with Apply disabled, when the saved queries failed to load", async () => {
+    const smart: OrganizerArrangement = {
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      name: "Query grid",
+      source: { kind: "smart-folder", queryId: QUERY_ID },
+      rows: "none",
+      columns: "order",
+    };
+    const store = makeArrangementStore([smart]);
+    vi.mocked(fetchSavedQueryList).mockRejectedValueOnce(new Error("offline"));
+    await act(async () => {
+      await store.dispatch(loadSavedQueries({ projectId: PROJECT_ID }));
+    });
+    renderGrid(store);
+    openArrangements();
+    expect(
+      screen.getByText(/Unavailable \(could not be checked\)/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Apply Query grid" }),
+    ).toBeDisabled();
   });
 
   it("applies source, rows and columns only, leaving the filters", async () => {

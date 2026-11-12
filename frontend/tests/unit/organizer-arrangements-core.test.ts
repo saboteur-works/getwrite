@@ -219,6 +219,22 @@ describe("add", () => {
     expect(await stored()).toHaveLength(1);
   });
 
+  it("refuses `none` on Columns (the spec offers order or a field there) and accepts it on Rows", async () => {
+    // FR-2: Rows offers "none" or a field, Columns offers "order" or a field.
+    // The Columns picker has no "none", so a saved one could not be shown.
+    const out = await addOrganizerArrangementCore(
+      PID,
+      draft({ columns: "none" }),
+    );
+    expect(out).toMatchObject({ ok: false, reason: "invalid-axis" });
+    expect(await stored()).toHaveLength(0);
+    expect(() =>
+      validateOrganizerArrangementDraft({ ...draft(), columns: "none" }),
+    ).toThrow();
+    await add({ rows: "none", columns: { kind: "status" } });
+    expect(await stored()).toHaveLength(1);
+  });
+
   it("stores a source or field that no longer exists as written", async () => {
     // The ids and key are not checked against the project: availability is
     // read-side (Task 29).

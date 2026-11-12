@@ -129,6 +129,31 @@ describe("OrganizerArrangementControls", () => {
     expect(screen.queryByText(/no longer exists/)).toBeNull();
   });
 
+  it("shows a failed check as unavailable with its message, not as pending, and cannot apply it", async () => {
+    const { user, callbacks } = setup({
+      availability: {
+        "a-1": { status: "available" },
+        "b-2": {
+          status: "failed",
+          message: "Could not check this arrangement.",
+        },
+      },
+    });
+    await openList(user);
+    expect(
+      screen.getByText(
+        /Unavailable \(could not be checked\): Could not check this arrangement\./,
+      ),
+    ).toBeTruthy();
+    const apply = button("Apply Old query");
+    expect(apply.disabled).toBe(true);
+    expect(apply.getAttribute("aria-describedby")).toBeTruthy();
+    await user.click(apply);
+    expect(callbacks.onSelect).not.toHaveBeenCalled();
+    expect(button("Rename Old query").disabled).toBe(false);
+    expect(button("Delete Old query").disabled).toBe(false);
+  });
+
   it("saves a trimmed name through onAdd and closes the form", async () => {
     const { user, callbacks } = setup();
     await openAddForm(user);

@@ -24,6 +24,15 @@ import {
  * failed operation leaves the shown list exactly as the props give it.
  */
 
+/**
+ * What the controls know about an arrangement: the model's result, or `failed`
+ * when the check could not run (for example the saved queries did not load).
+ * A failed check is shown in text and is never read as pending or available.
+ */
+export type OrganizerArrangementControlAvailability =
+  | OrganizerArrangementAvailability
+  | { status: "failed"; message: string };
+
 /** Props accepted by {@link OrganizerArrangementControls}. */
 export interface OrganizerArrangementControlsProps {
   /** The project's saved arrangements, in the order to show. */
@@ -32,9 +41,11 @@ export interface OrganizerArrangementControlsProps {
   selectedId: string | null;
   /**
    * Availability per arrangement id. A missing or `pending` entry is treated
-   * as applicable and shows no reason (a loading list is never "unavailable").
+   * as applicable and shows no reason (a loading list is never "unavailable");
+   * a `failed` entry shows "could not be checked" with its message and cannot
+   * be applied.
    */
-  availability: Record<string, OrganizerArrangementAvailability>;
+  availability: Record<string, OrganizerArrangementControlAvailability>;
   /** True when the writer changed a picker since the arrangement was applied. */
   isChangedSinceApplied: boolean;
   /** Apply an arrangement; `null` applies the default. */
@@ -173,7 +184,11 @@ export default function OrganizerArrangementControls({
   const renderRow = (arrangement: OrganizerArrangement): JSX.Element => {
     const state = availability[arrangement.id];
     const reason =
-      state && state.status === "unavailable" ? state.message : null;
+      state?.status === "unavailable"
+        ? `Unavailable: ${state.message}`
+        : state?.status === "failed"
+          ? `Unavailable (could not be checked): ${state.message}`
+          : null;
     const reasonId = `${uid}-reason-${arrangement.id}`;
     const isApplied = arrangement.id === selectedId;
     return (
@@ -218,7 +233,7 @@ export default function OrganizerArrangementControls({
         </Button>
         {reason ? (
           <p id={reasonId} className="w-full text-xs text-gw-secondary">
-            Unavailable: {reason}
+            {reason}
           </p>
         ) : null}
       </li>

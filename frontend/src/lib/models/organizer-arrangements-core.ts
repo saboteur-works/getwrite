@@ -12,8 +12,10 @@
  *   arrangements). Objects are strict: an unknown key is refused. A refusal is
  *   a result (`ok: false`) whose message is fixed text and echoes no client
  *   input; nothing is truncated or rewritten.
- * - Rows refuse `order` (Columns only). The stored Zod schema accepts it on
- *   both because the contract has one axis type, so this is the one check.
+ * - Rows refuse `order` (Columns only) and Columns refuse `none` (Rows only),
+ *   as the pickers offer (FR-2). The stored Zod schema accepts both on both
+ *   axes because the contract has one axis type; it stays lenient on read so
+ *   a project that already holds one still loads, and this is the write check.
  * - An arrangement whose folder, query or field no longer exists is stored as
  *   written; availability is read-side and never rewrites it.
  * - A stored list that does not parse is not treated as empty: the operation
@@ -129,11 +131,15 @@ function validateSource(raw: unknown): OrganizerSource {
   throw invalid;
 }
 
-function validateAxis(raw: unknown, allowOrder: boolean): OrganizerAxis {
+/** Rows offer none or a field; Columns offer order or a field (FR-2). */
+function validateAxis(raw: unknown, axis: "rows" | "columns"): OrganizerAxis {
   const invalid = new OrganizerArrangementRefusalError("invalid-axis");
-  if (raw === "none") return "none";
+  if (raw === "none") {
+    if (axis === "columns") throw invalid;
+    return "none";
+  }
   if (raw === "order") {
-    if (!allowOrder) throw invalid;
+    if (axis === "rows") throw invalid;
     return "order";
   }
   if (!isPlainObject(raw)) throw invalid;
@@ -157,7 +163,7 @@ function validateAxis(raw: unknown, allowOrder: boolean): OrganizerAxis {
 /**
  * Validates a candidate arrangement (name, source, axes) without any lock and
  * returns a trimmed draft rebuilt from validated parts (no client object is
- * carried). Rows may not be `order`.
+ * carried). Rows may not be `order`; Columns may not be `none`.
  *
  * @throws OrganizerArrangementRefusalError for any refusal; the message is
  *   fixed text.
@@ -173,8 +179,8 @@ export function validateOrganizerArrangementDraft(
   }
   const name = validateName(input.name);
   const source = validateSource(input.source);
-  const rows = validateAxis(input.rows, false);
-  const columns = validateAxis(input.columns, true);
+  const rows = validateAxis(input.rows, "rows");
+  const columns = validateAxis(input.columns, "columns");
   return { name, source, rows, columns };
 }
 

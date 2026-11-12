@@ -41,7 +41,6 @@ import { withFolderFieldValues } from "./organizerFolderChildren";
 import useViewportTier from "../../../../src/lib/hooks/useViewportTier";
 import { selectSavedQueriesList } from "../../../../src/store/querySlice";
 import type {
-  OrganizerArrangementAvailability,
   OrganizerArrangementResult,
   OrganizerAxis,
   OrganizerAxisValue,
@@ -61,7 +60,6 @@ import OrganizerGridToolbar from "./OrganizerGridToolbar";
 import OrganizerArrangementControls from "./OrganizerArrangementControls";
 import {
   useOrganizerArrangements,
-  type HookArrangementAvailability,
   type OrganizerArrangementOutcome,
   type OrganizerPicks,
 } from "./useOrganizerArrangements";
@@ -76,6 +74,7 @@ import {
 } from "./useOrganizerSmartFolderCards";
 import { useOrganizerShownCardData } from "./useOrganizerShownCardData";
 import { useOrganizerFieldDrop } from "./useOrganizerFieldDrop";
+import { useOrganizerSmartDropFollowUp } from "./useOrganizerSmartDropFollowUp";
 import {
   cardDraggableId,
   cellDroppableId,
@@ -214,17 +213,6 @@ function SortableOrganizerCard({
  * `OrganizerCard.tsx`'s own `title` derivation exactly, so a drag-end
  * announcement (FR-8) names the same title the card itself renders.
  */
-/** The controls take only the model's availability; a `failed` check reads as pending (the hook's `apply` refuses it with text). */
-function availabilityForControls(
-  availability: Record<string, HookArrangementAvailability>,
-): Record<string, OrganizerArrangementAvailability> {
-  const out: Record<string, OrganizerArrangementAvailability> = {};
-  for (const [id, value] of Object.entries(availability)) {
-    out[id] = value.status === "failed" ? { status: "pending" } : value;
-  }
-  return out;
-}
-
 /** Adapts the hook's outcome to the controls' result type; the controls show only `message`. */
 function asArrangementResult(
   outcome: OrganizerArrangementOutcome,
@@ -781,14 +769,26 @@ export default function OrganizerView({
       })),
   });
   const lastDroppedCardId = React.useRef<string | null>(null);
+  const lastDroppedCardName = React.useRef("Card");
   const isSmartSource = effectiveSource.kind === "smart-folder";
   // Runs once per saved drop (keyed on the state object), with the latest
   // closure: re-evaluate a smart-folder source, then hand focus back to the
   // card, which now sits in its new cell.
+  const beginSmartFollowUp = useOrganizerSmartDropFollowUp({
+    state: smartFolder.state,
+    focusCard: focusCardHandle,
+  });
   const afterSave = React.useRef<() => void>(() => undefined);
   afterSave.current = () => {
-    if (isSmartSource) refreshSmartFolder();
-    if (lastDroppedCardId.current) focusCardHandle(lastDroppedCardId.current);
+    const cardId = lastDroppedCardId.current;
+    if (isSmartSource) {
+      // The grid shows loading while it re-reads; the follow-up hook moves
+      // focus, or toasts that the card left, once the new ids arrive.
+      if (cardId) beginSmartFollowUp(cardId, lastDroppedCardName.current);
+      refreshSmartFolder();
+    } else if (cardId) {
+      focusCardHandle(cardId);
+    }
   };
   const dropState = fieldDrop.state;
   React.useEffect(() => {
@@ -841,6 +841,7 @@ export default function OrganizerView({
       setDropMessage(null);
       lastDroppedCardId.current = context.card.id;
       const card = cardsById.get(context.card.id);
+      lastDroppedCardName.current = card ? resolveCardTitle(card) : "Card";
       void fieldDrop.drop({
         plan: { kind: "write", input },
         card: {
@@ -986,7 +987,7 @@ export default function OrganizerView({
             <OrganizerArrangementControls
               arrangements={arrangements.arrangements}
               selectedId={arrangements.appliedId}
-              availability={availabilityForControls(arrangements.availability)}
+              availability={arrangements.availability}
               isChangedSinceApplied={arrangements.isChanged}
               onSelect={selectArrangement}
               onAdd={async (name) =>

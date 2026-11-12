@@ -224,6 +224,14 @@ describe("config.organizerArrangements plumbing (Feature 109 Task 24)", () => {
       }
     });
 
+    it("still reads a stored `none` Columns axis (the write check is in the core, so a project already holding one loads)", () => {
+      const stored = [{ ...ARRANGEMENTS[0], columns: "none" }];
+      expect(
+        ProjectConfigSchema.safeParse({ organizerArrangements: stored })
+          .success,
+      ).toBe(true);
+    });
+
     it("refuses 51 arrangements and accepts 50", () => {
       const make = (n: number) =>
         Array.from({ length: n }, () => ARRANGEMENTS[0]);
