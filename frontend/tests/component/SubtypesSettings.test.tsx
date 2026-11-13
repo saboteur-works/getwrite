@@ -69,7 +69,7 @@ function input(): HTMLInputElement {
 }
 
 function addButton(): HTMLElement {
-  return screen.getByRole("button", { name: /^add$/i });
+  return screen.getByRole("button", { name: /^add subtype$/i });
 }
 
 function bodyOf(fetchSpy: ReturnType<typeof mockFeatureRoute>, call = 0) {
