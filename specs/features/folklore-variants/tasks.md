@@ -158,7 +158,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Follow `frontend/src/lib/api/claims.ts` and `tests/unit/claims-transport.test.ts`.
 **POS:** task_b11661aa
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Remembered selection: per-device preference
 **What:** Add the per-device, per-project preference for the picked narrative and chosen variants.
@@ -208,7 +208,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Use `listAttachments` from the Sources client for the attachment list; read its source before use. Do not mount `AttachmentMedia` here (mounting starts the byte read).
 **POS:** task_0e4c6954
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Comparison column
 **What:** Build one comparison column: an `<h3>` with the variant's name, its fields above its text, and a focusable scroll body, in each of the text, no text, audio-only and unreadable states.
@@ -238,7 +238,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** The constant is a figure no run has produced; the file must say so. Task 29 is the only task that sets it. Read `src/lib/hooks/useViewportTier.ts` (starts at `"desktop"` before mount) and test that columns' reads are not started at phone width after mount.
 **POS:** task_816c2bb1
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Narratives tab: picker, states and host wiring
 **What:** Replace the placeholder with the tab: narrative picker, empty state, near-miss line, not-read and locked states, the list and the comparison, wired to open a variant in the editor.
