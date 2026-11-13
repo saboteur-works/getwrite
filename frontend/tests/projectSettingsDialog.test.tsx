@@ -13,6 +13,7 @@ import spellingReducer from "../src/store/spellingSlice";
 import { DEFAULT_METADATA_SCHEMA } from "../src/lib/models/default-metadata-schema";
 import type { StoredProject } from "../src/store/projectsSlice";
 import { flushPendingEffects } from "./helpers/flushEffects";
+import { SETTINGS_RAIL_HIDDEN_STORAGE_KEY } from "../src/lib/settings-rail-preference";
 
 function makeStore() {
   return configureStore({
@@ -262,5 +263,87 @@ describe("ProjectSettingsDialog — discarding one section (D-12)", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("H1 Font Size")).toHaveValue(null);
     expect(screen.getByLabelText("Line Height")).toHaveValue("2");
+  });
+});
+
+describe("ProjectSettingsDialog — phone section rail", () => {
+  // The layout itself is CSS below 768px (jsdom applies none of it); these
+  // pin the state the CSS keys on and the remembered hidden choice.
+  afterEach(() => {
+    window.localStorage.removeItem(SETTINGS_RAIL_HIDDEN_STORAGE_KEY);
+  });
+
+  function tabsRoot(): HTMLElement {
+    const root = screen.getByRole("tablist").closest(".settings-tabs");
+    if (!(root instanceof HTMLElement)) throw new Error("no .settings-tabs");
+    return root;
+  }
+
+  it("starts collapsed, expands on the toggle, and collapses when a tab is chosen", async () => {
+    await renderDialog();
+    const toggle = screen.getByRole("button", { name: "Show section names" });
+
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(tabsRoot()).not.toHaveClass("settings-tabs--expanded");
+
+    fireEvent.click(toggle);
+    expect(
+      screen.getByRole("button", { name: "Hide section names" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(tabsRoot()).toHaveClass("settings-tabs--expanded");
+
+    fireEvent.click(screen.getByRole("tab", { name: /Metadata/ }));
+    expect(tabsRoot()).not.toHaveClass("settings-tabs--expanded");
+    expect(screen.getByRole("tab", { name: /Metadata/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("keeps each tab's name as its accessible name while collapsed", async () => {
+    await renderDialog();
+    expect(
+      screen.getByRole("tab", { name: "Writing Goals" }),
+    ).toBeInTheDocument();
+  });
+
+  it("closes an expanded rail on Escape without closing the dialog, then closes the dialog on a second Escape", async () => {
+    const { onOpenChange } = await renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Show section names" }));
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(tabsRoot()).not.toHaveClass("settings-tabs--expanded");
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("hides the rail, remembers it on this device, and shows it again", async () => {
+    await renderDialog();
+    const hide = screen.getByRole("button", { name: "Hide sections" });
+    expect(hide).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(hide);
+    expect(hide).toHaveAttribute("aria-pressed", "true");
+    expect(tabsRoot()).toHaveClass("settings-tabs--rail-hidden");
+    expect(window.localStorage.getItem(SETTINGS_RAIL_HIDDEN_STORAGE_KEY)).toBe(
+      "true",
+    );
+
+    fireEvent.click(hide);
+    expect(tabsRoot()).not.toHaveClass("settings-tabs--rail-hidden");
+    expect(
+      window.localStorage.getItem(SETTINGS_RAIL_HIDDEN_STORAGE_KEY),
+    ).toBeNull();
+  });
+
+  it("opens with the rail hidden when that was remembered", async () => {
+    window.localStorage.setItem(SETTINGS_RAIL_HIDDEN_STORAGE_KEY, "true");
+    await renderDialog();
+    expect(tabsRoot()).toHaveClass("settings-tabs--rail-hidden");
+    expect(
+      screen.getByRole("button", { name: "Hide sections" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 });
