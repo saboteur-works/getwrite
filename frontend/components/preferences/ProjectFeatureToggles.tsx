@@ -32,6 +32,7 @@ import {
 } from "../../src/store/projectsSlice";
 import type { ProjectFeatureFlags } from "../../src/lib/models/types";
 import { hoverTipProps, HoverTipSurface } from "../common/UI/HoverTip";
+import Card from "../common/UI/Card/Card";
 import { toastService } from "../../src/lib/toast-service";
 
 /** react-tooltip anchor id for the "view depends on these fields" hint. */
@@ -148,21 +149,21 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
     <section
       aria-labelledby="built-in-features-heading"
       aria-busy={isSaving}
-      className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5"
+      className="flex w-full flex-col gap-3"
     >
-      <h2
+      <h4
         id="built-in-features-heading"
         className="text-sm font-semibold text-gw-primary"
       >
         Built-in features
-      </h2>
-      <p className="mt-1 text-sm text-gw-secondary">
+      </h4>
+      <p className="max-w-2xl text-sm text-gw-secondary">
         Turn the optional built-in fields on or off for this project. Disabling
         one hides its field below and in the sidebar, but keeps any values
         you&rsquo;ve already saved.
       </p>
 
-      <div className="mt-4 flex flex-col gap-4">
+      <Card padding="lg" className="flex flex-col gap-4">
         {FEATURE_TOGGLES.map(({ key, label, description }) => {
           const tooltip = key === "timeline" ? timelineWarning : undefined;
           return (
@@ -190,7 +191,7 @@ export default function ProjectFeatureToggles(): JSX.Element | null {
             </div>
           );
         })}
-      </div>
+      </Card>
 
       {timelineWarning && <HoverTipSurface id={FEATURE_TOOLTIP_ID} />}
     </section>

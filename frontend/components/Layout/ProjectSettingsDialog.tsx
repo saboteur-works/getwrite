@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Type,
   PenLine,
@@ -14,6 +14,9 @@ import {
   LayoutGrid,
   SpellCheck,
   Puzzle,
+  PanelLeftOpen,
+  PanelLeftClose,
+  PanelLeft,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "../common/UI/Dialog";
 import {
@@ -44,6 +47,10 @@ import ProjectEncryptionPanel from "../preferences/ProjectEncryptionPanel";
 import ModuleSwitchSection from "../Modules/ModuleSwitchSection";
 import TimelineViewToggle from "../preferences/TimelineViewToggle";
 import OrganizerCardBodySettings from "../preferences/OrganizerCardBodySettings";
+import {
+  readSettingsRailHidden,
+  writeSettingsRailHidden,
+} from "../../src/lib/settings-rail-preference";
 import type { EditorHeadingMap } from "../../src/lib/editor-heading-settings";
 import type { EditorBodyConfig } from "../../src/lib/editor-body-settings";
 
@@ -130,7 +137,7 @@ const DEFAULT_TAB: ProjectSettingsTab = "editor";
  * section sits in the same visual frame rather than growing the dialog.
  */
 const PANEL_CLASS =
-  "min-h-0 overflow-y-auto rounded-lg border border-gw-border bg-gw-chrome2 p-5";
+  "min-h-0 overflow-y-auto rounded-lg border border-gw-border bg-gw-chrome2 p-3 md:p-5";
 
 const TAB_OPTIONS: ProjectSettingsTabOption[] = [
   { value: "editor", label: "Editor", icon: Type },
@@ -155,6 +162,14 @@ const TAB_OPTIONS: ProjectSettingsTabOption[] = [
  * Consolidated "Project Settings" surface: one Dialog with a vertical, left-hand
  * tab rail switching between the previously-separate settings modals plus the Writing Goals
  * section.
+ *
+ * Below 768px (CSS only, `.settings-tabs` in `getwrite-utilities.css`) the rail
+ * is a strip of icons. "Show section names" expands it over the panel, which
+ * keeps its width; choosing a tab, Escape or a tap outside collapses it.
+ * "Hide sections" in the header removes the rail so the panel fills the
+ * dialog; that choice is remembered per device
+ * (`settings-rail-preference.ts`). At 768px and wider the two buttons are
+ * hidden and the rail is the full list, as before.
  * Every panel stays mounted for the dialog's lifetime (forceMount) so
  * in-progress edits survive tab switches. Saving in any one section does
  * not close the dialog; closing the dialog (its own close, Escape, backdrop)
@@ -181,7 +196,24 @@ export default function ProjectSettingsDialog({
   initialMentionHighlightDurationSeconds,
 }: ProjectSettingsDialogProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>(DEFAULT_TAB);
+  const [isRailExpanded, setIsRailExpanded] = useState(false);
+  const [isRailHidden, setIsRailHidden] = useState(false);
   const hasProjectPath = Boolean(projectPath);
+
+  // Each open starts with the rail collapsed and re-reads the remembered
+  // hidden choice (read in an effect, not during render, so the prerender
+  // and the first client render agree).
+  useEffect(() => {
+    if (!open) return;
+    setIsRailExpanded(false);
+    setIsRailHidden(readSettingsRailHidden());
+  }, [open]);
+
+  function setRailHidden(isHidden: boolean): void {
+    setIsRailHidden(isHidden);
+    setIsRailExpanded(false);
+    writeSettingsRailHidden(isHidden);
+  }
 
   function handleClose(): void {
     onOpenChange(false);
@@ -194,8 +226,17 @@ export default function ProjectSettingsDialog({
         if (!nextOpen) onOpenChange(false);
       }}
     >
-      <DialogContent maxWidth="max-w-[900px]" aria-describedby={undefined}>
-        <div className="flex h-[85vh] flex-col gap-6 p-6 lg:p-8">
+      <DialogContent
+        maxWidth="max-w-[900px]"
+        aria-describedby={undefined}
+        onEscapeKeyDown={(event) => {
+          // Escape closes an expanded rail first, then the dialog.
+          if (!isRailExpanded) return;
+          event.preventDefault();
+          setIsRailExpanded(false);
+        }}
+      >
+        <div className="flex h-[85vh] flex-col gap-4 p-4 md:gap-6 md:p-6 lg:p-8">
           {/* A plain div, not <header>: a <header> that is not inside
               sectioning content maps to the `banner` landmark, and
               role="dialog" is not sectioning content — so this title row
@@ -205,41 +246,86 @@ export default function ProjectSettingsDialog({
               named by its DialogTitle. */}
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <DialogTitle className="text-2xl font-semibold text-gw-primary">
+              <DialogTitle className="text-xl font-semibold text-gw-primary md:text-2xl">
                 Project Settings
               </DialogTitle>
-              <p className="text-sm text-gw-secondary">
+              <p className="hidden text-sm text-gw-secondary md:block">
                 Configure editor typography, tags, and metadata for this
                 project.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="shrink-0 rounded-md border border-gw-primary bg-transparent px-3 py-2 text-sm font-medium text-gw-primary transition-colors duration-150 hover:bg-gw-chrome2"
-            >
-              Close
-            </button>
+            <div className="flex shrink-0 items-start gap-2">
+              <button
+                type="button"
+                onClick={() => setRailHidden(!isRailHidden)}
+                aria-pressed={isRailHidden}
+                aria-label="Hide sections"
+                title={isRailHidden ? "Show sections" : "Hide sections"}
+                className="settings-rail-hide h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gw-border bg-transparent text-gw-primary transition-colors duration-150 hover:bg-gw-chrome2"
+              >
+                <PanelLeft size={20} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="shrink-0 rounded-md border border-gw-primary bg-transparent px-3 py-2 text-sm font-medium text-gw-primary transition-colors duration-150 hover:bg-gw-chrome2"
+              >
+                Close
+              </button>
+            </div>
           </div>
 
           <Tabs
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as ProjectSettingsTab)}
+            onValueChange={(value) => {
+              setActiveTab(value as ProjectSettingsTab);
+              setIsRailExpanded(false);
+            }}
             orientation="vertical"
-            className="min-h-0 flex-1"
+            className={[
+              "settings-tabs min-h-0 flex-1",
+              isRailExpanded ? "settings-tabs--expanded" : "",
+              isRailHidden ? "settings-tabs--rail-hidden" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           >
-            <TabsList aria-label="Project settings sections">
-              {TAB_OPTIONS.map((opt) => (
-                <TabsTrigger
-                  key={opt.value}
-                  value={opt.value}
-                  disabled={opt.value === "tags" && !hasProjectPath}
-                >
-                  <opt.icon size={14} aria-hidden="true" />
-                  {opt.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            {isRailExpanded ? (
+              <div
+                className="settings-rail-scrim"
+                aria-hidden="true"
+                onClick={() => setIsRailExpanded(false)}
+              />
+            ) : null}
+            <div className="settings-rail">
+              <button
+                type="button"
+                className="settings-rail-toggle"
+                aria-expanded={isRailExpanded}
+                aria-label={
+                  isRailExpanded ? "Hide section names" : "Show section names"
+                }
+                onClick={() => setIsRailExpanded(!isRailExpanded)}
+              >
+                {isRailExpanded ? (
+                  <PanelLeftClose size={20} aria-hidden="true" />
+                ) : (
+                  <PanelLeftOpen size={20} aria-hidden="true" />
+                )}
+              </button>
+              <TabsList aria-label="Project settings sections">
+                {TAB_OPTIONS.map((opt) => (
+                  <TabsTrigger
+                    key={opt.value}
+                    value={opt.value}
+                    disabled={opt.value === "tags" && !hasProjectPath}
+                  >
+                    <opt.icon size={14} aria-hidden="true" />
+                    <span className="settings-tab-label">{opt.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
 
             <TabsContent
               value="editor"

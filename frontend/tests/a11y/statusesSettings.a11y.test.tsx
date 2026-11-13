@@ -43,7 +43,7 @@ describe("StatusesSettings a11y", () => {
     fireEvent.change(screen.getByLabelText(/new status/i), {
       target: { value: "outline" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /^add$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^add status$/i }));
     const alert = screen.getByRole("alert");
     expect(alert).toHaveTextContent("Duplicate status label.");
     expect(screen.getByLabelText(/new status/i)).toHaveAttribute(

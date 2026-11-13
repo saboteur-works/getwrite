@@ -702,10 +702,10 @@ export default function SchemaManager({
           — which axe-core flags as `landmark-no-duplicate-banner`. Matches
           EncryptionSettings.tsx, the one panel that already did this. */}
       <section className="flex w-full flex-col gap-6">
-        <header className="flex flex-col gap-1 border-b border-gw-border pb-4">
-          <h2 className="text-lg font-semibold text-gw-primary">
+        <header className="flex flex-col gap-3">
+          <h3 className="text-base font-semibold text-gw-primary">
             Metadata Fields
-          </h2>
+          </h3>
           <p className="max-w-2xl text-sm text-gw-secondary">
             Add, remove, and reorder fields shown in the metadata sidebar.
           </p>

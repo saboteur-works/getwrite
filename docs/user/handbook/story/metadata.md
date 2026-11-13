@@ -53,7 +53,7 @@ A subtype is a label you give a resource to say what kind of document it is — 
 
 Using them takes three steps:
 
-1. **Define your subtypes.** Open the gear menu → **Project Settings** → **Metadata** tab. The **Subtypes** section sits above the Metadata Fields manager. Type a name in **New subtype** and select **Add** (or press Enter). Each entry has move up, move down and remove buttons.
+1. **Define your subtypes.** Open the gear menu → **Project Settings** → **Metadata** tab. The **Subtypes** section sits above the Metadata Fields manager. Type a name in **New subtype** and select **Add subtype** (or press Enter). Each entry has move up, move down and remove buttons.
 2. **Give a resource its subtype.** Select the resource and pick one from the **Subtype** section of the Metadata sidebar (below Prose diagnostics, above the fields). Choose **No subtype** to clear it.
 3. **Restrict a field.** In the Metadata Fields manager, each custom field has an **Applies to subtypes** group of checkboxes. Tick the subtypes the field belongs to.
 

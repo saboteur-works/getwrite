@@ -31,6 +31,7 @@ import { normalizeSubtypeLabel } from "../../src/lib/models/field-subtype-scope"
 import { StatusListSchema } from "../../src/lib/models/schemas";
 import { toastService } from "../../src/lib/toast-service";
 import Button from "../common/UI/Button/Button";
+import Card from "../common/UI/Card/Card";
 
 /** UI-only length limit for a status label. */
 const MAX_LABEL_LENGTH = 64;
@@ -136,64 +137,72 @@ export default function StatusesSettings(): JSX.Element | null {
   };
 
   const iconButtonClass =
-    "rounded p-1 text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:opacity-40";
+    "rounded p-2 text-gw-secondary transition-colors duration-150 hover:text-gw-primary disabled:opacity-40";
 
   return (
-    <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
-      <h2 className="text-sm font-semibold text-gw-primary">Statuses</h2>
-      <p className="mt-1 text-sm text-gw-secondary">
+    <section
+      aria-labelledby="status-settings-heading"
+      className="flex w-full flex-col gap-3"
+    >
+      <h3
+        id="status-settings-heading"
+        className="text-base font-semibold text-gw-primary"
+      >
+        Statuses
+      </h3>
+      <p className="max-w-2xl text-sm text-gw-secondary">
         Define the statuses a document can be given, such as Outline or Draft.
         Removing a status does not change any document that already has it.
       </p>
 
-      {statuses.length > 0 ? (
-        <ul className="mt-4 flex flex-col gap-2">
-          {statuses.map((label, index) => (
-            <li
-              key={normalizeSubtypeLabel(label)}
-              className="flex items-center gap-2 rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2"
-            >
-              <span className="flex-1 truncate text-sm text-gw-primary">
-                {label}
-              </span>
-              <button
-                type="button"
-                aria-label={`Move ${label} up`}
-                onClick={() => handleMove(index, -1)}
-                disabled={isSaving || index === 0}
-                className={iconButtonClass}
+      <Card padding="lg" className="flex flex-col gap-4">
+        {statuses.length > 0 ? (
+          <ul className="flex flex-col gap-2">
+            {statuses.map((label, index) => (
+              <li
+                key={normalizeSubtypeLabel(label)}
+                className="flex items-center gap-2 rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2"
               >
-                <ChevronUp size={16} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={`Move ${label} down`}
-                onClick={() => handleMove(index, 1)}
-                disabled={isSaving || index === statuses.length - 1}
-                className={iconButtonClass}
-              >
-                <ChevronDown size={16} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={`Remove ${label}`}
-                onClick={() => handleRemove(index)}
-                disabled={isSaving}
-                className={iconButtonClass}
-              >
-                <X size={16} aria-hidden="true" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-4 text-sm text-gw-secondary">
-          No statuses yet. Add one below.
-        </p>
-      )}
+                <span className="flex-1 truncate text-sm text-gw-primary">
+                  {label}
+                </span>
+                <button
+                  type="button"
+                  aria-label={`Move ${label} up`}
+                  onClick={() => handleMove(index, -1)}
+                  disabled={isSaving || index === 0}
+                  className={iconButtonClass}
+                >
+                  <ChevronUp size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move ${label} down`}
+                  onClick={() => handleMove(index, 1)}
+                  disabled={isSaving || index === statuses.length - 1}
+                  className={iconButtonClass}
+                >
+                  <ChevronDown size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Remove ${label}`}
+                  onClick={() => handleRemove(index)}
+                  disabled={isSaving}
+                  className={iconButtonClass}
+                >
+                  <X size={16} aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gw-secondary">
+            No statuses yet. Add one below.
+          </p>
+        )}
 
-      <div className="mt-4 flex items-end gap-2">
-        <div className="flex flex-1 flex-col gap-1">
+        <div className="flex flex-col gap-1">
           <label
             htmlFor="status-new"
             className="text-sm font-medium text-gw-primary"
@@ -218,28 +227,30 @@ export default function StatusesSettings(): JSX.Element | null {
                 void handleAdd();
               }
             }}
-            className="rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
+            className="w-full rounded-md border border-gw-border bg-gw-chrome2 px-3 py-2 text-sm text-gw-primary outline-none transition-colors duration-150 focus:border-gw-border-md"
           />
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => void handleAdd()}
-          disabled={isSaving}
-        >
-          Add
-        </Button>
-      </div>
-      {error ? (
-        <p
-          id="status-new-error"
-          role="alert"
-          className="mt-2 text-sm text-gw-primary"
-        >
-          {error}
-        </p>
-      ) : null}
+        {error ? (
+          <p
+            id="status-new-error"
+            role="alert"
+            className="text-sm text-gw-primary"
+          >
+            {error}
+          </p>
+        ) : null}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={() => void handleAdd()}
+            disabled={isSaving}
+          >
+            Add status
+          </Button>
+        </div>
+      </Card>
     </section>
   );
 }
