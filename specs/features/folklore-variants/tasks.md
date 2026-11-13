@@ -108,7 +108,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read `components/WorkArea/Views/OrganizerView/organizerSource.ts` (`buildChildrenMap`, `walkTree`, `effectiveParentId`) for the style; copy the idea, do not import from a component directory into the model.
 **POS:** task_b16c753d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: Variant fields and tags: pure selection and marks
 **What:** Select the custom fields limited to the Variant subtype in schema order and describe each value as set, not set, or a tag not in the list.
@@ -118,7 +118,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Reuse `isFieldVisibleForSubtype` from `frontend/src/lib/models/field-subtype-scope.ts`; do not wording any field as motifs or tale types.
 **POS:** task_4b14e32f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Typed variant read core
 **What:** Add a core function that reads one variant's canonical-revision text and returns text, none, unreadable with a reason, or locked.
@@ -128,7 +128,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Model it on `claims-list-core.ts` for the locked and per-resource failure behaviour. Boundary: take `projectId` and `resourceId` only, validated, no path.
 **POS:** task_aac48042
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Variant text route
 **What:** Add the API route that returns the typed read for one variant, sitting in the storage context.
@@ -168,7 +168,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** The owner confirmed at Gate 3 that a per-device preference is not a stored record under FR-14. Write only when the writer changes the selection (the caller's job; asserted in Task 22).
 **POS:** task_12ed08a6
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Read-only stored-document renderer
 **What:** Render a variant's stored TipTap document to plain React nodes with a visible placeholder for any unsupported node.
@@ -178,7 +178,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** No existing view renders TipTap JSON read-only (the only `useEditor` is in `TipTapEditor.tsx`); read the editor's node and mark names to keep the supported list in step.
 **POS:** task_f055fab0
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Narrative list hook
 **What:** Provide the hook that lists the project's Narrative folders with variant counts, reporting folders not read, a locked project and near-miss subtypes.
