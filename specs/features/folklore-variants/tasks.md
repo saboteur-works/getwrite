@@ -98,7 +98,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** FR-1 requires the inventory (Task 1) before a behaviour change merges, hence the dependency. Task 1 (i) found the switch-off fallback needs no code, but the Work Area's module-view branches in `AppShell.tsx` list view ids literally; the owner added `AppShell.tsx` to this task at Gate 5 (2026-11-13). Only this task edits `AppShell.tsx`; Task 20 replaces the placeholder through the registry only. The existing `core-import-graph.test.ts` covers the model side; Task 6 adds the folklore model files to it. Owner decision at Gate 5 (2026-11-13): the Project Types editor lists Narratives, default not set (Feature 112 needs it).
 **POS:** task_86cd066a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: Narrative scope: pure function, Narrative-ending walk
 **What:** Compute the variants of a narrative as the Sources in its folder and subfolders in tree order, ending at a nested Narrative folder.
@@ -368,7 +368,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** `ComparisonColumn.tsx` and `VariantList.tsx` render a detail from its `kind` and `text` and do not switch on field type (checked at HEAD), so neither is listed; if the select value needs a different rendering, stop and return to the owner.
 **POS:** task_52c1392d
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 32
