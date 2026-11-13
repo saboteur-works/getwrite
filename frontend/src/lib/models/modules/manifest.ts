@@ -3,6 +3,7 @@
  * declared in code. The Sources module is the first entry. It owns no derived
  * index (OQ-9), recorded as an empty `indexSteps` list. No React, JSX or JSON.
  */
+import { FOLKLORE_MODULE_ID, FOLKLORE_VIEW_LABEL } from "../folklore-types";
 import type { ModuleManifestEntry } from "./registry";
 
 const SOURCES_MODULE_ID = "sources";
@@ -18,6 +19,14 @@ export const MODULE_MANIFEST: readonly ModuleManifestEntry[] = [
   {
     id: CLAIMS_MODULE_ID,
     view: { id: "claims", label: "Claims" },
+    indexSteps: [],
+    defaultEnabled: false,
+  },
+  // Feature 110 (FR-2): the Narratives module; off until the writer turns it
+  // on; owns no index and seeds no subtype, field or list.
+  {
+    id: FOLKLORE_MODULE_ID,
+    view: { id: FOLKLORE_MODULE_ID, label: FOLKLORE_VIEW_LABEL },
     indexSteps: [],
     defaultEnabled: false,
   },

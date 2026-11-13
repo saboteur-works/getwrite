@@ -186,7 +186,7 @@ describe("UI registry shape (OQ-12, FR-11)", () => {
 
   it("registers a claims view whose id equals the manifest's and ViewName's, after Sources (Feature 108, FR-3)", () => {
     const ids = uiRegistryModule.UI_MODULE_VIEWS.map((entry) => entry.id);
-    expect(ids).toEqual(["trash", "sources", "claims"]);
+    expect(ids.slice(0, 3)).toEqual(["trash", "sources", "claims"]);
     const claims = uiRegistryModule.UI_MODULE_VIEWS.find(
       (entry) => entry.id === "claims",
     );
@@ -198,6 +198,26 @@ describe("UI registry shape (OQ-12, FR-11)", () => {
     expect(claims?.view.alwaysEnabled).toBeUndefined();
     expect(claims?.citationControl).toBeDefined();
     expect(claims?.attachmentsSection).toBeUndefined();
+  });
+
+  it("registers a folklore view slot only, after Claims, equal to the manifest's and ViewName's (Feature 110, FR-2)", () => {
+    const ids = uiRegistryModule.UI_MODULE_VIEWS.map((entry) => entry.id);
+    expect(ids).toEqual(["trash", "sources", "claims", "folklore"]);
+    const folklore = uiRegistryModule.UI_MODULE_VIEWS.find(
+      (entry) => entry.id === "folklore",
+    );
+    const manifestView = MODULE_MANIFEST.find((m) => m.id === "folklore")?.view;
+    expect(folklore?.view.id).toBe(manifestView?.id);
+    expect(folklore?.view.label).toBe("Narratives");
+    const viewName: ViewName = "folklore";
+    expect(folklore?.view.id).toBe(viewName);
+    expect(folklore?.view.alwaysEnabled).toBeUndefined();
+    expect(Object.keys(folklore ?? {}).sort()).toEqual(["id", "view"]);
+    expect([...uiRegistryModule.UI_SLOT_KINDS]).toEqual([
+      "view",
+      "attachmentsSection",
+      "citationControl",
+    ]);
   });
 
   it("looks a view up by module id and returns undefined when none", () => {

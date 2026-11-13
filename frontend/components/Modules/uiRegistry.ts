@@ -16,7 +16,7 @@ import type { ComponentType, ReactNode } from "react";
 import React from "react";
 import type { ModuleViewSlot } from "../../src/lib/models/modules/registry";
 import type { AnyResource, SourceResource } from "../../src/lib/models/types";
-import { Library, ListChecks, Trash2 } from "lucide-react";
+import { BookOpen, Library, ListChecks, Trash2 } from "lucide-react";
 import useAppSelector from "../../src/store/hooks";
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import { selectResources } from "../../src/store/resourcesSlice";
@@ -29,6 +29,11 @@ import {
   type ClaimRow,
   type OpenClaimRequest,
 } from "../Claims/useClaimList";
+import NarrativesView from "../Folklore/NarrativesView";
+import {
+  FOLKLORE_MODULE_ID,
+  FOLKLORE_VIEW_LABEL,
+} from "../../src/lib/models/folklore-types";
 import UnlockModal from "../common/UnlockModal";
 import MarkClaimControl from "../Editor/Citations/MarkClaimControl";
 import {
@@ -401,6 +406,17 @@ export const UI_MODULE_VIEWS: readonly UiModuleEntry[] = [
     },
     citationControl: {
       render: (context) => React.createElement(MarkClaimHost, context),
+    },
+  },
+  // Feature 110 (FR-2): the Narratives tab, a view slot only. Task 20 replaces
+  // the placeholder body.
+  {
+    id: FOLKLORE_MODULE_ID,
+    view: {
+      id: FOLKLORE_MODULE_ID,
+      label: FOLKLORE_VIEW_LABEL,
+      icon: BookOpen,
+      render: () => React.createElement(NarrativesView),
     },
   },
 ];

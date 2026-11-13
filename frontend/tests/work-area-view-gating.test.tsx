@@ -700,4 +700,52 @@ describe("AppShell — Work Area view gating (characterization, AppShell.tsx:270
       expect(sourcesTab()).not.toBeNull();
     });
   });
+
+  describe("Narratives view (Feature 110, FR-2)", () => {
+    const narrativesTab = () =>
+      screen.queryByRole("tab", { name: "Narratives" });
+
+    it("pins the ViewName literal to the manifest's view id", () => {
+      const view: ViewName = "folklore";
+      expect(MODULE_MANIFEST.find((m) => m.id === "folklore")?.view?.id).toBe(
+        view,
+      );
+    });
+
+    it("has no tab with no modules entry and none when switched off", async () => {
+      await renderShell(ALL_ON, "text");
+      expect(narrativesTab()).toBeNull();
+      cleanup();
+      await renderShell(ALL_ON, "text", { folklore: false });
+      expect(narrativesTab()).toBeNull();
+    });
+
+    it("renders the registered placeholder, not the Work Area fallback, with the module on", async () => {
+      for (const pick of ["none", "text", "folder"] as const) {
+        await renderShell(ALL_ON, pick, { folklore: true });
+        await open("Narratives");
+        expect(isActive("Narratives")).toBe(true);
+        expect(
+          screen.getByRole("heading", { name: "Narratives" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByRole("heading", { name: "Work Area" }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(/Resource not found/i),
+        ).not.toBeInTheDocument();
+        cleanup();
+      }
+    });
+
+    it("is enabled with Sources off and folklore on", async () => {
+      await renderShell(ALL_ON, "text", { sources: false, folklore: true });
+      expect(screen.queryByRole("tab", { name: "Sources" })).toBeNull();
+      expect(tab("Narratives")).not.toBeDisabled();
+      await open("Narratives");
+      expect(
+        screen.getByRole("heading", { name: "Narratives" }),
+      ).toBeInTheDocument();
+    });
+  });
 });

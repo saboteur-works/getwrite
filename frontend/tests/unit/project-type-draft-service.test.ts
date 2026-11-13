@@ -747,7 +747,11 @@ describe("module declaration in the draft (Feature 108, FR-5)", () => {
   }
 
   it("exposes one state per manifest module, not set by default", () => {
-    const expected = { sources: "not-set", claims: "not-set" };
+    const expected = {
+      sources: "not-set",
+      claims: "not-set",
+      folklore: "not-set",
+    };
     expect(moduleStatesOf(base)).toEqual(expected);
     expect(moduleStatesOf(createEmptyProjectType())).toEqual(expected);
   });
@@ -755,12 +759,12 @@ describe("module declaration in the draft (Feature 108, FR-5)", () => {
   it("loads an existing declaration into the states", () => {
     expect(
       moduleStatesOf({ ...base, modules: { claims: true, sources: false } }),
-    ).toEqual({ sources: "off", claims: "on" });
+    ).toEqual({ sources: "off", claims: "on", folklore: "not-set" });
   });
 
   it("does not read a prototype name as a declaration", () => {
     const states = moduleStatesOf({ ...base, modules: {} });
-    expect(Object.keys(states)).toEqual(["sources", "claims"]);
+    expect(Object.keys(states)).toEqual(["sources", "claims", "folklore"]);
     expect(states.claims).toBe("not-set");
   });
 

@@ -1601,7 +1601,8 @@ export default function AppShell({
                       view === "timeline" ||
                       view === "trash" ||
                       view === "sources" ||
-                      view === "claims"
+                      view === "claims" ||
+                      view === "folklore"
                         ? (() => {
                             if (view === "data") {
                               const queryResources =
@@ -1771,7 +1772,8 @@ export default function AppShell({
                             if (
                               view === "trash" ||
                               view === "sources" ||
-                              view === "claims"
+                              view === "claims" ||
+                              view === "folklore"
                             ) {
                               const slot = moduleViews.enabled.find(
                                 (s) => s.id === view,
