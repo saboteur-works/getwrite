@@ -14,6 +14,12 @@ import Button from "../common/UI/Button/Button";
  * alone.
  */
 
+/** Mark shown beside a stored detail value that is not among the field's listed values. */
+const NOT_IN_FIELD_LIST = "not in the field's list";
+
+/** Shown when a stored detail value has the wrong shape and so has no text to show. */
+const UNEXPECTED_SHAPE = "unexpected value (not text, so not shown)";
+
 /** Mark shown on a Source in a narrative's scope that is not a Variant. */
 export const NOT_A_VARIANT_MARK =
   "not a Variant: teller, date and place do not apply";
@@ -58,7 +64,10 @@ function FieldValue({
 }): React.ReactElement {
   if (field.state === "not-set") return <span>{NOT_SET}</span>;
   if (field.state === "unexpected-value") {
-    return <span>unexpected value (not text)</span>;
+    if (field.kind === "tags" || field.text === undefined) {
+      return <span>{UNEXPECTED_SHAPE}</span>;
+    }
+    return <span>{`${field.text} (${NOT_IN_FIELD_LIST})`}</span>;
   }
   if (field.kind === "detail") return <span>{field.text}</span>;
   return (

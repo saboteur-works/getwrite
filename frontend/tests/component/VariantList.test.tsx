@@ -95,6 +95,89 @@ describe("VariantList", () => {
     expect(within(row).getByText(/unexpected value/i)).toBeTruthy();
   });
 
+  it("shows a select field's off-list stored value, marked as not in the field's list", () => {
+    const item: VariantListItem = {
+      id: "v9",
+      name: "Select variant",
+      kind: "variant",
+      fields: [
+        {
+          key: "region",
+          label: "Region",
+          kind: "detail",
+          state: "unexpected-value",
+          text: "Black Forest",
+        },
+      ],
+    };
+    setup([item]);
+    const row = rowOf(/Select variant/);
+    const value = within(row).getByText(/Black Forest/);
+    expect(value.textContent).toContain("Black Forest");
+    expect(value.textContent).toContain("not in the field's list");
+    expect(within(row).queryByText(/not text/i)).toBeNull();
+  });
+
+  it("shows a text field's stored value with the same marker, and a plain message when there is no text", () => {
+    const withText: VariantListItem = {
+      id: "v10",
+      name: "Text variant",
+      kind: "variant",
+      fields: [
+        {
+          key: "teller",
+          label: "Teller",
+          kind: "detail",
+          state: "unexpected-value",
+          text: "Anna",
+        },
+      ],
+    };
+    const noText: VariantListItem = {
+      id: "v11",
+      name: "Shape variant",
+      kind: "variant",
+      fields: [
+        {
+          key: "place",
+          label: "Place",
+          kind: "detail",
+          state: "unexpected-value",
+        },
+      ],
+    };
+    setup([withText, noText]);
+    const a = within(rowOf(/Text variant/)).getByText(/Anna/);
+    expect(a.textContent).toContain("not in the field's list");
+    const b = within(rowOf(/Shape variant/)).getByText(/unexpected value/i);
+    expect(b.textContent).toContain("not text");
+    expect(b.textContent).not.toContain("not in the field's list");
+    expect(b.textContent?.trim()).not.toBe("");
+  });
+
+  it("offers no control that writes a value for an off-list field", () => {
+    setup([
+      {
+        id: "v12",
+        name: "RO variant",
+        kind: "variant",
+        fields: [
+          {
+            key: "region",
+            label: "Region",
+            kind: "detail",
+            state: "unexpected-value",
+            text: "Black Forest",
+          },
+        ],
+      },
+    ]);
+    const row = rowOf(/RO variant/);
+    expect(within(row).queryByRole("textbox")).toBeNull();
+    expect(within(row).queryByRole("combobox")).toBeNull();
+    expect(within(row).getAllByRole("button")).toHaveLength(1);
+  });
+
   it("shows tags whole and marks a tag not in the list in text", () => {
     setup([FULL]);
     const row = rowOf(/Grimm 1812|Broken one/);

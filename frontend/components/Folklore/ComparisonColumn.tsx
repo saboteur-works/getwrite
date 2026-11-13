@@ -45,7 +45,11 @@ export interface ComparisonColumnProps {
   audio: ColumnAudioState;
 }
 
-const UNEXPECTED_VALUE = "unexpected value (not shown)";
+/** Mark shown beside a stored detail value that is not among the field's listed values. */
+const NOT_IN_FIELD_LIST = "not in the field's list";
+
+/** Shown when a stored detail value has the wrong shape and so has no text to show. */
+const UNEXPECTED_SHAPE = "unexpected value (not text, so not shown)";
 
 function FieldValue({
   field,
@@ -53,7 +57,12 @@ function FieldValue({
   field: VariantFieldDescription;
 }): React.ReactElement {
   if (field.state === "not-set") return <>{NOT_SET}</>;
-  if (field.state === "unexpected-value") return <>{UNEXPECTED_VALUE}</>;
+  if (field.state === "unexpected-value") {
+    if (field.kind === "tags" || field.text === undefined) {
+      return <>{UNEXPECTED_SHAPE}</>;
+    }
+    return <>{`${field.text} (${NOT_IN_FIELD_LIST})`}</>;
+  }
   if (field.kind === "detail") return <>{field.text}</>;
   return (
     <ul className="m-0 list-none p-0">

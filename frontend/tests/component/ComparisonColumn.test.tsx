@@ -96,6 +96,87 @@ describe("ComparisonColumn", () => {
     ).toBeTruthy();
   });
 
+  it("shows a select field's off-list stored value, marked as not in the field's list", () => {
+    render(
+      <ComparisonColumn
+        {...props({
+          fields: [
+            {
+              key: "region",
+              label: "Region",
+              kind: "detail",
+              state: "unexpected-value",
+              text: "Black Forest",
+            },
+          ],
+        })}
+      />,
+    );
+    const value = screen.getByText(/Black Forest/);
+    expect(value.textContent).toContain("not in the field's list");
+    expect(screen.queryByText(/not shown/i)).toBeNull();
+  });
+
+  it("shows a text field's stored value with the same marker, and a plain message when there is no text", () => {
+    const { unmount } = render(
+      <ComparisonColumn
+        {...props({
+          fields: [
+            {
+              key: "teller",
+              label: "Teller",
+              kind: "detail",
+              state: "unexpected-value",
+              text: "Anna",
+            },
+          ],
+        })}
+      />,
+    );
+    expect(screen.getByText(/Anna/).textContent).toContain(
+      "not in the field's list",
+    );
+    unmount();
+    render(
+      <ComparisonColumn
+        {...props({
+          fields: [
+            {
+              key: "place",
+              label: "Place",
+              kind: "detail",
+              state: "unexpected-value",
+            },
+          ],
+        })}
+      />,
+    );
+    const plain = screen.getByText(/unexpected value/i);
+    expect(plain.textContent).toContain("not text");
+    expect(plain.textContent).not.toContain("not in the field's list");
+  });
+
+  it("offers no control that writes a value for an off-list field", () => {
+    render(
+      <ComparisonColumn
+        {...props({
+          fields: [
+            {
+              key: "region",
+              label: "Region",
+              kind: "detail",
+              state: "unexpected-value",
+              text: "Black Forest",
+            },
+          ],
+        })}
+      />,
+    );
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
   it("gives the scroll body tabindex 0 and an accessible name", () => {
     render(<ComparisonColumn {...props()} />);
     const body = screen.getByRole("region", { name: "Text of Version A" });
