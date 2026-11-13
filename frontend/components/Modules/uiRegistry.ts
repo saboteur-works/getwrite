@@ -408,15 +408,16 @@ export const UI_MODULE_VIEWS: readonly UiModuleEntry[] = [
       render: (context) => React.createElement(MarkClaimHost, context),
     },
   },
-  // Feature 110 (FR-2): the Narratives tab, a view slot only. Task 20 replaces
-  // the placeholder body.
+  // Feature 110 (FR-2): the Narratives tab, a view slot only. It lists,
+  // compares and opens; `openInEditor` comes from the view's props.
   {
     id: FOLKLORE_MODULE_ID,
     view: {
       id: FOLKLORE_MODULE_ID,
       label: FOLKLORE_VIEW_LABEL,
       icon: BookOpen,
-      render: () => React.createElement(NarrativesView),
+      render: ({ openInEditor }) =>
+        React.createElement(NarrativesView, { openInEditor }),
     },
   },
 ];
