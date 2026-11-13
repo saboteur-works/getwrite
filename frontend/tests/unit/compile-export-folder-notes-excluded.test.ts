@@ -5,6 +5,10 @@
  * Feature 101 FR-8: TXT and Markdown byte-identical, PDF by ordered per-page
  * extracted text (never raw bytes), DOCX by the `<w:body>` of
  * `word/document.xml`; a control project with one changed character must differ.
+ *
+ * Feature 110, Task 21 (FR-20): the same method pins that a Narrative folder
+ * and Variant Sources (subtype labels, a motif tag, a tale-type tag) change no
+ * compile or export output against the same project without the subtypes.
  */
 // @vitest-environment node
 import fs from "node:fs/promises";
@@ -25,12 +29,18 @@ import {
   exportTextCore,
 } from "../../src/lib/models/export-core";
 import { updateFolderMetadataCore } from "../../src/lib/models/folder-metadata-core";
+import { writeSidecar } from "../../src/lib/models/sidecar";
+import {
+  NARRATIVE_SUBTYPE,
+  VARIANT_SUBTYPE,
+} from "../../src/lib/models/folklore-types";
 import { tiptapToPlainText } from "../../src/lib/tiptap-utils";
 import { generateUUID } from "../../src/lib/models/uuid";
 import { removeDirRetry } from "./helpers/fs-utils";
 import { extractPdfPageTexts } from "../helpers/pdf-text";
 
 const NOTE_MARKER = "FOLDERNOTEMARKER";
+const TAG_MARKER = "FOLKLORETAGMARKER";
 const FOLDER_IDS = [
   "00000000-0000-4000-8000-0000000000f1",
   "00000000-0000-4000-8000-0000000000f2",
@@ -86,6 +96,8 @@ async function docxBodyOf(arrayBuffer: ArrayBuffer): Promise<string> {
 async function runAll(opts: {
   withNotes: boolean;
   secondText: string;
+  /** Feature 110: Source resources, optionally under Narrative/Variant subtypes. */
+  folklore?: "sources-plain" | "sources-narrative";
 }): Promise<Outputs> {
   const projectsDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-fnotes-"));
   tmpDirs.push(projectsDir);
@@ -95,7 +107,18 @@ async function runAll(opts: {
   await fs.mkdir(path.join(projectsDir, projectId), { recursive: true });
   await fs.writeFile(
     path.join(projectsDir, projectId, "project.json"),
-    JSON.stringify({ id: projectId, name: "p" }),
+    JSON.stringify({
+      id: projectId,
+      name: "p",
+      ...(opts.folklore === "sources-narrative"
+        ? {
+            config: {
+              subtypes: [NARRATIVE_SUBTYPE, VARIANT_SUBTYPE],
+              modules: { folklore: true },
+            },
+          }
+        : {}),
+    }),
   );
   for (const [i, resourceId] of RESOURCE_IDS.entries()) {
     const folderDir = path.join(projectsDir, projectId, "folders", `f${i + 1}`);
@@ -123,6 +146,35 @@ async function runAll(opts: {
       tiptapToPlainText(doc as Parameters<typeof tiptapToPlainText>[0]),
     );
   }
+  if (opts.folklore !== undefined) {
+    for (const [i, resourceId] of RESOURCE_IDS.entries()) {
+      await writeSidecar(
+        path.join(projectsDir, projectId),
+        resourceId,
+        opts.folklore === "sources-narrative"
+          ? {
+              id: resourceId,
+              name: `Chapter ${i + 1}`,
+              type: "source",
+              folderId: FOLDER_IDS[i],
+              resourceSubtype: VARIANT_SUBTYPE,
+              userMetadata: { motifs: [`${TAG_MARKER} ${i + 1}`] },
+            }
+          : {
+              id: resourceId,
+              name: `Chapter ${i + 1}`,
+              type: "source",
+              folderId: FOLDER_IDS[i],
+              userMetadata: {},
+            },
+      );
+    }
+    if (opts.folklore === "sources-narrative") {
+      await updateFolderMetadataCore(projectId, FOLDER_IDS[0], {
+        resourceSubtype: NARRATIVE_SUBTYPE,
+      });
+    }
+  }
   if (opts.withNotes) {
     for (const [i, folderId] of FOLDER_IDS.entries()) {
       await updateFolderMetadataCore(projectId, folderId, {
@@ -140,7 +192,9 @@ async function runAll(opts: {
   const resources = RESOURCE_IDS.map((id, i) => ({
     id,
     name: `Chapter ${i + 1}`,
-    type: "text" as const,
+    type: (opts.folklore === undefined ? "text" : "source") as
+      | "text"
+      | "source",
     folderId: FOLDER_IDS[i],
   }));
   const compileBody = {
@@ -215,5 +269,48 @@ describe("folder notes are excluded from compile and export (FR-16)", () => {
 
   it.each(FORMATS)("the note text appears in no output: $name", ({ pick }) => {
     expect(pick(withNotes)).not.toContain(NOTE_MARKER);
+  });
+});
+
+describe("a narrative and its variants change no compile or export output (Feature 110 FR-20)", () => {
+  let plainSources: Outputs;
+  let narrativeSources: Outputs;
+  let control: Outputs;
+
+  beforeAll(async () => {
+    const secondText = "Second scene in the second folder.";
+    plainSources = await runAll({
+      withNotes: false,
+      secondText,
+      folklore: "sources-plain",
+    });
+    narrativeSources = await runAll({
+      withNotes: false,
+      secondText,
+      folklore: "sources-narrative",
+    });
+    control = await runAll({
+      withNotes: false,
+      secondText: "Second scene in the second folder,",
+      folklore: "sources-plain",
+    });
+  }, 60_000);
+
+  it.each(FORMATS)(
+    "control (one changed character) differs: $name",
+    ({ pick }) => {
+      expect(pick(plainSources)).not.toBe(pick(control));
+    },
+  );
+
+  it.each(FORMATS)(
+    "Sources under Narrative and Variant equal the same Sources without them: $name",
+    ({ pick }) => {
+      expect(pick(narrativeSources)).toBe(pick(plainSources));
+    },
+  );
+
+  it.each(FORMATS)("no tag text appears in any output: $name", ({ pick }) => {
+    expect(pick(narrativeSources)).not.toContain(TAG_MARKER);
   });
 });
