@@ -248,7 +248,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Model on `ClaimsView.tsx` and `ClaimsViewHost` in `uiRegistry.ts`; the registry-wiring test follows `tests/component/claims-registry-wiring.test.tsx`. This is the first task after Task 5 allowed to edit `uiRegistry.ts`.
 **POS:** task_8e2ce340
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: FR-20 neutrality pins: compile, export, goals, indexes
 **What:** Pin that a narrative and its variants change nothing in compile, export, goals or derived indexes, and that the tab adds nothing to either dialog.
@@ -258,7 +258,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** No production code is expected to change; a failing pin is a finding returned to the owner, not a fix made here.
 **POS:** task_fc830c8f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: No-writes, switch-off and Sources-off pins
 **What:** Pin that opening, scrolling and closing the comparison writes nothing but the device preference, and that switching the module off keeps data and works without the Sources module.
