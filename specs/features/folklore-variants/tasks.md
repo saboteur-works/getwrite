@@ -378,7 +378,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** FR-5. Owner-approved fix at Gate 5 (2026-11-13).
 **POS:** task_8ba5cd49
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 34: Restore the picked narrative
 **What:** The remembered selection restores the variant ids but not the picked narrative. Restore the picked narrative per device and project too. An id that no longer names a narrative reads as absent and the choice is shown as lost in text. Nothing is written on a read.
@@ -388,7 +388,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** FR-17. Owner-approved fix at Gate 5 (2026-11-13). Only this task edits `NarrativesView.tsx` after Task 20.
 **POS:** task_007e0eb3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 35: Variant-read refusal wording
 **What:** The encrypted-project refusal on the variant read (Task 10's native backend) reuses the Claims wording. Add a variant-read wording in `encrypted-project-refusal.ts` and use it.
@@ -398,7 +398,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 1
 **Notes:** FR-21. Owner-approved fix at Gate 5 (2026-11-13). `native-encrypted-project-guard.test.ts` and `native-claims-backend.test.ts` pin the existing wording and are not edited.
 **POS:** task_9a16168d
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 35
