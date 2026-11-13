@@ -31,6 +31,14 @@ const motifs: MetadataField = {
   appliesTo: ["variant"],
 };
 
+const tradition: MetadataField = {
+  key: "tradition",
+  label: "Tradition",
+  type: "select",
+  options: ["Oral", "Printed"],
+  appliesTo: [VARIANT_SUBTYPE],
+};
+
 describe("selectVariantFields", () => {
   it("returns only custom fields limited to Variant, in schema order, under current labels", () => {
     const schema: MetadataSchema = {
@@ -71,6 +79,24 @@ describe("selectVariantFields", () => {
 
   it("excludes types that are neither text nor multiselect", () => {
     const f: MetadataField = { ...teller, type: "number" };
+    expect(selectVariantFields(schemaOf(f))).toEqual([]);
+  });
+
+  it("selects a Variant-limited select field in schema order beside text and multiselect fields", () => {
+    const schema = schemaOf(teller, tradition, motifs, {
+      ...tradition,
+      key: "other-sel",
+      appliesTo: ["Narrative"],
+    });
+    expect(selectVariantFields(schema).map((f) => f.key)).toEqual([
+      "who-told-it",
+      "tradition",
+      "m",
+    ]);
+  });
+
+  it("excludes a select field also offered on folders", () => {
+    const f: MetadataField = { ...tradition, appliesToFolders: true };
     expect(selectVariantFields(schemaOf(f))).toEqual([]);
   });
 
@@ -140,6 +166,69 @@ describe("describeVariantFields", () => {
     expect(out[1]).toMatchObject({ kind: "tags", state: "unexpected-value" });
     expect(
       describeVariantFields(schema, { m: ["M1 | a", 4] })[1],
+    ).toMatchObject({ state: "unexpected-value" });
+  });
+
+  it("describes a select field as a detail with its chosen value", () => {
+    const out = describeVariantFields(schemaOf(teller, tradition, motifs), {
+      tradition: "Oral",
+    });
+    expect(out[1]).toEqual({
+      key: "tradition",
+      label: "Tradition",
+      kind: "detail",
+      state: "set",
+      text: "Oral",
+    });
+    expect(out[0]).toMatchObject({ state: "not-set" });
+    expect(out[2]).toMatchObject({ kind: "tags", state: "not-set" });
+  });
+
+  it("describes an unset select value as not set", () => {
+    const sch = schemaOf(tradition);
+    for (const meta of [
+      {},
+      undefined,
+      { tradition: null },
+      { tradition: "" },
+      { tradition: "  " },
+    ]) {
+      expect(describeVariantFields(sch, meta)[0]).toEqual({
+        key: "tradition",
+        label: "Tradition",
+        kind: "detail",
+        state: "not-set",
+      });
+    }
+  });
+
+  it("describes a stored select value not in the option list as an unexpected value, keeping it as stored", () => {
+    const meta = { tradition: "Broadside" };
+    const out = describeVariantFields(schemaOf(tradition), meta);
+    expect(out[0]).toEqual({
+      key: "tradition",
+      label: "Tradition",
+      kind: "detail",
+      state: "unexpected-value",
+      text: "Broadside",
+    });
+    expect(meta).toEqual({ tradition: "Broadside" });
+  });
+
+  it("describes a wrongly shaped select value as an unexpected value, never not set", () => {
+    const sch = schemaOf(tradition);
+    for (const v of [["Oral"], 4, { a: 1 }]) {
+      expect(describeVariantFields(sch, { tradition: v })[0]).toMatchObject({
+        kind: "detail",
+        state: "unexpected-value",
+      });
+    }
+  });
+
+  it("treats a select field with no option list as every value unexpected", () => {
+    const f: MetadataField = { ...tradition, options: undefined };
+    expect(
+      describeVariantFields(schemaOf(f), { tradition: "Oral" })[0],
     ).toMatchObject({ state: "unexpected-value" });
   });
 
