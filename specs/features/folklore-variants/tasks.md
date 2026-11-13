@@ -58,7 +58,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Reads and throwaway probes only; probes live in the scratchpad, no production file is edited. Read `frontend/src/lib/models/modules/registry.ts`, `components/Modules/useEnabledModuleViews.ts`, `components/Modules/uiRegistry.ts`, `src/lib/models/project-loader.ts`, `src/lib/api/resources.ts`, `src/lib/models/resource-crud-core.ts`, `components/WorkArea/useRevisionContent.ts` and the shell's view fallback. FR-1 (b) and (c) are Task 2, (e) is Task 3, (h) is Task 27 (lead-run). Per the repo rule, measurements go to `experiments/task-1.md`, not into `experiments.md` beyond the index.
 **POS:** task_8078b99b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: FR-1 (b) and (c): option migration and exact-tag query tests
 **What:** Pin, as tests with recorded observed values, what the options migration does to a tagged Source and that an exact `in` query finds a variant by its whole option string.
@@ -68,7 +68,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** The existing options dialog is the path; no rename control is built (FR-9). Read `frontend/src/lib/models/metadata-schema.ts` (`updateFieldOptionsWithMigration`, `migrateFieldOptionsInSidecars`), `src/lib/models/query-evaluator.ts` and the query builder's `ValuePicker.tsx` before writing tests. Models are touched only by reading, but the new unit tests import them, so run the Electron and CLI typechecks and record each.
 **POS:** task_4c8c66ea
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: FR-1 (e): folder-sidecar read cost
 **What:** Record how long it takes to read the folder sidecars of every folder of the largest available project.
@@ -78,7 +78,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** Read-only; the probe lives in the scratchpad. A figure is stated only if a run produced it; the spec's table does not claim one.
 **POS:** task_2b6bbbcd
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: Contract: folklore types, labels, constants and result types
 **What:** Define the inert shared contract for the module: the module id and view label, the two subtype labels, the typed read result, the remembered-selection shape and the comparison limit type.
@@ -88,7 +88,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** No behaviour here. The limit type is `number | null`; the figure lives in `components/Folklore/comparisonLimit.ts` (Task 19, set by Task 29).
 **POS:** task_38c6f9c4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: Module declaration, view slot and switch
 **What:** Declare the `folklore` module in the manifest and UI registry with a placeholder tab, add its view id to `ViewName`, and pin the switch behaviour.
@@ -298,7 +298,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** It generates data for Task 28 only; it is not shipped as a feature. Write to the directory given, never to `projects/` unless the lead passes it.
 **POS:** task_e770cf5e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Documentation (handbook, feature docs, Code Map, glossary)
 **What:** Write the handbook page with the by-hand set-up steps and update the feature docs, the Code Map and the glossary, with no device result and no column limit.
