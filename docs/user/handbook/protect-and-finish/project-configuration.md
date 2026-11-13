@@ -8,6 +8,15 @@ summary: The project.json file in each project's folder, the keys it holds and t
 
 Each project keeps its settings in a file called `project.json`. Most of them can be changed in **Project Settings**, and that is the safer way to change them. This page is for writers who want to read or edit the file in a text editor, or change it with a script.
 
+## Project Settings on a phone
+
+On a narrow screen, such as a phone held upright, the list of tabs on the left of **Project Settings** shrinks to a column of icons, so each tab's settings have room to read.
+
+- To see the tab names, select the button at the top of the icons. The names open over the settings. Choosing a tab closes them again, and so does selecting outside them or pressing Escape.
+- To give the settings the whole width, select the sidebar button next to **Close**. Select it again to bring the icons back. GetWrite remembers this on that device, for every project.
+
+On a wider screen, the tabs are listed with their names as usual.
+
 ## Find and edit the file
 
 Each project is a folder with a generated name made of letters and numbers, not the project's name. It holds `project.json`, a `folders` folder and a `resources` folder. Open `project.json` in any text editor. It is plain JSON, so tools such as `jq` can change it too.
