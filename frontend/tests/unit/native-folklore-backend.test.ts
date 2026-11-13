@@ -10,7 +10,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import * as nativeBackend from "../../src/store/transport/native-folklore-backend";
 import * as webStub from "../../src/store/transport/native-folklore-backend.web-stub";
 import * as readCore from "../../src/lib/models/folklore-variant-read-core";
-import { isEncryptedProjectCaptureRefusal } from "../../src/lib/api/encrypted-project-refusal";
+import {
+  EncryptedProjectCaptureRefusedError,
+  isEncryptedProjectCaptureRefusal,
+} from "../../src/lib/api/encrypted-project-refusal";
 import {
   createFakeCapacitorFilesystem,
   type CapacitorFilesystemLike,
@@ -78,6 +81,24 @@ describe("native folklore backend", () => {
     const e = await outcome(t.readVariantText(PROJECT_ID, RESOURCE_ID));
     expect(isEncryptedProjectCaptureRefusal(e)).toBe(true);
     expect(read).not.toHaveBeenCalled();
+  });
+
+  it("refuses with the variant-read wording, not the Claims wording", async () => {
+    const t = nativeBackend.createNativeFolkloreTransport({
+      fs: await fakeFs(true),
+      projectsDir: PROJECTS_DIR,
+    });
+    const e = await outcome(t.readVariantText(PROJECT_ID, RESOURCE_ID));
+    const claims = new EncryptedProjectCaptureRefusedError("encrypted", {
+      subject: "claims",
+    });
+    const message = (e as Error).message;
+    expect(message).not.toBe(claims.message);
+    expect(message).not.toMatch(/claims/i);
+    expect(message).toMatch(/variants/i);
+    expect(message).toMatch(/encrypted/i);
+    expect(message).not.toMatch(/nothing was saved/i);
+    expect((e as EncryptedProjectCaptureRefusedError).reason).toBe("encrypted");
   });
 
   it("propagates a core error unchanged", async () => {

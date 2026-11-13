@@ -19,7 +19,8 @@ export type EncryptedProjectRefusalSubject =
   | "capture"
   | "claims"
   | "fields"
-  | "arrangements";
+  | "arrangements"
+  | "variant-read";
 
 const ERROR_NAME = "EncryptedProjectCaptureRefusedError";
 
@@ -44,6 +45,12 @@ const MESSAGES: Record<
       "Arrangements can't be changed in an encrypted project on this device. It cannot yet encrypt what it writes, so nothing was saved.",
     "marker-unreadable":
       "Arrangements can't be changed right now: this project's encryption marker could not be read, so the project was treated as encrypted. Nothing was saved. Try again.",
+  },
+  "variant-read": {
+    encrypted:
+      "This project is encrypted, so its variants can't be read on this device yet.",
+    "marker-unreadable":
+      "This project's encryption marker could not be read, so the project was treated as encrypted and its variants can't be read right now. Try again.",
   },
   claims: {
     encrypted:

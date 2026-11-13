@@ -43,7 +43,7 @@ export function createNativeFolkloreTransport(
   return {
     readVariantText: (projectId, resourceId) =>
       run(async () => {
-        await assertProjectNotEncrypted(projectId, "claims");
+        await assertProjectNotEncrypted(projectId, "variant-read");
         return readVariantTextCore(projectId, resourceId);
       }),
   };
