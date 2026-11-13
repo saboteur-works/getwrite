@@ -268,7 +268,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Use the existing Module and Claims fixtures for the shell; a failing pin is returned as a finding.
 **POS:** task_ce695585
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Accessibility and keyboard tests
 **What:** Add axe and keyboard tests for the tab, the list and the comparison.
@@ -278,7 +278,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Follow `docs/standards/accessibility.md` for test conventions and an existing a11y test for the helper.
 **POS:** task_01376841
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Storybook e2e spec for the tab
 **What:** Write the Playwright spec that drives the Narratives stories (the tab, the picker, the comparison and the phone message).
@@ -288,7 +288,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** Do not run Playwright or Storybook here. Follow `frontend/e2e/organizer-grid-phone.e2e.spec.ts` and `frontend/e2e/sources-view-attachments.spec.ts`.
 **POS:** task_92b36c5e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Long-text fixture generator
 **What:** Add a script that generates a project with a Narrative folder and Variant Sources of recorded word counts, for the column-limit run.
@@ -308,7 +308,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Use the `write-user-guide` skill for the handbook page. Only the scribe edits these files until Task 31 adds the results.
 **POS:** task_d53d1a80
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: LEAD-RUN: build and inlining check, FR-1 (h)
 **What:** Record that `NEXT_PUBLIC_GETWRITE_RUNTIME` is inlined in every new client module and that the web and native builds succeed.
