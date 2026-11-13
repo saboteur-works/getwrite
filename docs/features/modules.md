@@ -1,6 +1,6 @@
 # Modules and the contribution seam (developer)
 
-Feature 103, first cut. Spec: [specs/features/sources-module-seam.md](../../specs/features/sources-module-seam.md) (FR-1 to FR-14). Measurements: [experiments.md](../../specs/features/sources-module-seam/experiments.md). The modules built on it are Sources ([sources.md](sources.md)) and, from Feature 108, Claims ([claims.md](claims.md)).
+Feature 103, first cut. Spec: [specs/features/sources-module-seam.md](../../specs/features/sources-module-seam.md) (FR-1 to FR-14). Measurements: [experiments.md](../../specs/features/sources-module-seam/experiments.md). The modules built on it are Sources ([sources.md](sources.md)), from Feature 108 Claims ([claims.md](claims.md)), and from Feature 110 Narratives (id `folklore`, below).
 
 A module is a first-party unit that adds interface or background work to the app and can be switched on or off per project. The registry is the single place a module declares what it adds. It is internal: modules are plain objects declared in this repository, collected at build time. It is not a plugin system.
 
@@ -12,7 +12,7 @@ A module is a first-party unit that adds interface or background work to the app
 
 ## Model registry
 
-- `frontend/src/lib/models/modules/manifest.ts`: `MODULE_MANIFEST`, the modules this build ships. Two entries: `{ id: "sources", view: { id: "sources", label: "Sources" }, indexSteps: [] }` and `{ id: "claims", view: { id: "claims", label: "Claims" }, defaultEnabled: false, indexSteps: [] }` (Feature 108).
+- `frontend/src/lib/models/modules/manifest.ts`: `MODULE_MANIFEST`, the modules this build ships. Three entries: `{ id: "sources", view: { id: "sources", label: "Sources" }, indexSteps: [] }`, `{ id: "claims", view: { id: "claims", label: "Claims" }, defaultEnabled: false, indexSteps: [] }` (Feature 108) and the Narratives entry (Feature 110): id `folklore`, view `{ id: "folklore", label: "Narratives" }` (`FOLKLORE_MODULE_ID` and `FOLKLORE_VIEW_LABEL` in `folklore-types.ts`), `defaultEnabled: false`, `indexSteps: []`.
 - `frontend/src/lib/models/modules/registry.ts`: `createModuleRegistry(modules)` (a duplicate id throws), `ModuleManifestEntry` (`id`, optional `view`, `indexSteps`, optional `defaultEnabled`), `ModuleIndexStep` (`{ id, run(projectRoot) }`), `isModuleEnabled(config, id, manifest?)`, and the registry's `views()`, `enabledViews(config)` and `indexSteps(config)`.
 - The model-side entry has no field for resource types, Trash kinds, importers, permissions or project-type keys.
 
@@ -28,7 +28,7 @@ A module is a first-party unit that adds interface or background work to the app
 
 Other pieces: `useModuleEnabled(moduleId)` reads the active project's flag; `ModulesContext.tsx` lets stories and tests override it.
 
-A view tab for a module that is off is absent, not disabled (the slot feeds neither `disabledViews` nor `disabledReasons`). When the module is switched off with its view open, the shell falls back to a view enabled for the current selection, using its view-reset logic, and to the Data view when nothing is selected. `"sources"` and `"claims"` are members of the closed `ViewName` union (`lib/models/types.ts`), each pinned equal to the manifest's view id by a test. `AppShell.tsx` names `trash`, `sources` and `claims` in two conditions that render a module view, so a new module view id is added there too.
+A view tab for a module that is off is absent, not disabled (the slot feeds neither `disabledViews` nor `disabledReasons`). When the module is switched off with its view open, the shell falls back to a view enabled for the current selection, using its view-reset logic, and to the Data view when nothing is selected. `"sources"`, `"claims"` and `"folklore"` are members of the closed `ViewName` union (`lib/models/types.ts`), each pinned equal to the manifest's view id by a test. `AppShell.tsx` names `trash`, `sources` and `claims` in two conditions that render a module view, so a new module view id is added there too.
 
 ### Trash
 
@@ -38,9 +38,9 @@ The Trash tab is registered as a view slot with `alwaysEnabled: true` (id `trash
 
 - `ProjectConfig.modules?: Record<string, boolean>` (`types.ts`; `z.record(z.string(), z.boolean()).optional()` in `ProjectConfigSchema`). `config.features` is unchanged.
 - An id this build does not know is kept on write, so a flag written by a newer build survives.
-- An explicit entry wins: `true` is on and `false` is off. With no entry, the module's default applies (Feature 108). The default is its manifest entry's `defaultEnabled`: `false` makes the module off until the writer turns it on, and an entry that omits the field is on. Today only `claims` sets `defaultEnabled: false`. Sources, and an id this build does not know, are on when absent, as before; a flag written by a newer build for an unknown id still survives. This replaces "an absent entry means on" for the claims module only.
+- An explicit entry wins: `true` is on and `false` is off. With no entry, the module's default applies (Feature 108). The default is its manifest entry's `defaultEnabled`: `false` makes the module off until the writer turns it on, and an entry that omits the field is on. Today `claims` and `folklore` set `defaultEnabled: false`, so both are switchable and off by default. Sources, and an id this build does not know, are on when absent, as before; a flag written by a newer build for an unknown id still survives. This replaces "an absent entry means on" for the claims module only.
 - One lookup, `moduleDefaultEnabled` in `registry.ts`, is used by `isModuleEnabled`, and every reader reaches the decision through `isModuleEnabled`: the registry's `enabledViews` and `indexSteps`, `useModuleEnabled`, `useModuleViews`, the Project Settings > Modules screen and the annotations panel's `useModuleSwitch`. `registry.ts` imports `MODULE_MANIFEST` as a value and `manifest.ts` imports the registry types only, so there is no runtime cycle (`core-import-graph.test.ts`).
-- Nothing writes a `claims` entry automatically. A project type may declare entries that are written once at creation (see [project-types.md](project-types.md)). The Modules screen shows only on or off, not whether off is the default or the writer's choice.
+- Nothing writes a `claims` or `folklore` entry automatically. A project type may declare entries that are written once at creation (see [project-types.md](project-types.md)). The Modules screen shows only on or off, not whether off is the default or the writer's choice.
 - Switching a module off keeps its data and stops its background indexing. It does not delete anything.
 
 ## Switch write path
@@ -59,6 +59,18 @@ A module may own derived-index steps (`indexSteps`). They run:
 - in `rebuildDerivedIndexes` (`lib/models/derived-index-rebuild.ts`), shared by `reindex` and the three importers, after the core indexes (inverted, backlinks, mentions, annotation bodies).
 
 The Sources module owns no index (`indexSteps: []`). The step mechanism is exercised by a test-only registry (`__setIndexerModuleRegistryForTests`). Annotation indexing is core, not module-owned. Prose diagnostics are not rebuilt by the shared function (OQ-11, deferred).
+
+## Narratives module (Feature 110)
+
+Module id `folklore`, view label "Narratives", `defaultEnabled: false`, no index step, no slot other than `view`. Spec: [specs/features/folklore-variants.md](../../specs/features/folklore-variants.md). Measurements: [experiments.md](../../specs/features/folklore-variants/experiments.md). Writer page: `docs/user/handbook/views/narratives.md`.
+
+- Switchable and off by default. It does not depend on the Sources module: the tab works with `config.modules.sources` off. Nothing seeds a subtype, field or list, and nothing writes the subtype list, the metadata schema or `config.modules` except the switch. Switching it off hides the tab only.
+- It adds no resource type and no record kind. A narrative is a folder whose subtype matches "Narrative" and a variant a Source whose subtype matches "Variant", both compared through `normalizeSubtypeLabel` (`folklore-narratives.ts`, `folklore-types.ts`).
+- Read path: `folklore-variant-read-core.ts` reads one variant's canonical-revision text as a typed `VariantTextResult` (`text`, `none`, `unreadable`, `locked`); route `GET /api/folklore/variant-text`, client `lib/api/folklore.ts`, native `native-folklore-backend.ts` + `.web-stub.ts` (alias in `next.config.mjs`). It writes nothing.
+- UI: `components/Folklore/` (`NarrativesView.tsx`, `VariantList.tsx`, `ComparisonView.tsx`, `ComparisonColumn.tsx`, `StoredDocumentView.tsx`, `useNarrativeList.ts`, `useVariantList.ts`, `useVariantTexts.ts`). Registered as a view slot in `uiRegistry.ts`; `AppShell.tsx` names `folklore` in the module-view conditions.
+- Selection: the last picked narrative and ticked variants are kept per device and project in `localStorage` (`src/lib/folklore-selection-preference.ts`), not in `project.json`.
+- `COMPARISON_COLUMN_LIMIT` (`components/Folklore/comparisonLimit.ts`) is `null`: no limit is set or claimed; it waits for a recorded run on long text.
+- Index: none. Compile, export, goals and `rebuildDerivedIndexes` treat a variant as any other Source (pinned by the Task 21 tests).
 
 ## Arrangements hook (Feature 109)
 
