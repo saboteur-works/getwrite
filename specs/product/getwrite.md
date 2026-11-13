@@ -389,6 +389,35 @@ with the app without hand-rewriting it (see OQ-90).
   by the owner; see Out of Scope. Story order against in-world order is a later
   feature, not this one.)
 
+- US-51: As a writer researching a legend or folktale, I want to keep the
+  different tellings of one story together as variants, each with who told it,
+  when and where, to tag each variant with motifs and tale types from lists I
+  keep myself, and to read two or more variants side by side, so that I can see
+  what changed between tellings and which elements recur across stories without
+  switching between documents or copying them into a spreadsheet. [Next]
+  (Added 2026-11-12; FR-190 to FR-209. Owner decisions, 2026-11-12, ideation,
+  `specs/concepts/folklore-variants-motifs.md`: a narrative is a folder with the
+  subtype Narrative (the ideation answer said "Tale"; the owner renamed it at
+  Gate 1, 2026-11-12) and its variants are Sources inside it; motifs and tale
+  types attach to the whole variant; the lists are the writer's own, a code and a
+  name per entry, with no bundled index in the first version; side-by-side
+  comparison comes first. Owner direction, 2026-11-04, note_31c82491, build-order
+  item 11 and runway items 14 and 15, note_a6991b90, a Module built on Sources
+  (Features 102 and 103, shipped) and folder metadata (Feature 102). The grid
+  (Feature 109) is the day-to-day way to find across narratives. Read 2026-11-12,
+  not run: no comparison view, motif list or tale-type list exists today. The
+  shape questions, OQ-218 to OQ-237, were resolved by the owner at Gate 1,
+  2026-11-12. Spread over place and time (runway 16) is its own feature: see Out
+  of Scope.)
+- US-52: As a true-crime or nonfiction writer comparing accounts of one event
+  from different witnesses or reports, I want to read two or more of those
+  accounts side by side, each with who gave it, when and where, so that I can see
+  where the accounts agree and differ without switching between documents.
+  [Next] (Added 2026-11-12. Secondary audience of
+  `specs/concepts/folklore-variants-motifs.md`: the same shape of problem
+  without motifs. It reuses the comparison of US-51 and adds no requirement of
+  its own beyond FR-198; whether it needs its own naming is OQ-235.)
+
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
 - US-29: As a maintainer of a repository that generates GetWrite's online user
@@ -2394,7 +2423,8 @@ with the app without hand-rewriting it (see OQ-90).
   a web clipper or PDF excerpt import (runway 13), or collaboration or
   assignment of a claim to another person. [US-49] (Added 2026-11-10. Owner
   batching, 2026-11-04, note_31c82491: run F pairs the claim ledger with
-  folklore variants; run G holds citations at compile.)
+  folklore variants; run G holds citations at compile. Folklore variants and
+  motifs are now specified separately: FR-190 to FR-209, US-51.)
 
 - FR-176: The grid MUST be a layout of the Organizer, not a new work-area view:
   the work area keeps the views FR-13 lists, and the Organizer gains a Rows
@@ -2546,6 +2576,167 @@ with the app without hand-rewriting it (see OQ-90).
   entity-mention rows and empty-cell create; build order in note_31c82491.
   Gate 1, 2026-11-11 added the text, number and date axes, per-cell stored
   order and "Move to..." menu deferrals.)
+
+- FR-190: The folklore variants and motifs feature MUST ship as a first-party
+  module with its own module id and its own on/off switch in Project Settings >
+  Modules (`config.modules`), declared at build time in the module manifest and
+  registered through the contribution seam (FR-125 to FR-132), with no runtime
+  loading and no third-party plugin. The module MUST be off for a project with no
+  `config.modules` entry for it (`defaultEnabled: false`, as for claims, FR-163),
+  and on only after the writer switches it on in Project Settings > Modules or a
+  project type's `modules` record declares it at creation (FR-205). It MUST NOT
+  depend on the Sources module: a variant is a Source, but the module works with
+  the Sources module off. Switching it off MUST keep all data: the narrative
+  folders, the variants, their field values and the lists stay as they are and
+  remain visible as ordinary folders, Sources and fields; only the module's own
+  views, controls and index step are hidden or stopped. The module itself MUST
+  seed no subtype, field or list: those come from a project type (FR-205) or
+  from the writer, and are the writer's afterwards, editable and deletable
+  (FR-134). [US-51] (Added 2026-11-12. Owner direction, 2026-11-04,
+  note_31c82491, runway 14 and 15 are Modules. Read 2026-11-12: the manifest
+  has a per-module default for claims (FR-163) and an absent entry means on for
+  every other module. OQ-225 and OQ-224, Gate 1, 2026-11-12: off by default, no
+  Sources dependency, nothing seeded by the module.)
+- FR-191: A narrative MUST be a folder whose subtype is Narrative, and a variant
+  MUST always be a Source: a text resource is not a variant. This feature MUST
+  NOT add a resource type or a new record kind: a narrative uses the folder
+  subtype and fields of Feature 102 and a variant uses the Source of Features 102
+  and 103, with the sidecar fields they already carry. A narrative's variants
+  MUST be the Sources in the folder and its subfolders, flattened in tree order
+  (the scope of FR-177); a nested folder whose subtype is also Narrative MUST be
+  its own narrative and MUST end the parent's scope. A variant MUST belong to one
+  narrative: a writer who wants a telling in two narratives copies the Source;
+  moving a variant out of the folder leaves the narrative; moving it to Trash
+  removes it from the narrative and restoring it returns it. The comparison MUST
+  NOT cross narratives in this version; a writer finds variants across narratives
+  through smart folders or the grid (FR-202, FR-203) and cross-narrative
+  comparison is later. A document MUST NOT inherit its narrative's fields
+  (FR-99). [US-51] (Added 2026-11-12. Owner decision, 2026-11-12, ideation: "a
+  tale is a folder whose subtype is Tale; its variants are the Sources inside
+  it". The ideation answer said "Tale"; the owner renamed the subtype to
+  "Narrative" at Gate 1, 2026-11-12, because "Tale" would make a writer comparing
+  oral versions of a historical event think this is not the place. "Variant" is
+  approved as the Source subtype name. The names are approved under FR-98.
+  OQ-218, OQ-222 and OQ-237, Gate 1, 2026-11-12. How the module matches the two
+  subtype labels is stated in the feature spec.)
+- FR-192: Each variant MUST be able to carry the teller, the date and the place
+  of its telling as fields of the variant, as text fields, offered on a variant
+  and not on other documents: each is a custom field limited to the Variant
+  subtype (`appliesTo`), so a variant gives up the writer's own Source subtype.
+  The Narrative and Variant subtypes and these three fields MUST be seeded by a
+  project type (FR-205), not by the module; a writer MUST be able to add them by
+  hand in a project not made from that type. The date is a text field and MUST be
+  able to hold a value the writer knows only roughly ("the 1930s", "c. 1850");
+  a typed date may come later (runway 16). The writer MUST be able to rename or
+  delete a seeded field as any custom field. [US-51] (Added 2026-11-12. The
+  concept's core concept: "each with the teller, date and place it was
+  recorded". Custom fields scoped to a Source subtype through `appliesTo` exist
+  today (FR-103, FR-134). OQ-224 and OQ-227, Owner decision, Gate 1,
+  2026-11-12.)
+- FR-193: A writer MUST be able to see the variants of a narrative together, each
+  with its teller, date, place, motifs and tale types, and to open a variant in
+  the editor from that list. The list MUST be in the same project-scope Work Area
+  tab as the comparison (FR-194), registered as a module view slot, with the
+  narrative picked inside the tab. A variant whose fields cannot be read MUST be
+  listed as unreadable, not as a variant with empty fields. [US-51] (Added
+  2026-11-12. Concept key capability 1. `docs/standards/failure-visibility.md`.
+  OQ-228, Gate 1, 2026-11-12.)
+- FR-194: A writer MUST be able to open two or more variants of one narrative
+  next to each other in the Work Area tab of FR-193, each showing its teller,
+  date, place, motifs and tale types above its text, and to read across them.
+  The comparison MUST be a reading view: editing a variant happens in the editor,
+  and the comparison MUST NOT change any variant. Each column MUST scroll on its
+  own. The most variants shown at once MUST be set from a recorded experiment on
+  long texts and is not stated here. Which variants the tab remembers when the
+  writer leaves and returns is left to the feature spec (lean: per device, like
+  the last-used arrangement). [US-51][US-52] (Added 2026-11-12. Owner decision,
+  2026-11-12, ideation: "side-by-side comparison first". Concept: two to four
+  columns is a guess, not a measurement; the figure MUST NOT be stated until a
+  recorded run on a long text shows it is usable. OQ-219 and OQ-228, Owner
+  decision, Gate 1, 2026-11-12.)
+- FR-195: The comparison MUST show each variant's current text and MUST NOT show
+  a variant whose text could not be read as if it had no text: that variant MUST
+  be shown as unreadable with the reason, and the other variants MUST still be
+  shown. A variant whose telling is only an audio attachment MUST be shown with
+  its fields, a plain "no text" line and the audio player, and MUST NOT be left
+  out of the comparison silently. Opening or closing a comparison MUST NOT write
+  a revision, a writing-log entry or any other stored record. [US-51][US-52]
+  (Added 2026-11-12. Concept open question 6.
+  `docs/standards/failure-visibility.md`: a failure must not render as absence.
+  OQ-223, Gate 1, 2026-11-12. Playing audio on Android has the size limits
+  recorded in Feature 104.)
+- FR-196: A writer MUST be able to keep a list of motifs and a list of tale types
+  for each project, each entry a code and a name (for example "ATU 510A" and
+  "Cinderella", or a private "W-12" and "vanishing hitchhiker"), and to add,
+  rename, reorder and remove entries. Each list MUST be a multiselect field of
+  the project's metadata schema whose options are strings holding the code and the
+  name with a fixed separator, the separator chosen in the feature spec; a rename
+  or removal MUST go through the existing field-option migration. No cap on
+  entries or length is stated until it is measured. The lists MUST be the
+  writer's own: the product MUST NOT bundle or preload any published index (ATU,
+  Thompson or other). A tale type or motif is not carried by a narrative folder
+  (FR-197). [US-51] (Added 2026-11-12. Owner decision, 2026-11-12, ideation: "the
+  writer's own code and name lists, no bundled index in the first version".
+  Reason recorded: the ATU index (Uther, 2004) is under copyright and the
+  copyright status of Thompson's Motif-Index has not been checked. OQ-221 and the
+  storage part of OQ-226, resolved from evidence, confirmed by owner at Gate 1,
+  2026-11-12; the code-and-name option string and the missing cap, Owner
+  decision, Gate 1, 2026-11-12. Not checked: what the existing options migration
+  does to a variant already tagged; the feature spec reads it first.)
+- FR-197: A writer MUST be able to tag a variant with motifs and tale types from
+  those lists. A tag MUST attach to the whole variant, not to a passage. A variant
+  MUST be able to carry more than one motif and more than one tale type, both as
+  the same multiselect type. Only a variant MUST carry tags: a narrative folder
+  carries none, and a narrative's tale types are read from its variants. The tags
+  MUST be shown on the variant and in the comparison (FR-194). A stored tag that
+  is not in the current list MUST stay visible on the variant, marked as not in
+  the list, and MUST NOT be rewritten (as for a status, FR-80). [US-51] (Added
+  2026-11-12. Owner decision, 2026-11-12, ideation: "motifs and tale types
+  attach to the whole variant". Passage-level marks are FR-208. OQ-220, Owner
+  decision, and OQ-236, resolved from evidence, confirmed by owner, Gate 1,
+  2026-11-12.)
+- FR-198: A writer MUST be able to use the comparison (FR-194) on the Sources of a
+  narrative folder with no motifs or tale types set, so that a writer comparing
+  accounts of one event is not required to use motif or tale-type lists, and the
+  teller, date and place fields MUST be editable so the writer can rename them
+  for witnesses and reports. True crime and nonfiction MUST use this same module:
+  no separate module and no alternate wording; the folklore words (narrative,
+  variant, motif) stay in the interface. [US-52] (Added 2026-11-12. Secondary
+  audience of the concept. OQ-235, resolved from evidence, confirmed by owner at
+  Gate 1, 2026-11-12. Writers who gather a body of evidence also use the claim
+  ledger, which stays separate.)
+- FR-199: Every control and view this feature adds MUST work on each runtime the
+  product covers: the desktop app, hosted web, a paired device and Android, with
+  parity, except the phone layout of the comparison (FR-206), which is a later
+  requirement. On hosted web a write MUST go only into a project of the
+  signed-in tenant. For a paired device every route this feature adds MUST be
+  classified and checked as any other route is, and a write into a locked or
+  encrypted project MUST fail closed with the existing locked behaviour and
+  never write list or tag content unencrypted. No new paired-device limit switch
+  is added. Android and paired-device support MUST NOT be claimed until a
+  recorded device run showed it. [US-51][US-52] (Added 2026-11-12. The pattern
+  is FR-173, FR-160 and FR-185. Not run.)
+- FR-200: The comparison and the list and tag controls MUST be operable by
+  keyboard alone and exposed to assistive technology with a heading and a name
+  for each variant, and MUST meet the working target of WCAG 2.1 AA
+  (`docs/standards/accessibility.md`). A difference between variants MUST NOT be
+  conveyed by colour alone. [US-51][US-52] (Added 2026-11-12. Side-by-side
+  reading of several long texts is a layout problem the concept names as a risk.)
+- FR-201: This feature MUST NOT include a text diff (comparison shows tellings next
+  to each other and does not align them or highlight word changes), a bundled or
+  preloaded published index (ATU, Thompson or other), a new resource type or
+  record kind, comparison of the writer's own drafts (Alternates, runway 3),
+  variants on a map or timeline (spread over place and time, runway 16), or a
+  shared or public folklore database. [US-51][US-52] (Added 2026-11-12. Concept
+  "What This Is Not". Owner decisions, 2026-11-12, ideation, on the index and
+  on the narrative and variant shape. The pattern is FR-175.)
+- FR-209: The module MUST NOT index or compile variants differently from other
+  Sources in the first version: a new Source starts out of compile and out of the
+  project and daily goals (FR-109), and this feature MUST NOT change that. Neither
+  a narrative nor a comparison MUST be compiled or exported in the first version,
+  and no output of the comparison is added. [US-51] (Added 2026-11-12. OQ-230,
+  resolved from evidence, confirmed by owner at Gate 1, 2026-11-12. The module's
+  own index step for its tag fields is FR-204 and is not a compile.)
 
 ### Later Requirements
 
@@ -3322,6 +3513,63 @@ with the app without hand-rewriting it (see OQ-90).
   other project types that seed no statuses start with none (no default is
   seeded).
 
+- FR-202: A writer MUST be able to use motif and tale type as fields in a smart
+  folder or query, to find every variant with a given motif or tale type across
+  narratives, by the exact tag. A match by code prefix (for example every "ATU 5")
+  is new work and is later: the first version uses the existing field queries
+  only. [US-51] (Added 2026-11-12. Concept v1: "Motif and tale type usable in
+  smart folders". Triage finding, 2026-11-12: smart folders find exact tags
+  today; the feature spec confirms this for the code-and-name option strings with
+  a test. OQ-231 query part, Owner decision, Gate 1, 2026-11-12.)
+- FR-203: A writer MUST be able to lay out variants in the Organizer grid with
+  rows or columns by motif or tale type, over a narrative folder, a folder and its
+  subfolders, or a smart folder (FR-176 to FR-178). A variant with several motifs
+  or several tale types MUST appear in each matching cell (FR-179). [US-51]
+  (Added 2026-11-12. Concept v1. Feature 109.)
+- FR-204: A writer MUST be able to find a variant by the code or name of a motif or
+  tale type through search. The module MUST add its own index step for its tag
+  fields (a module `indexSteps` entry), run by the shared derived-index rebuild
+  (`reindex` and the importers); switching the module off MUST stop it, and the
+  tags stay stored. [US-51] (Added 2026-11-12. Concept v1: "and search". OQ-231
+  search part, Owner decision, Gate 1, 2026-11-12. Read, not run: the
+  shared rebuild runs enabled modules' index steps.)
+- FR-205: A project type, built-in or writer-made, MUST be able to start a new
+  project with the folklore module on (the `modules` record of FR-163), the
+  Narrative and Variant subtypes and the teller, date and place fields seeded
+  (FR-192), and the motif and tale-type lists in place but with no entries from a
+  published index. A built-in project type named "Folklore collection" MUST ship
+  with the module on, the Narrative and Variant subtypes, those fields, both
+  lists empty, and a seeded arrangement grouped by motif (FR-184). A type change
+  MUST NOT affect an existing project. [US-51] (Added 2026-11-12. Concept v1.
+  The pattern is FR-163 and FR-184. Adoption risk in the concept: if setting up a
+  first narrative costs more than a spreadsheet row, writers will not switch.
+  OQ-234, Owner decision, Gate 1, 2026-11-12. Triage finding: the FR-135 blocker
+  cited when OQ-234 was raised is stale; `modules` and `arrangements` on
+  ProjectTypeSchema already ship (FR-163, Feature 109).)
+- FR-206: A writer MUST be able to read a comparison on a phone-width screen: the
+  variants stacked, each under its own header, with no variant hidden. Support on
+  Android MUST NOT be claimed until a recorded device run showed it. [US-51][US-52]
+  (Added 2026-11-12. Concept v1: side by side needs width, so the phone layout
+  comes after the desktop layout. The pattern is FR-186. The Project Settings
+  phone layout pass is the cautionary precedent. OQ-229, Owner decision, Gate 1,
+  2026-11-12; needs a device run.)
+- FR-207: A writer SHOULD be able to import a motif list or a tale-type list from a
+  CSV file with a code column and a name column, so that a writer can bring an
+  index they are licensed to use. The import MUST add new entries only and leave
+  the rest, MUST show a preview of what will be added before anything is written,
+  and a file that cannot be read in full MUST write nothing. The product MUST state
+  that the writer is responsible for the licence of an index they bring. This is
+  a version 2 requirement. [US-51] (Added 2026-11-12. Concept v2. OQ-232, Owner
+  decision, Gate 1, 2026-11-12: options (a) and (c). The size of a list the
+  import must accept is set from a measurement in the feature spec.)
+- FR-208: A writer MAY be able to mark the passage of a telling where a motif
+  appears. A motif mark MUST be an annotation with a motif marker, as a claim is an
+  annotation with a claim marker (FR-164), reusing the anchor, detached state and
+  panel. This is a version 2 requirement. [US-51] (Added 2026-11-12. Concept v2:
+  "passage-level motif marks". The owner decision of 2026-11-12 is that the first
+  tags attach to the whole variant, so this is separate from FR-197. OQ-233, Owner
+  decision, Gate 1, 2026-11-12. Whether a passage mark also sets the variant-level
+  tag was not decided; the v2 feature spec settles it.)
 ## Constraints
 
 - Folder names carry no application semantics: any folder layout is valid,
@@ -5794,6 +6042,167 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 (Raised 2026-11-11 for FR-176 to FR-189.)
 
+**OQ-218 (resolved): Is a variant always a Source, or can a text resource (the writer's own transcription) also be a variant?**
+**Resolution:** Resolved (2026-11-12, Resolved from evidence, confirmed by owner at Gate 1): option (a): a variant is always a Source; a text resource is not a variant. Applied in FR-191.
+**Options:** (a) Sources only; consequence: one clear rule and the attachments, subtype and fields a Source already has, but a writer who typed a transcription as a text resource must make a Source. (b) A Source or a text resource in a narrative folder; consequence: no conversion, with two kinds in one comparison and fields to scope to both. (c) Any document in a narrative folder; consequence: simplest to explain, and an image or audio resource has no text to compare.
+**Impact:** FR-191, FR-193, FR-194; US-51. The concept assumes one telling is one Source and lists this as open.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-219 (resolved): How many variants can be compared at once, and do the columns scroll in step?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): option (a) for scrolling, and option (b) for the count: each comparison column scrolls on its own; the most variants shown at once is set from a recorded experiment on long texts and is not stated now. Applied in FR-194.
+**Options:** (a) Two only; consequence: easiest layout, but a narrative with many tellings needs repeated pairs. (b) Up to a fixed number, with the figure set from a recorded run on long texts; consequence: matches the concept's two to four guess once measured, a cap to explain. (c) No fixed number, with horizontal scrolling; consequence: nothing refused, a layout that may become unusable. Separately: scroll in step (by position or by paragraph), independent scroll, or a writer's switch; consequence for each is a harder test on long texts.
+**Impact:** FR-194; US-51, US-52. No measurement exists; the figure MUST come from an experiment.
+**Owner:** Product owner / engineering.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-220 (resolved): Is one tale type per variant enough, or can a variant have several?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): option (b): several tale types per variant, the same multiselect type as motifs. Applied in FR-197 and FR-203.
+**Options:** (a) One; consequence: simple to show and group, but a telling that mixes two tale types cannot be tagged fully. (b) Several; consequence: matches a combined narrative, and in the grid the variant appears in each matching cell (FR-179). (c) One, with a second list for other types; consequence: the first answer for grouping with room for more, another list to define.
+**Impact:** FR-197, FR-203; US-51.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-221 (resolved): Are the motif and tale-type lists per project, or shared across projects on a device?**
+**Resolution:** Resolved (2026-11-12, Resolved from evidence, confirmed by owner at Gate 1): option (a): the lists are per project, as field options in the project's metadata schema. Applied in FR-196.
+**Options:** (a) Per project, in the project's config; consequence: travels with the project and every device that opens it (as saved arrangements do), and a writer with several folklore projects re-enters or copies entries. (b) Per device, like the User word list; consequence: entered once, but not on a paired device or hosted tenant without extra work, and not carried in a project export or backup. (c) Per project, with a copy from another project; consequence: both, more to build. A project type's seed (FR-205) only makes sense under (a) or (c).
+**Impact:** FR-196, FR-205; US-51. Also what a hosted tenant and a paired device see.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-222 (resolved): Can a variant belong to more than one narrative, given that a folder holds a document once?**
+**Resolution:** Resolved (2026-11-12, Resolved from evidence, confirmed by owner at Gate 1): option (a): one narrative per variant; a writer copies the Source to put it in two; moving it out leaves the narrative; Trash removes it and restore returns it. Applied in FR-191.
+**Options:** (a) No: one narrative per variant, and a writer who wants it in two narratives copies the Source; consequence: matches how folders work, with duplicates to keep in step. (b) A variant may carry a link to other narratives through a reference field; consequence: one telling in several narratives, a new relation to keep and show. (c) A narrative is a smart folder as well as a folder; consequence: membership by query, which departs from the owner decision that a narrative is a folder.
+**Impact:** FR-191, FR-194; US-51. Also what a narrative does when a variant is moved out or trashed.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-223 (resolved): What does comparison show for a Source whose telling is only an audio attachment, with no text?**
+**Resolution:** Resolved (2026-11-12, Resolved from evidence, confirmed by owner at Gate 1): option (a): an audio-only variant shows its fields, a plain "no text" line and the audio player, and is never silently left out. Applied in FR-195.
+**Options:** (a) The variant's fields and tags, with a line saying it has no text and a player for the audio; consequence: nothing is hidden, and a field recording can sit beside written tellings. (b) The variant is left out of the comparison; consequence: simplest, but a variant silently missing is the kind of absence the failure-visibility standard warns about. (c) The comparison is refused while any chosen variant has no text; consequence: clear, and unhelpful for mixed material. Playing audio on Android has size limits recorded in Feature 104.
+**Impact:** FR-195, FR-194; US-51. Depends on the audio read path of FR-115 and FR-146 to FR-148.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-224 (resolved): How are a folder marked as a narrative and a Source marked as a variant, which names are used, and does the owner review them?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): option (a), amended: the Narrative (folder) and Variant (Source) subtypes are seeded through the project type, not by a new module manifest hook; the module itself seeds nothing. The teller, date and place fields are limited to the Variant subtype, so a variant gives up the writer's own Source subtype. The names "Narrative" and "Variant" are approved by the owner under FR-98 (the ideation name "Tale" was renamed "Narrative"). Applied in FR-190, FR-191, FR-192 and FR-205.
+**Options:** (a) The module seeds the subtypes Narrative and Variant into the project's subtype list when it is first on; consequence: ready to use, but FR-98 holds that no built-in folder subtype ships until the owner has reviewed the names, and the subtype list is shared by folders and documents. (b) The writer adds the subtypes by hand, and the module recognises them by label; consequence: no seed to review, and a first narrative costs more set-up. (c) A narrative is recognised by a field or a switch on the folder, not a subtype; consequence: leaves the subtype slot free, and departs from the owner decision that a narrative has the subtype Narrative. Also open: a Source's subtype slot is the writer's (Interview, Archive, Oral account); whether a variant uses that slot or only sits in a narrative folder.
+**Impact:** FR-191, FR-192, FR-205; US-51. Precedent: FR-98, FR-103, FR-134.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-225 (resolved): Is the module on or off by default, and does it need the Sources module on?**
+**Resolution:** Resolved (2026-11-12, Resolved from evidence, confirmed by owner at Gate 1): option (c): off by default (`defaultEnabled: false`), switched on by a project type's `modules` record or in Project Settings > Modules; no dependency on the Sources module. Applied in FR-190.
+**Options:** (a) Off by default, like claims; consequence: a project that does not do folklore never sees it, and the writer finds it in Project Settings > Modules. (b) On by default, like Sources; consequence: easier to find, and every project gets folklore fields and controls. (c) Off by default, but on from a folklore project type; consequence: set-up from a type only, as in FR-205. Also: with Sources off, the variants' own view is hidden, so the module either needs Sources on or states what it does without it.
+**Impact:** FR-190, FR-205; US-51. Precedent: OQ-193 and OQ-201.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-226 (resolved): How are the lists stored, and what happens when an entry is renamed, re-coded or removed after variants are tagged, and what are the limits on entries and on length?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): option (a). The storage part is resolved from evidence, confirmed by owner: the lists are the existing multiselect field type with option strings, and a rename or removal goes through the existing options migration. The remaining part is an owner decision: code and name in one option string with a fixed separator, the separator chosen in the feature spec; no cap on entries or length is stated until measured. Applied in FR-196.
+**Options:** (a) As the existing multiselect field with code-and-name options; consequence: smart folders, the grid and search may work without new query code, and a rename or removal follows the existing field rules, which are not checked here for code-and-name options. (b) A separate stored list that variants point at by id; consequence: a rename shows everywhere, with a new store to keep in step with Trash, revisions, encryption and backup. (c) The lists as a field option list with a stable id per entry; consequence: both, with a schema change. For all: a stored tag not in the list is shown, marked and never rewritten (FR-197); a code that repeats; and how many entries a list may hold, with a figure set from a run, as OQ-213 did.
+**Impact:** FR-196, FR-197, FR-202; US-51. Concept technical consideration 1.
+**Owner:** Engineering lead.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-227 (resolved): What are the types of the teller, date and place fields, and how is a rough date held?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): option (d): teller, date and place are text fields now; a typed date may come later (runway 16). Applied in FR-192.
+**Options:** (a) All three as text; consequence: holds "the 1930s" and "c. 1850", and cannot be sorted by date or grouped by place without care. (b) Teller and place as text, date as the existing date field; consequence: sortable, and a rough date is refused or approximated. (c) Teller and place as references to entities; consequence: a place or a person is one thing across variants, with entity set-up before the first variant, and an informant entity is not a Source link (FR-104, FR-136). (d) Text now and a typed date later; consequence: smallest first cut. Spread over place and time (runway 16) will read these fields, so the choice affects it.
+**Impact:** FR-192, FR-193, FR-194; US-51. Also whether sorting by date is expected in the narrative list.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-228 (resolved): Where does the comparison and the list of a narrative's variants live: a Work Area tab, a view reached from the narrative folder, or the Organizer?**
+**Resolution:** Resolved (2026-11-12, Resolved from evidence, confirmed by owner at Gate 1): option (a): the comparison and the variant list are a project-scope Work Area tab registered as a module view slot, with the narrative picked inside it. Which variants it remembers is left to the feature spec (lean: per device, like the last-used arrangement). Applied in FR-193 and FR-194.
+**Options:** (a) A project-scope Work Area tab, registered as a module view slot like Sources and Claims; consequence: one place, absent while the module is off, and the writer picks the narrative inside it. (b) An action on the narrative folder that opens the comparison; consequence: close to where the writer is, with a new entry point on the folder. (c) A layout of the Organizer; consequence: reuses the grid, and mixes a reading view into a view meant for moving cards. Also: whether the chosen variants are remembered when the writer leaves and returns, and per device or per project.
+**Impact:** FR-193, FR-194; US-51, US-52. Precedent: FR-112, FR-168, OQ-202.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-229 (resolved): What is the phone form of the comparison: stacked, swiped, or something else?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): option (a): on a phone the variants are stacked with headers and none is hidden (version 1); it needs a device run. Applied in FR-206.
+**Options:** (a) Stacked: each variant under the last, with headers; consequence: no hidden variant, long to scroll between two tellings. (b) Swiped or tabbed, one at a time with a variant switcher; consequence: reads one text at a time, and the writer has to remember the other. (c) Pick two and switch a split between them; consequence: closest to side by side, small columns. The Android app is a supported target, and the app is already crowded on phones.
+**Impact:** FR-206; US-51, US-52. Precedent: FR-186.
+**Owner:** Product owner / accessibility reviewer.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-230 (resolved): Is a narrative, its variants or a comparison compiled or exported, and how?**
+**Resolution:** Resolved (2026-11-12, Resolved from evidence, confirmed by owner at Gate 1): option (a): the comparison is not compiled or exported in the first version. Applied in FR-209.
+**Options:** (a) No: variants stay out of compile by default as every new Source does, and nothing renders a comparison; consequence: smallest, and a writer cannot print the comparison. (b) The writer can export a comparison as a document; consequence: useful for sharing research, a new output to design. (c) A narrative folder can be compiled with its variants in order; consequence: uses the existing compile and the saved defaults (FR-81, FR-82), and variants are research, not prose for readers.
+**Impact:** FR-209; US-51. Related: FR-109, FR-81 and FR-82.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-231 (resolved): How does a writer find variants by motif or tale type: through the existing field queries, or through a module-added match by code, and does search match field values?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): query part, resolved from evidence and confirmed by owner: smart folders find exact tags today, a match by code prefix is new work, option (a) first (FR-202). Search part, owner decision: the module adds its own index step for its tag fields (module `indexSteps`; off stops it). Applied in FR-202 and FR-204.
+**Options:** (a) The existing queries, smart folders and search only, with fields offered as they are; consequence: nothing new to build if they handle the stored shape, and a writer cannot find all "ATU 5xx" by a prefix. (b) A match by code, or by code prefix, added by the module; consequence: fits how folklorists look things up, with new query code. (c) (a) first and (b) later; consequence: smaller first cut. Not checked: whether query and search read multiselect field values today.
+**Impact:** FR-202, FR-204, FR-203; US-51. Concept technical consideration 1.
+**Owner:** Engineering lead / product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-232 (resolved): How does importing a motif or tale-type list work: which files, add or replace, and whose responsibility is the licence?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): options (a) and (c): CSV with code and name columns, adding new entries only, with a preview before anything is written; a file that cannot be read in full writes nothing (version 2). Applied in FR-207.
+**Options:** (a) CSV with a code column and a name column, adding new codes and leaving the rest; consequence: the common case, with a decision on duplicates and errors. (b) CSV or JSON, replacing the list; consequence: a clean list, and loses tags' targets (OQ-226). (c) A preview showing what will be added or changed before anything is written; consequence: safer for large lists, another step. In all, the product states that the writer is responsible for the licence of an index they bring, and a file that cannot be read in full writes nothing.
+**Impact:** FR-207; US-51. Also the size of a list the import must accept.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-233 (resolved): How does a passage-level motif mark relate to annotations and claims?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): option (a): passage-level motif marks reuse annotations with a motif marker, the claims pattern (version 2). Applied in FR-208.
+**Options:** (a) A motif mark is an annotation with a motif, as a claim is an annotation with a claim marker; consequence: reuses the anchor, detached state, panel and revision survival, and grows the annotation shape again. (b) A separate mark type in the editor; consequence: its own colour and behaviour, a new mark in the compile and copy paths. (c) A motif on an excerpt of the Source; consequence: ties to a Source passage the writer already marks, and tags only Sources, not the writer's prose. Whether a passage mark also sets the variant-level tag is open too.
+**Impact:** FR-208; US-51. Precedent: OQ-188.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-234 (resolved): Does a built-in folklore project type ship, what is it called, and what does it seed?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): options (a) and (c): a built-in project type "Folklore collection" with the module on, the Narrative and Variant subtypes, the fields, empty lists, and a seeded arrangement grouped by motif. The FR-135 blocker cited in the note below is stale: `modules` and `arrangements` on ProjectTypeSchema already ship (FR-163, Feature 109). Applied in FR-205.
+**Options:** (a) A built-in "Folklore collection" type that switches the module on, seeds Narrative and Variant subtypes and the fields, and seeds the list structure empty; consequence: a first narrative costs little, and the owner reviews the names (FR-98). (b) No built-in type: the writer makes one in the Project Type Manager; consequence: nothing to review, and the adoption risk the concept names. (c) The built-in type also seeds an arrangement grouped by motif (FR-184); consequence: a useful first view, a seed to keep right. Note: seeding the module on from a type needs the project-type `modules` key of FR-163, which the earlier FR-135 left until the owner decided whether an older build may refuse a newer saved type.
+**Impact:** FR-205; US-51. Precedent: OQ-201.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-235 (resolved): Do the true-crime and nonfiction accounts use this module as it is, or does it need its own names (witness, report) or its own module?**
+**Resolution:** Resolved (2026-11-12, Resolved from evidence, confirmed by owner at Gate 1): option (a): true crime uses the same module, and the writer renames the fields. Applied in FR-198.
+**Options:** (a) The same module, with the teller, date and place fields renamed by the writer; consequence: no new work, and the folklore wording (narrative, variant, motif) stays in the interface. (b) The same module with wording that changes when the motif lists are empty or hidden; consequence: nicer for true crime, two sets of words to maintain. (c) A separate module for comparing accounts, sharing the comparison view; consequence: clean wording, a second switch and seed. Writers who gather a body of evidence also use the claim ledger, which stays separate.
+**Impact:** FR-198; US-52. The concept calls this audience secondary.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-236 (resolved): Does a narrative carry its own tale type and motifs, or only its variants?**
+**Resolution:** Resolved (2026-11-12, Resolved from evidence, confirmed by owner at Gate 1): option (a): only variants carry tags; a narrative's types are read from its variants. Applied in FR-197.
+**Options:** (a) Only variants carry tags; consequence: matches the owner decision that tags attach to the variant, and a narrative's type is read from its variants. (b) A narrative folder also carries a tale type as a folder field; consequence: a narrative can be filtered and grouped, and two places can disagree. (c) A narrative carries the type and its variants inherit it as a default; consequence: less typing, and inheritance conflicts with FR-99. The concept says "a variant or a narrative can be filtered", which does not settle it.
+**Impact:** FR-196, FR-197, FR-203; US-51. Precedent: FR-99.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+**OQ-237 (resolved): Are subfolders of a narrative part of the narrative, and can variants of different narratives be compared?**
+**Resolution:** Resolved (2026-11-12, Owner decision, Gate 1): option (b) for scope, and a narrower form of (c) deferred: a narrative's scope is the folder and its subfolders flattened in tree order, as the grid's scope; a nested folder with the subtype Narrative is its own narrative and ends the parent's scope. Comparing across narratives is later; smart folders or the grid serve meanwhile. Applied in FR-191 and FR-194.
+**Options:** (a) Only the Sources directly in the narrative folder; consequence: simple, and a writer who groups variants by region in subfolders loses the rest. (b) The narrative folder and its subfolders, flattened in tree order, as the grid's descendant scope does (FR-177); consequence: regional grouping works, and the subfolder's own subtype is ignored. (c) Also a pick across narratives for one comparison, for example two regional versions; consequence: more useful for research, and a variant of one narrative shown beside another's under no shared narrative. The concept does not address either.
+**Impact:** FR-191, FR-194; US-51.
+**Owner:** Product owner.
+
+(Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
+
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -5995,7 +6404,21 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 - Folklore variants, motif and tale-type tagging, and spread over place and
   time (FR-175; note_31c82491, runway 14 to 16, build-order item 11): later. They
   are batched with the claim ledger in run F but are their own features, built
-  on Sources.
+  on Sources. Variants, motif and tale-type tagging are specified in FR-190 to
+  FR-209 (US-51, added 2026-11-12); spread over place and time (runway 16) is still
+  later.
+- Spread over place and time, variants on a map or timeline (FR-201; runway 16,
+  concept `specs/concepts/folklore-variants-motifs.md`): later, its own feature.
+  It reads the teller, date and place fields of FR-192.
+- A bundled or preloaded motif or tale-type index such as ATU or Thompson
+  (FR-196, FR-201; Owner decision, 2026-11-12, ideation): not in the first
+  version. The ATU index (Uther, 2004) is under copyright and the copyright
+  status of Thompson's Motif-Index has not been checked. A writer may import a
+  list they are licensed to use: FR-207.
+- A text diff of variants, aligning them or highlighting word changes (FR-201;
+  concept `specs/concepts/folklore-variants-motifs.md`): not planned.
+- Sharing the comparison view with the writer's own drafts, Alternates (FR-201;
+  runway 3): later, not part of this feature.
 - Web clipper and PDF excerpt import (FR-175; runway 13): later.
 - Assigning a claim to a reviewer, comments on a claim, or claims shared
   between writers (FR-175): later. Annotations are notes to self, not
