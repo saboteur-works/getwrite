@@ -138,7 +138,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Follow `frontend/app/api/claims/route.ts` and `tests/unit/claims-route.test.ts`. Whether `sharing-classify-request.test.ts` needs a case is decided by reading it; extend it only if the route is not covered by the generic gate, and record which.
 **POS:** task_3e3d5eb9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Variant read native backend and web stub
 **What:** Add the native backend that runs the same core through `createNativeRunner`, with its web stub and the config alias.
@@ -148,7 +148,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Follow `native-claims-backend.ts` and its stub and test (`tests/unit/native-claims-backend.test.ts`). Only this task edits `next.config.mjs`.
 **POS:** task_2962972e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Variant read client and transport
 **What:** Add the client function that calls the route (or the native backend) and returns the typed result per variant.
@@ -188,7 +188,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read `components/Claims/useClaimList.ts` and `components/WorkArea/Views/OrganizerView/useOrganizerSourceData.ts` (`useFolderRowMetadata`) first. Task 3's figure, if recorded, informs a note, not the code.
 **POS:** task_ac967780
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Variant list hook
 **What:** Provide the hook that lists the picked narrative's variants with their Variant-limited fields, marking non-Variant Sources and unreadable variants.
@@ -198,7 +198,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** This is the stated FR-8 dependency on FR-1(f); do not choose the source before reading `experiments/task-1.md`. Read `components/Sources/useSourceList.ts` for how the resources slice is read.
 **POS:** task_9378d78c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Variant texts hook
 **What:** Provide the hook that reads the chosen variants' text and audio-attachment state through the typed client, never starting reads it will not show.
@@ -218,7 +218,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** The column is presentational and receives its data by props. Read `components/Sources/AttachmentMedia.tsx` (comment at lines 15-21) before using its props.
 **POS:** task_5b8fdcdb
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Variant list component
 **What:** Build the presentational variant list with fields, tags, marks, a select control for comparison and an open action.
@@ -228,7 +228,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** States are conveyed by text, not colour; no red.
 **POS:** task_3e499ace
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Comparison view with limit constant and phone message
 **What:** Assemble the comparison: selection, columns, remembered selection, limit refusal and the phone-width message, with the limit constant exported as `null`.
