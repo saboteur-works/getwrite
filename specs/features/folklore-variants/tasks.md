@@ -10,10 +10,10 @@ Shape of the work:
 - Tasks 27, 28, 30 and 31 are LEAD-RUN (builds, devices, the long-text run, CI); Task 26 is documentation for the scribe and states no device result and no column limit; Task 31 adds them.
 
 Requirement traceability (every FR-1..FR-25 maps to at least one task; FR-24 is also an inherited rule of every code task):
-- FR-1: 1, 2, 3, 27. FR-2: 4, 5. FR-3: 5, 22. FR-4: 4, 6. FR-5: 7, 18, 32. FR-6: 6. FR-7: 14, 20. FR-8: 15, 18, 20. FR-9: 2, 26. FR-10: 2, 7, 18. FR-11: 26. FR-12: 17, 19, 29. FR-13: 8, 9, 10, 11, 16. FR-14: 12, 13, 22. FR-15: 16, 17. FR-16: 8, 16, 17, 20. FR-17: 12, 19. FR-18: 19. FR-19: 7, 18, 20. FR-20: 21. FR-21: 9, 10, 11, 30. FR-22: 17, 18, 19, 20, 23, 24. FR-23: every task (no task adds a text diff, a bundled index, a new record kind, a draft comparison, a map or timeline, cross-narrative comparison, a typed date, prefix matching, a search index step, a project type, a CSV import or a passage mark; a task that needs one stops and returns to the owner). FR-24: every code task. FR-25: 28, 30, 31.
+- FR-1: 1, 2, 3, 27. FR-2: 4, 5. FR-3: 5, 22. FR-4: 4, 6. FR-5: 7, 18, 32, 33. FR-6: 6. FR-7: 14, 20. FR-8: 15, 18, 20. FR-9: 2, 26. FR-10: 2, 7, 18. FR-11: 26. FR-12: 17, 19, 29. FR-13: 8, 9, 10, 11, 16. FR-14: 12, 13, 22. FR-15: 16, 17. FR-16: 8, 16, 17, 20. FR-17: 12, 19, 34. FR-18: 19. FR-19: 7, 18, 20. FR-20: 21. FR-21: 9, 10, 11, 30, 35. FR-22: 17, 18, 19, 20, 23, 24. FR-23: every task (no task adds a text diff, a bundled index, a new record kind, a draft comparison, a map or timeline, cross-narrative comparison, a typed date, prefix matching, a search index step, a project type, a CSV import or a passage mark; a task that needs one stops and returns to the owner). FR-24: every code task. FR-25: 28, 30, 31.
 
 Compact dependency graph (`a -> b` means b depends on a):
-- 1 -> 5, 8, 14, 15, 26; 2 -> 26; 3 -> 31; 4 -> 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18; 5 -> 20, 21; 6 -> 14, 15; 7 -> 15, 17, 18, 32; 8 -> 9, 10; 9 -> 11; 10 -> 11; 11 -> 16; 12 -> 19; 13 -> 17; 14 -> 20; 15 -> 20; 16 -> 19; 17 -> 19, 32; 18 -> 20, 32; 19 -> 20, 28, 29; 20 -> 22, 23, 24, 26, 27, 28, 30; 21 -> 31; 22 -> 31; 23 -> 31; 24 -> 31; 25 -> 28; 26 -> 31; 27 -> 28, 30; 28 -> 29; 29 -> 31; 30 -> 31.
+- 1 -> 5, 8, 14, 15, 26; 2 -> 26; 3 -> 31; 4 -> 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18; 5 -> 20, 21; 6 -> 14, 15; 7 -> 15, 17, 18, 32; 8 -> 9, 10; 9 -> 11; 10 -> 11, 35; 11 -> 16; 12 -> 19, 34; 13 -> 17; 14 -> 20; 15 -> 20; 16 -> 19; 17 -> 19, 32, 33; 18 -> 20, 32, 33; 19 -> 20, 28, 29; 20 -> 22, 23, 24, 26, 27, 28, 30, 34; 32 -> 33; 21 -> 31; 22 -> 31; 23 -> 31; 24 -> 31; 25 -> 28; 26 -> 31; 27 -> 28, 30; 28 -> 29; 29 -> 31; 30 -> 31.
 
 Parallel waves the orchestrator may run (LEAD-RUN tasks 27, 28, 30 and 31 are never run by the orchestrator):
 - Wave 1: {1, 2, 3, 4, 25}.
@@ -253,7 +253,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 ### Task 21: FR-20 neutrality pins: compile, export, goals, indexes
 **What:** Pin that a narrative and its variants change nothing in compile, export, goals or derived indexes, and that the tab adds nothing to either dialog.
 **Files:** `frontend/tests/unit/compile-export-folder-notes-excluded.test.ts`, `frontend/tests/unit/folklore-index-neutral.test.ts` (new), `frontend/tests/component/folklore-dialogs-neutral.test.tsx` (new)
-**Done when:** Tests first, then green: with a narrative folder and Variant Sources, compile and export output (TXT, Markdown, DOCX and PDF text) is identical to the same project without the subtypes; a new Source still starts out of compile and out of project and daily goals; no variant, narrative or comparison id enters `config.compileDefaults` or `config.exportDefaults`; the compile and export dialogs gain no entry from the module; `rebuildDerivedIndexes` gives the same result with the module on and off; `pnpm typecheck` and `pnpm lint` are run.
+**Done when:** Tests first, then green: with a narrative folder and Variant Sources, compile and export output (TXT, Markdown, DOCX and PDF text) is identical to the same project without the subtypes; a new Source still starts out of compile and out of project and daily goals; the existing Source rule applies unchanged to variants (a variant's id is seeded into `compileDefaults.excludedResourceIds` as for any new Source), no narrative-folder id or tag text enters `compileDefaults`, and `exportDefaults` is untouched (wording corrected at Gate 5, 2026-11-13); the compile and export dialogs gain no entry from the module; `rebuildDerivedIndexes` gives the same result with the module on and off; `pnpm typecheck` and `pnpm lint` are run.
 **Depends on:** 5
 **Estimate:** 3
 **Notes:** No production code is expected to change; a failing pin is a finding returned to the owner, not a fix made here.
@@ -370,9 +370,39 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **POS:** task_52c1392d
 **Done:** [x]
 
+### Task 33: Show an off-list select value
+**What:** `VariantList.tsx` and `ComparisonColumn.tsx` print "unexpected value (not text)" or "unexpected value (not shown)" for an `unexpected-value` detail. Show the stored value instead, marked as not in the field's list, with wording that is right for text and for select. The stored value is shown and never rewritten.
+**Files:** `frontend/components/Folklore/VariantList.tsx`, `frontend/components/Folklore/ComparisonColumn.tsx`, `frontend/tests/component/VariantList.test.tsx`, `frontend/tests/component/ComparisonColumn.test.tsx`
+**Done when:** Tests first, then green, each pinned by its own test in both components: an `unexpected-value` detail of a select field shows the stored value marked as not in the field's list; the same for a text field with wording that is right for text; nothing is written; `pnpm typecheck` and `pnpm lint` are run.
+**Depends on:** 17, 18, 32
+**Estimate:** 2
+**Notes:** FR-5. Owner-approved fix at Gate 5 (2026-11-13).
+**POS:** task_8ba5cd49
+**Done:** [ ]
+
+### Task 34: Restore the picked narrative
+**What:** The remembered selection restores the variant ids but not the picked narrative. Restore the picked narrative per device and project too. An id that no longer names a narrative reads as absent and the choice is shown as lost in text. Nothing is written on a read.
+**Files:** `frontend/src/lib/folklore-selection-preference.ts`, `frontend/components/Folklore/NarrativesView.tsx`, `frontend/tests/unit/folklore-selection-preference.test.ts`, `frontend/tests/component/NarrativesView.test.tsx`
+**Done when:** Tests first, then green: the picked narrative is restored on open for the same device and project; an id that no longer names a narrative reads as absent and the "choice lost" state is shown in text; a read writes nothing and nothing is written to `project.json`; a storage failure never throws and is distinguishable from "nothing stored"; `pnpm typecheck` and `pnpm lint` are run.
+**Depends on:** 12, 20
+**Estimate:** 3
+**Notes:** FR-17. Owner-approved fix at Gate 5 (2026-11-13). Only this task edits `NarrativesView.tsx` after Task 20.
+**POS:** task_007e0eb3
+**Done:** [ ]
+
+### Task 35: Variant-read refusal wording
+**What:** The encrypted-project refusal on the variant read (Task 10's native backend) reuses the Claims wording. Add a variant-read wording in `encrypted-project-refusal.ts` and use it.
+**Files:** `frontend/src/lib/api/encrypted-project-refusal.ts`, `frontend/src/store/transport/native-folklore-backend.ts`, `frontend/tests/unit/native-folklore-backend.test.ts`
+**Done when:** Tests first, then green: a project that carries the encrypted marker is refused on the variant read with the variant-read wording and not the Claims wording; the Claims refusal wording is unchanged; `pnpm typecheck` and `pnpm lint` are run; the device behaviour is not claimed.
+**Depends on:** 10
+**Estimate:** 1
+**Notes:** FR-21. Owner-approved fix at Gate 5 (2026-11-13). `native-encrypted-project-guard.test.ts` and `native-claims-backend.test.ts` pin the existing wording and are not edited.
+**POS:** task_9a16168d
+**Done:** [ ]
+
 ## Summary
-- Total tasks: 32
-- Total estimated effort: 114 story points
+- Total tasks: 35
+- Total estimated effort: 120 story points
 - Critical path: Tasks 1 → 8 → 9 → 11 → 16 → 19 → 20 → 27 → 28 → 29 → 31
 - Risks: Task 15 depends on the FR-1(f) measurement (Task 1) for the field source; Task 29 waits on the lead-run long-text run (Task 28) and stops if no usable figure was recorded; Task 5 also edits `AppShell.tsx`'s module-view branches (owner decision at Gate 5, 2026-11-13); Task 2 may find that the query builder or evaluator needs a change, which goes back to the owner because it changes Feature 111's premise; Task 13 (no existing read-only TipTap renderer) and Task 8 (typed read with a distinct failure per case) are the largest new surfaces; Tasks 27, 28, 30 and 31 are lead-run and depend on devices and an unsandboxed main checkout, and Android and paired-device parity are claimed only for what Task 30 observes.
 
