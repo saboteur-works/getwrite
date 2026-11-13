@@ -26,6 +26,7 @@ import {
 } from "../../src/store/resourcesSlice";
 import {
   readFolkloreSelection,
+  resolveFolkloreNarrative,
   resolveFolkloreSelection,
   writeFolkloreSelection,
 } from "../../src/lib/folklore-selection-preference";
@@ -358,6 +359,26 @@ export default function NarrativesView({
   );
   const dispatch = useAppDispatch();
   const [picked, setPicked] = React.useState<string | null>(null);
+  // Read once per project, never written here; a failed read is `unreadable`
+  // and shows nothing lost.
+  const remembered = React.useMemo(
+    () =>
+      projectId === null || typeof window === "undefined"
+        ? null
+        : readFolkloreSelection(projectId),
+    [projectId],
+  );
+  const rememberedSelectionValue =
+    remembered?.status === "stored" ? remembered.selection : null;
+  const pickNarrative = (id: string): void => {
+    setPicked(id);
+    if (projectId === null) return;
+    const keep =
+      rememberedSelectionValue?.narrativeId === id
+        ? rememberedSelectionValue.variantIds
+        : [];
+    writeFolkloreSelection(projectId, { narrativeId: id, variantIds: keep });
+  };
   // The shell's `openInEditor` only switches the view, so the Source is
   // selected here first (as the Sources tab does).
   const openVariant = React.useCallback(
@@ -369,12 +390,25 @@ export default function NarrativesView({
   );
 
   const readyState = state.status === "ready" ? state : null;
+  const resolvedNarrative =
+    readyState === null || rememberedSelectionValue === null
+      ? null
+      : resolveFolkloreNarrative(
+          rememberedSelectionValue,
+          readyState.narratives.map((n) => n.folderId),
+        );
+  const wantedId = picked ?? resolvedNarrative?.narrativeId ?? null;
   const pickedRow =
     readyState === null
       ? null
-      : (readyState.narratives.find((n) => n.folderId === picked) ??
+      : (readyState.narratives.find((n) => n.folderId === wantedId) ??
         readyState.narratives[0] ??
         null);
+  const isNarrativeLost =
+    picked === null &&
+    readyState !== null &&
+    readyState.narratives.length > 0 &&
+    resolvedNarrative?.narrativeLost === true;
   const reads = React.useMemo(
     () =>
       readyState === null
@@ -425,8 +459,17 @@ export default function NarrativesView({
               <Picker
                 narratives={readyState.narratives}
                 pickedId={pickedRow?.folderId ?? null}
-                onPick={setPicked}
+                onPick={pickNarrative}
               />
+              {isNarrativeLost && (
+                <p
+                  role="status"
+                  className="mb-3 text-gw-label text-gw-secondary"
+                >
+                  The narrative you chose before is no longer in the project, so
+                  the first narrative is shown.
+                </p>
+              )}
               {pickedRow !== null && (
                 <PickedNarrative
                   key={pickedRow.folderId}

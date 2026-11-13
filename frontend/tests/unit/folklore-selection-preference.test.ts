@@ -4,6 +4,7 @@ import {
   clearFolkloreSelection,
   folkloreSelectionStorageKey,
   readFolkloreSelection,
+  resolveFolkloreNarrative,
   resolveFolkloreSelection,
   writeFolkloreSelection,
 } from "../../src/lib/folklore-selection-preference";
@@ -198,6 +199,37 @@ describe("folklore-selection-preference", () => {
         resolveFolkloreSelection({ narrativeId: null, variantIds: [] }, [V1])
           .choiceLost,
       ).toBe(false);
+    });
+  });
+
+  describe("resolveFolkloreNarrative", () => {
+    it("keeps a remembered narrative that still exists", () => {
+      expect(
+        resolveFolkloreNarrative({ narrativeId: NARRATIVE, variantIds: [] }, [
+          V1,
+          NARRATIVE,
+        ]),
+      ).toEqual({ narrativeId: NARRATIVE, narrativeLost: false });
+    });
+
+    it("reads a narrative that no longer exists as absent and flags it lost", () => {
+      expect(
+        resolveFolkloreNarrative({ narrativeId: NARRATIVE, variantIds: [V1] }, [
+          V1,
+        ]),
+      ).toEqual({ narrativeId: null, narrativeLost: true });
+    });
+
+    it("has nothing to lose when no narrative was remembered", () => {
+      expect(
+        resolveFolkloreNarrative({ narrativeId: null, variantIds: [] }, [V1]),
+      ).toEqual({ narrativeId: null, narrativeLost: false });
+    });
+
+    it("writes nothing", () => {
+      const setItem = vi.spyOn(Storage.prototype, "setItem");
+      resolveFolkloreNarrative({ narrativeId: NARRATIVE, variantIds: [] }, []);
+      expect(setItem).not.toHaveBeenCalled();
     });
   });
 });

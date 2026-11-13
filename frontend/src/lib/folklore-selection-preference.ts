@@ -10,6 +10,7 @@
  * `unreadable`, distinct from `none` (nothing stored); write and clear return
  * `false`. Whether an id still names a variant is decided by
  * {@link resolveFolkloreSelection}, which the caller applies to what it read.
+ * {@link resolveFolkloreNarrative} does the same for the picked narrative.
  * Writing only when the writer changes the selection is the caller's job.
  */
 
@@ -32,6 +33,14 @@ export interface ResolvedFolkloreSelection {
   choiceLost: boolean;
   /** The removed ids, in remembered order. */
   lostVariantIds: string[];
+}
+
+/** A remembered narrative checked against the narratives that exist now. */
+export interface ResolvedFolkloreNarrative {
+  /** The remembered narrative id, or null when absent or never remembered. */
+  narrativeId: string | null;
+  /** True when a narrative was remembered and no longer exists. */
+  narrativeLost: boolean;
 }
 
 /**
@@ -150,4 +159,24 @@ export function resolveFolkloreSelection(
     choiceLost: lostVariantIds.length > 0,
     lostVariantIds,
   };
+}
+
+/**
+ * Checks the remembered narrative against the narratives that exist now. An
+ * id that no longer names one reads as absent and sets `narrativeLost`, which
+ * the tab shows in text. Pure; writes nothing.
+ *
+ * @param selection - What was read from storage.
+ * @param currentNarrativeIds - Ids of the project's narratives today.
+ */
+export function resolveFolkloreNarrative(
+  selection: FolkloreSelection,
+  currentNarrativeIds: readonly string[],
+): ResolvedFolkloreNarrative {
+  const { narrativeId } = selection;
+  if (narrativeId === null) return { narrativeId: null, narrativeLost: false };
+  if (currentNarrativeIds.includes(narrativeId)) {
+    return { narrativeId, narrativeLost: false };
+  }
+  return { narrativeId: null, narrativeLost: true };
 }

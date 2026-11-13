@@ -33,7 +33,10 @@ import type { VariantListRow } from "../../components/Folklore/useVariantList";
 import type { VariantTextsDeps } from "../../components/Folklore/useVariantTexts";
 import { ProjectLockedError } from "../../src/lib/models/locked-access";
 import { fetchEncryptionStatus } from "../../src/lib/api/encryption";
-import { readFolkloreSelection } from "../../src/lib/folklore-selection-preference";
+import {
+  readFolkloreSelection,
+  writeFolkloreSelection,
+} from "../../src/lib/folklore-selection-preference";
 import type { AnyResource, Folder } from "../../src/lib/models/types";
 
 vi.mock("../../src/lib/api/encryption", async (importOriginal) => ({
@@ -289,6 +292,73 @@ describe("NarrativesView list, comparison and open", () => {
     setup(NARRATIVE);
     await screen.findByRole("list", { name: "Variants of Cinderella" });
     expect(readFolkloreSelection(PROJECT_DIR).status).not.toBe("stored");
+  });
+});
+
+describe("NarrativesView remembered narrative", () => {
+  const TWO = {
+    folders: [folder("n1", "Cinderella", 0), folder("n2", "Snow", 1)],
+    resources: [source("s1", "n1", 0), source("s3", "n2", 0)],
+    subtypes: { n1: "Narrative", n2: "Narrative" } as Subtypes,
+  };
+
+  it("restores the picked narrative and its variants on open", async () => {
+    writeFolkloreSelection(PROJECT_DIR, {
+      narrativeId: "n2",
+      variantIds: ["s3"],
+    });
+    setup(TWO);
+    await screen.findByRole("list", { name: "Variants of Snow" });
+    expect(
+      (screen.getByLabelText("Narrative") as HTMLSelectElement).value,
+    ).toBe("n2");
+    expect(
+      (screen.getByRole("checkbox", { name: "Telling s3" }) as HTMLInputElement)
+        .checked,
+    ).toBe(true);
+  });
+
+  it("writes the narrative only when the writer changes the pick", async () => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    setup(TWO);
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    expect(setItem).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Narrative"), {
+      target: { value: "n2" },
+    });
+    await screen.findByRole("list", { name: "Variants of Snow" });
+    expect(readFolkloreSelection(PROJECT_DIR)).toMatchObject({
+      status: "stored",
+      selection: { narrativeId: "n2", variantIds: [] },
+    });
+    setItem.mockRestore();
+  });
+
+  it("shows in text that the remembered narrative is gone and shows the first", async () => {
+    writeFolkloreSelection(PROJECT_DIR, {
+      narrativeId: "gone",
+      variantIds: ["s1"],
+    });
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    setup(TWO);
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    expect(screen.getByText(/narrative you chose before/i)).toBeTruthy();
+    expect(setItem).not.toHaveBeenCalled();
+    setItem.mockRestore();
+  });
+
+  it("does not throw when storage fails, and writes nothing to project.json", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    setup(TWO);
+    expect(
+      await screen.findByRole("list", { name: "Variants of Cinderella" }),
+    ).toBeTruthy();
+    expect(screen.queryByText(/narrative you chose before/i)).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
   });
 });
 
