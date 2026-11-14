@@ -408,7 +408,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** The clipping cause is not established (measured: the second of two 270px columns ends at about x=879 while the work area ends at about x=870, in a 1200x762 viewport with both sidebars open), so the implementor checks the column CSS and states what it changed, not a cause. List a stylesheet in Files if column sizing lives in one. `COMPARISON_COLUMN_LIMIT` stays `null`. These two pins open the comparison on ticking alone; under the Compare button they need a click on Compare (N) (owner-approved repair, 2026-11-13). The lead measured on the pre-Task-36 branch that the columns grid (overflow-x auto, 288px column floor) had clientWidth 552 against scrollWidth 584 at 1200px with both sidebars open: the second column ran past the visible edge inside the grid's own horizontal scroll. Four columns at a 12rem floor need about 792px, so the e2e's four-column check at 1200px expects the region's own horizontal scroll, not a fit; the two-column check expects a fit. Tasks 34 and 36 both edit `NarrativesView.tsx`; that is allowed because 36 depends on 34.
 **POS:** task_d119f15b
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 36
