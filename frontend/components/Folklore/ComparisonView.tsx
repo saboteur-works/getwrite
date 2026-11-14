@@ -67,6 +67,14 @@ export function lostMessage(count: number): string {
     : `${count} remembered variants are no longer in this narrative and were left out of the selection.`;
 }
 
+/**
+ * Narrowest a column may be before the region scrolls sideways (FR-12).
+ * ComparisonColumn adds a 1px border and `p-2` (0.5rem) on each side, 18px
+ * in all at a 16px root, so 16.125rem (258px) leaves 240px of text, the
+ * readable bar. Below it the comparison region scrolls, never the page.
+ */
+const COLUMN_MIN_WIDTH = "16.125rem";
+
 function ColumnsGrid({
   projectId,
   chosen,
@@ -81,7 +89,7 @@ function ColumnsGrid({
       data-testid="comparison-columns"
       className="grid w-full min-w-0 max-w-full gap-2 overflow-x-auto"
       style={{
-        gridTemplateColumns: `repeat(${chosen.length}, minmax(12rem, 1fr))`,
+        gridTemplateColumns: `repeat(${chosen.length}, minmax(${COLUMN_MIN_WIDTH}, 1fr))`,
       }}
     >
       {chosen.map((variant) => {

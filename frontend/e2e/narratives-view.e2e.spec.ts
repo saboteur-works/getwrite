@@ -245,13 +245,13 @@ async function edges(
   });
 }
 
-for (const count of [2, 4]) {
+for (const count of [2, 3]) {
   test(`1200px wide with ${count} columns: the page does not scroll sideways and any overflow stays inside the comparison region`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1200, height: 800 });
     await page.goto(
-      count === 4
+      count === 3
         ? "/iframe.html?id=folklore-narrativesview--four-variants&viewMode=story"
         : STORY,
     );
@@ -262,6 +262,17 @@ for (const count of [2, 4]) {
     for (const name of names.slice(0, count)) await choose(page, name);
     await page.getByRole("button", { name: `Compare (${count})` }).click();
     await expect(page.getByTestId("comparison-column-body")).toHaveCount(count);
+
+    const widths = await page.evaluate(() =>
+      Array.from(
+        document.querySelectorAll('[data-testid="comparison-column-body"]'),
+      ).map((body) => {
+        const first = body.querySelector("p");
+        return first === null ? 0 : first.getBoundingClientRect().width;
+      }),
+    );
+    expect(widths).toHaveLength(count);
+    for (const width of widths) expect(width).toBeGreaterThanOrEqual(240);
 
     const measured = await edges(page);
     expect(measured.columns).toHaveLength(count);

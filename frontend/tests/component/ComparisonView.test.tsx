@@ -217,11 +217,11 @@ describe("ComparisonView", () => {
     expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 
-  it("lets the columns shrink to the region (12rem floor, bounded grid)", async () => {
+  it("lets the columns shrink to the region (16.125rem floor, bounded grid)", async () => {
     render(view(makeDeps(), IDS.slice(0, 3)));
     const grid = await screen.findByTestId("comparison-columns");
     expect(grid.style.gridTemplateColumns).toBe(
-      "repeat(3, minmax(12rem, 1fr))",
+      "repeat(3, minmax(16.125rem, 1fr))",
     );
     expect(grid.className).toContain("max-w-full");
     expect(grid.className).toContain("min-w-0");
