@@ -40,6 +40,7 @@ summary: Contents of the GetWrite handbook, grouped by part.
 - [Timeline View](views/timeline.md) — Shows dated scenes as chips on a horizontal story-date axis, with zoom, point-of-view colors and folder rows.
 - [Entities View](views/entity-roster.md) — A project-wide list of declared entities with their kind, aliases, mention counts and any needs-attention flags.
 - [Relationship Graph View](views/entity-relationship-graph.md) — A project-wide graph of declared entities and the connections between them, with settings, saved node positions and a focal point.
+- [Narratives View](views/narratives.md) — Keep the tellings of one story as Variants of a Narrative folder, list them with teller, date, place and tags, and read two or more side by side.
 
 ## Protect and finish
 

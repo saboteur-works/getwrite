@@ -36,6 +36,10 @@ One rule (`field-subtype-scope.ts`, `getFieldsOfferedOnFolder`; `isFieldVisibleF
 - Among built-in fields, only notes is offered on a folder.
 - `appliesToFolders` is an optional boolean on the field definition, declared in `types.ts`, `schemas.ts` and `lib/api/schemas.ts` (that one strips undeclared keys).
 
+## Narrative folders (Feature 110)
+
+A folder whose subtype is "Narrative" is a narrative in the Narratives tab ([modules.md](modules.md), "Narratives module"). The tab reads each folder's subtype through the same folder-metadata read as the Data view (`useFolderRowMetadata`); a folder whose subtype could not be read is named in the tab as not read, never taken as "not a Narrative". The module writes no folder sidecar. A custom field for variants is limited to the Variant subtype and leaves `appliesToFolders` unset, so it is not offered on a folder; a narrative folder carries no tags.
+
 ## Query, smart folders, Data view, Organizer
 
 - The query evaluator (`query-evaluate-core.ts`) loads folders through a second id source (`listFolderDescriptors`) only when the query names `type = folder` (`queryNamesFolderType`, which also looks inside `not` and `ne`). A query that does not name the folder type loads no folders, so its results are unchanged. A failed folder read is an error, never "no folders".

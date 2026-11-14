@@ -387,6 +387,11 @@ const nextConfig = {
           // "../../store/transport/native-claims-backend" — same rule.
           "../../store/transport/native-claims-backend":
             "./src/store/transport/native-claims-backend.web-stub",
+          // folklore-variants Task 10: the folklore client (Task 11) lives in
+          // src/lib/api/, so its dynamic import's literal specifier is
+          // "../../store/transport/native-folklore-backend" — same rule.
+          "../../store/transport/native-folklore-backend":
+            "./src/store/transport/native-folklore-backend.web-stub",
         },
   },
 };

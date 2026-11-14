@@ -271,7 +271,10 @@ export type ViewName =
   | "sources"
   // The Claims module's view id (Feature 108, FR-3), pinned equal to the
   // manifest's view id like "sources".
-  | "claims";
+  | "claims"
+  // The Narratives module's view id (Feature 110, FR-2), pinned equal to the
+  // manifest's view id like "sources".
+  | "folklore";
 
 /** Input types for metadata collection. */
 export type MetadataInputType = "text" | "multiselect" | "autocomplete";

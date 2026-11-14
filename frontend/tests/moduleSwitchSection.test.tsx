@@ -127,6 +127,27 @@ describe("ModuleSwitchSection", () => {
     await waitFor(() => expect(setModuleEnabled).toHaveBeenCalledTimes(1));
   });
 
+  it("shows an Enable Narratives switch that reads off with no entry and writes only its own entry (Feature 110, FR-2)", async () => {
+    setModuleEnabled.mockResolvedValue({ modules: { folklore: true } });
+    const store = mount(undefined);
+    expect(
+      screen.getByRole("checkbox", { name: "Enable Narratives" }),
+    ).not.toBeChecked();
+    expect(selectActiveProjectModules(store.getState())).toBeUndefined();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Enable Narratives" }),
+    );
+    expect(setModuleEnabled).toHaveBeenCalledTimes(1);
+    expect(setModuleEnabled).toHaveBeenCalledWith({
+      projectId: "proj-dir",
+      moduleId: "folklore",
+      enabled: true,
+    });
+    expect(selectActiveProjectModules(store.getState())).toEqual({
+      folklore: true,
+    });
+  });
+
   it("is not disabled: the module write is not limited on a paired device", () => {
     mount(undefined);
     expect(screen.getByRole("checkbox", { name: /Sources/ })).toBeEnabled();

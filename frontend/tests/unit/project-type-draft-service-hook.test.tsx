@@ -142,6 +142,7 @@ describe("useProjectTypeDraftService module declaration (Feature 108, FR-5)", ()
     expect(result.current.moduleStates).toEqual({
       sources: "not-set",
       claims: "not-set",
+      folklore: "not-set",
     });
   });
 
@@ -153,6 +154,7 @@ describe("useProjectTypeDraftService module declaration (Feature 108, FR-5)", ()
     expect(result.current.moduleStates).toEqual({
       sources: "not-set",
       claims: "on",
+      folklore: "not-set",
     });
     expect(result.current.canEditModules).toBe(true);
   });

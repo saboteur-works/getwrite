@@ -221,12 +221,50 @@ describe("module arrangements hook (Feature 109, FR-17, OQ-11)", () => {
   });
 });
 
+describe("folklore manifest entry (Feature 110, FR-2)", () => {
+  const entry = MODULE_MANIFEST.find((m) => m.id === "folklore");
+
+  it("declares id folklore, off by default, no index step and the view label Narratives", () => {
+    expect(entry?.id).toBe("folklore");
+    expect(entry?.defaultEnabled).toBe(false);
+    expect(entry?.indexSteps).toEqual([]);
+    expect(entry?.view).toEqual({ id: "folklore", label: "Narratives" });
+  });
+
+  it("is off with no entry, on only when the writer turned it on, and seeds nothing", () => {
+    const registry = createModuleRegistry(MODULE_MANIFEST);
+    expect(registry.enabledViews({}).map((v) => v.id)).not.toContain(
+      "folklore",
+    );
+    expect(
+      registry.enabledViews({ modules: { folklore: true } }).map((v) => v.id),
+    ).toContain("folklore");
+    expect(entry?.arrangements).toBeUndefined();
+    expect(Object.keys(entry ?? {}).sort()).toEqual([
+      "defaultEnabled",
+      "id",
+      "indexSteps",
+      "view",
+    ]);
+  });
+
+  it("with Sources off and folklore on the view is enabled", () => {
+    const registry = createModuleRegistry(MODULE_MANIFEST);
+    expect(
+      registry
+        .enabledViews({ modules: { sources: false, folklore: true } })
+        .map((v) => v.id),
+    ).toEqual(["folklore"]);
+  });
+});
+
 describe("createModuleRegistry", () => {
   it("accepts a test-only module with an index step", () => {
     const registry = createModuleRegistry([...MODULE_MANIFEST, testModule]);
     expect(registry.modules.map((m) => m.id)).toEqual([
       "sources",
       "claims",
+      "folklore",
       "test-indexed",
     ]);
     expect(registry.getModule("test-indexed")).toBe(testModule);
@@ -234,6 +272,7 @@ describe("createModuleRegistry", () => {
     expect(registry.views().map((v) => v.id)).toEqual([
       "sources",
       "claims",
+      "folklore",
       "test-indexed",
     ]);
   });
