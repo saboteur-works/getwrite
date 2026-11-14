@@ -85,7 +85,7 @@ A Source in the folder that does not have the Variant subtype is listed with the
 ## Compare variants
 
 1. Tick two or more variants, in the list or under **Variants to compare**. Until you tick two, the tab says "Choose two or more variants to compare them side by side."
-2. Each ticked variant opens in its own column. The column has the variant's name as its heading, its fields above its text, and its own scroll area. The scroll area can be reached with the keyboard.
+2. Select **Compare**. The button shows how many variants are ticked, such as **Compare (2)**, and stays unavailable until you tick two. Each ticked variant opens in its own column. The column has the variant's name as its heading, its fields above its text, and its own scroll area. The scroll area can be reached with the keyboard.
 
 The columns show the text of the variant's canonical revision (see [Revisions](../protect-and-finish/revisions.md)), with headings, lists and emphasis kept. A part the viewer cannot show appears as "Unsupported content". The comparison does not mark differences: there is no alignment and no highlighting of changed words.
 
@@ -95,15 +95,19 @@ The columns show the text of the variant's canonical revision (see [Revisions](.
 
 Opening, scrolling and closing the comparison write nothing to your project. The tab remembers, on this device only, the variants you last ticked in the project. When you come back to the same narrative, they are ticked again. If a remembered variant is no longer in the narrative, the tab says so and leaves it out.
 
+You can compare up to 3 variants at once. You can tick more, but if you select **Compare** with more than 3 ticked, the comparison shows the message "At most 3 variants can be compared at once. Go back to the list and deselect a variant." and no columns. Select **Back to list** and untick some.
+
+When the columns do not all fit across the window, the comparison scrolls sideways inside its own area.
+
 ### Narrow screens
 
-When the screen is narrower than 768 pixels, the comparison is replaced by this message: "Side-by-side comparison needs a wider screen. You can still open each variant from the list." The list stays shown.
+Comparison needs a wide screen. When the screen is narrower than 768 pixels, the **Compare** button is replaced by this message: "Side-by-side comparison needs a wider screen. You can still open each variant from the list." The list stays shown. On a large phone held sideways, the screen is wide enough and you can compare. The tick boxes still show on a narrow screen.
 
 ## Tags
 
 A tag is one option of a Multi field, stored on the variant.
 
-A tag that is no longer in the field's list is still shown, marked "(not in the list)". GetWrite does not rewrite or remove it.
+A tag that is no longer in the field's list is still shown, marked "(not in the list)". GetWrite does not rewrite or remove it. A Select field works the same way: a value that is no longer one of its options is shown with "(not in the field's list)" and left as it is.
 
 What happens to tags when you change a list in the options editor of the field was observed on the stored value in unit tests of the code behind that dialog. It was not observed in a running app. The test used a Multi field with three options and a Source tagged with two of them, "ATU 510A | Cinderella" and "ATU 510B | Peau d'Ane".
 
@@ -118,4 +122,3 @@ A variant's tag is found by the whole option string. In a smart folder, a query 
 
 - Switching Narratives off keeps every folder, Source, field and tag. A new Source still starts out of compile and out of your word goals, as any Source does.
 - The tab does not set up a project, rename a field or edit a list. Do those in **Project Settings**, **Metadata** tab, and in the sidebar.
-- This page does not describe a column limit, a phone, an Android device or a paired device. None has been recorded.

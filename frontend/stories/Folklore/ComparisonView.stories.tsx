@@ -13,8 +13,8 @@ import type { VariantTextsDeps } from "../../components/Folklore/useVariantTexts
  * chooser of its own; "Back to list" calls `onBack`. The reads are fakes
  * passed through `deps`, so no network is touched and the stories are not
  * evidence about the real route or a device. The phone message appears below
- * 768px: narrow the viewport to check it. No column limit is committed, so
- * the story that shows a refusal passes a limit of 3 explicitly.
+ * 768px: narrow the viewport to check it. The default column limit is 3
+ * (`comparisonLimit.ts`); the story that shows a refusal passes 3 explicitly.
  */
 
 const VARIANTS: ComparisonVariant[] = ["A", "B", "C", "D"].map(

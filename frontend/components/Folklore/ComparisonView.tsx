@@ -28,8 +28,8 @@ import type { VariantFieldDescription } from "../../src/lib/models/folklore-vari
  * - The heading takes focus when the view opens; "Back to list" calls
  *   `onBack`, and the caller returns focus to its Compare button.
  * - A selection over the column limit is refused with a message that states
- *   the limit and is never silently shortened. With the limit `null` (not yet
- *   measured) nothing is refused and no limit is stated.
+ *   the limit and is never silently shortened. The limit is 3
+ *   (`comparisonLimit.ts`); a `null` limit refuses nothing and states none.
  * - At phone width the fixed message replaces the columns and no read is
  *   started.
  */
