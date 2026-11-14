@@ -339,7 +339,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 1
 **Notes:** If the run recorded no usable figure, stop and return to the owner; do not choose one. This is the only task that sets the constant (the stated FR-12 dependency on the FR-25 run). Owner picked 3 from experiments/task-28.md on 2026-11-14.
 **POS:** task_4ee0bb32
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: LEAD-RUN: device runs (Pixel 7 Pro and paired device)
 **What:** Run the feature on the Pixel 7 Pro (portrait and landscape) and on a paired device and record only what was observed.
@@ -419,7 +419,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 1
 **Notes:** The e2e runs at close-out (Task 31). The run in `experiments/task-28.md` measured a 192 px column (`minmax(12rem, 1fr)`) giving 174 px of text, so about 18 px goes to border and padding; a floor of about 258 px (16.125rem) is the starting figure and the implementor confirms the exact figure gives at least 240 px of text. Below the floor the comparison region scrolls sideways, as FR-12 allows.
 **POS:** task_8c93e042
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 37
