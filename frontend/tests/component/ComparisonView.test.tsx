@@ -77,8 +77,8 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("ComparisonView", () => {
-  it("exports a null limit constant", () => {
-    expect(COMPARISON_COLUMN_LIMIT).toBeNull();
+  it("exports the owner's column limit of 3", () => {
+    expect(COMPARISON_COLUMN_LIMIT).toBe(3);
   });
 
   it("has no chooser: variants are chosen only in the list", () => {
@@ -123,21 +123,36 @@ describe("ComparisonView", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("states no limit and refuses nothing with the exported null", async () => {
+  it("refuses a fourth variant with the default limit, stating it and reading nothing", () => {
+    const deps = makeDeps();
+    render(view(deps, IDS.slice(0, 4)));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "At most 3 variants can be compared at once.",
+    );
+    expect(screen.queryByTestId("comparison-columns")).toBeNull();
+    expect(deps.readVariantText).not.toHaveBeenCalled();
+  });
+
+  it("refuses five variants with the default limit rather than dropping any", () => {
     render(view(makeDeps(), IDS));
+    expect(screen.getByRole("alert")).toHaveTextContent("At most 3 variants");
+    expect(screen.queryAllByTestId("comparison-column-body")).toHaveLength(0);
+  });
+
+  it("opens exactly three variants with the default limit and no alert", async () => {
+    render(view(makeDeps(), IDS.slice(0, 3)));
+    await waitFor(() =>
+      expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(3),
+    );
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("states no limit and refuses nothing when the limit is passed as null", async () => {
+    render(view(makeDeps(), IDS, { limit: null }));
     await waitFor(() =>
       expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(5),
     );
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(screen.queryByText(/at most/i)).toBeNull();
-  });
-
-  it("shows the limit message and no columns over a limit of 3, reading nothing", () => {
-    const deps = makeDeps();
-    render(view(deps, IDS.slice(0, 4), { limit: 3 }));
-    expect(screen.getByRole("alert")).toHaveTextContent("At most 3 variants");
-    expect(screen.queryByTestId("comparison-columns")).toBeNull();
-    expect(deps.readVariantText).not.toHaveBeenCalled();
   });
 
   it("shows the phone message and starts no read", async () => {
@@ -203,10 +218,10 @@ describe("ComparisonView", () => {
   });
 
   it("lets the columns shrink to the region (12rem floor, bounded grid)", async () => {
-    render(view(makeDeps(), IDS.slice(0, 4)));
+    render(view(makeDeps(), IDS.slice(0, 3)));
     const grid = await screen.findByTestId("comparison-columns");
     expect(grid.style.gridTemplateColumns).toBe(
-      "repeat(4, minmax(12rem, 1fr))",
+      "repeat(3, minmax(12rem, 1fr))",
     );
     expect(grid.className).toContain("max-w-full");
     expect(grid.className).toContain("min-w-0");
