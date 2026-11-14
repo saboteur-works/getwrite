@@ -390,8 +390,9 @@ describe("NarrativesView list, comparison and open", () => {
     try {
       setup({ ...NARRATIVE, texts });
       await screen.findByRole("list", { name: "Variants of Cinderella" });
+      // useViewportTier corrects to the real tier in an effect after mount.
       expect(
-        screen.getByText(/Side-by-side comparison needs a wider screen/),
+        await screen.findByText(/Side-by-side comparison needs a wider screen/),
       ).toBeTruthy();
       expect(screen.queryByRole("button", { name: /Compare/ })).toBeNull();
       expect(texts.readVariantText).not.toHaveBeenCalled();
