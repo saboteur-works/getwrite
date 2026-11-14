@@ -319,7 +319,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** LEAD-RUN: the orchestrator does not run it; builds fail in worktrees here.
 **POS:** task_768019d6
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: LEAD-RUN: column-limit run on long text
 **What:** Run the comparison on long texts on the desktop app and record the lengths, widths, counts tried and what was observed at each.
@@ -329,7 +329,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** LEAD-RUN with the owner, outside the sandbox, from the main checkout. This run is a recorded input to Task 29 and to Task 31; it is not a device run.
 **POS:** task_2bfa68ab
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Set the comparison column limit
 **What:** Set `COMPARISON_COLUMN_LIMIT` to the figure the recorded run supports, with the refusal message stating it.
@@ -349,7 +349,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** LEAD-RUN with the owner, outside the sandbox, from the main checkout (`pnpm build:native` and adb run outside it). An emulator, a fake filesystem or a unit test is not a device run and is not reported as one.
 **POS:** task_39b020ab
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: LEAD-RUN: CI, results into docs, close-out
 **What:** Run every CI workflow command, add the device-run and column-limit results to the docs, and link the per-task records in the experiments index.
@@ -359,7 +359,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** LEAD-RUN. Only this task edits `experiments.md` after Task 1.
 **POS:** task_b680a5ca
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 32: Select fields as a detail
 **What:** Include the custom fields limited to the Variant subtype whose type is `select` as details showing the chosen value, with "not set" and unexpected-value handling matching text fields (owner decision at Gate 5, 2026-11-13).
