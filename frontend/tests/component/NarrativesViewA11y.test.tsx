@@ -215,6 +215,7 @@ async function chooseBoth(user: ReturnType<typeof userEvent.setup>) {
   await user.click(
     screen.getByRole("checkbox", { name: "Select Telling s2 for comparison" }),
   );
+  await user.click(screen.getByRole("button", { name: "Compare (2)" }));
 }
 
 describe("NarrativesView axe", () => {
@@ -282,10 +283,21 @@ describe("NarrativesView keyboard", () => {
     await user.keyboard("{Enter}");
     expect(openInEditor).toHaveBeenCalledWith("s2");
 
-    const compareS2 = screen.getByRole("checkbox", { name: "Telling s2" });
-    await tabTo(user, compareS2);
+    const listSelect2 = screen.getByRole("checkbox", {
+      name: "Select Telling s2 for comparison",
+    });
+    await tabTo(user, listSelect2);
     await user.keyboard(" ");
+
+    // The Compare button is reachable by keyboard and opens the comparison;
+    // focus lands on the comparison heading.
+    const compare = screen.getByRole("button", { name: "Compare (2)" });
+    await tabTo(user, compare);
+    await user.keyboard("{Enter}");
     await screen.findByTestId("comparison-columns");
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { level: 3, name: "Comparing 2 variants" }),
+    );
 
     const bodies = screen.getAllByTestId("comparison-column-body");
     expect(bodies).toHaveLength(2);
@@ -297,6 +309,17 @@ describe("NarrativesView keyboard", () => {
     }
     expect(screen.getByRole("region", { name: "Text of Telling s1" })).toBe(
       bodies[0],
+    );
+
+    // Back to list is keyboard-operable and returns focus to Compare.
+    const back = screen.getByRole("button", { name: "Back to list" });
+    await tabTo(user, back);
+    await user.keyboard("{Enter}");
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Compare (2)" }),
+      ),
     );
   });
 });
@@ -313,11 +336,7 @@ describe("NarrativesView states in text and live regions", () => {
     expect(within(rows[0]).getByText(/not in the list/)).toBeTruthy();
     expect(within(rows[0]).getByText(/unexpected value/)).toBeTruthy();
     expect(within(rows[1]).getAllByText("not set")).toHaveLength(2);
-    await user.click(
-      screen.getByRole("checkbox", {
-        name: "Select Telling s1 for comparison",
-      }),
-    );
+    await chooseBoth(user);
     const column = await screen.findByRole("region", {
       name: "Text of Telling s1",
     });

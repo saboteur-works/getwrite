@@ -18,8 +18,10 @@ import type { AnyResource, Folder } from "../../src/lib/models/types";
  * The Narratives tab (Feature 110): picker, list and comparison for one
  * narrative, with the states the tab names in text. The reads are fakes passed
  * through `deps`, so the stories are not evidence about the real routes or a
- * device. The tab lists, compares and opens only. Narrow the viewport below
- * 768px to see the list stay and the comparison give way to its message.
+ * device. The tab lists, compares and opens only. Variants are ticked in the
+ * list and "Compare (N)" opens the comparison at the tab's full width. Narrow
+ * the viewport below 768px to see the list stay and the Compare button give
+ * way to the phone message.
  */
 
 const PROJECT_DIR = "narratives-story-project";
@@ -156,6 +158,55 @@ export const NarrativeWithVariants: Story = {
       canvas.getByRole("button", { name: "Open Telling B" }),
     );
     expect(args.openInEditor).toHaveBeenCalledWith("b");
+  },
+};
+
+/** Tick two variants, press Compare (2), then Back to list: the ticks stay. */
+export const ComparingTwoVariants: Story = {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("list", { name: "Variants of Cinderella" });
+    const compare = canvas.getByRole("button", { name: "Compare (0)" });
+    expect(compare).toBeDisabled();
+    await userEvent.click(
+      canvas.getByRole("checkbox", { name: "Select Telling A for comparison" }),
+    );
+    await userEvent.click(
+      canvas.getByRole("checkbox", { name: "Select Telling B for comparison" }),
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Compare (2)" }));
+    expect(
+      await canvas.findByRole("heading", {
+        level: 3,
+        name: "Comparing 2 variants",
+      }),
+    ).toHaveFocus();
+    await userEvent.click(canvas.getByRole("button", { name: "Back to list" }));
+    expect(
+      await canvas.findByRole("button", { name: "Compare (2)" }),
+    ).toHaveFocus();
+    expect(
+      canvas.getByRole("checkbox", { name: "Select Telling A for comparison" }),
+    ).toBeChecked();
+  },
+};
+
+/** Four Variants, for checking that four columns fit the tab's width. */
+export const FourVariants: Story = {
+  args: {
+    resources: [
+      variant("a", 0),
+      variant("b", 1),
+      variant("c", 2),
+      variant("d", 3),
+    ],
+  },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    expect(
+      await within(canvasElement).findByRole("list", {
+        name: "Variants of Cinderella",
+      }),
+    ).toBeInTheDocument();
   },
 };
 

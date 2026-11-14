@@ -363,6 +363,7 @@ describe("with the Sources module off and folklore on (FR-3)", () => {
     fireEvent.click(
       screen.getByRole("checkbox", { name: "Select Telling B for comparison" }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Compare (2)" }));
     await flushPendingEffects();
     expect(await screen.findByTestId("comparison-columns")).toBeInTheDocument();
     expect(

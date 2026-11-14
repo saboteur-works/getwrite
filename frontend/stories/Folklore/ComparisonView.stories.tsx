@@ -1,6 +1,6 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import ComparisonView, {
   type ComparisonVariant,
   type ComparisonViewProps,
@@ -8,11 +8,13 @@ import ComparisonView, {
 import type { VariantTextsDeps } from "../../components/Folklore/useVariantTexts";
 
 /**
- * The read-only side-by-side comparison (Feature 110). The reads are fakes
+ * The read-only side-by-side comparison (Feature 110). The variants are chosen
+ * in the list, so this view takes the chosen ids as `selectedIds` and has no
+ * chooser of its own; "Back to list" calls `onBack`. The reads are fakes
  * passed through `deps`, so no network is touched and the stories are not
  * evidence about the real route or a device. The phone message appears below
  * 768px: narrow the viewport to check it. No column limit is committed, so
- * the stories that show a refusal pass a limit of 3 explicitly.
+ * the story that shows a refusal passes a limit of 3 explicitly.
  */
 
 const VARIANTS: ComparisonVariant[] = ["A", "B", "C", "D"].map(
@@ -53,10 +55,14 @@ const DEPS: VariantTextsDeps = {
   listAttachments: async () => [],
 };
 
+const ids = (letters: string[]): string[] =>
+  letters.map((l) => `story-variant-${l}`);
+
 const BASE: ComparisonViewProps = {
   projectId: "story-project",
-  narrativeId: "story-narrative",
   variants: VARIANTS,
+  selectedIds: ids(["A", "B"]),
+  onBack: fn(),
   deps: DEPS,
 };
 
@@ -75,8 +81,9 @@ export default meta;
 
 type Story = StoryObj<typeof ComparisonView>;
 
-/** Nothing chosen: the chooser and a prompt, no columns. */
+/** Nothing chosen: the heading, Back to list and a prompt, no columns. */
 export const NothingChosen: Story = {
+  args: { selectedIds: [] },
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     expect(
@@ -87,39 +94,48 @@ export const NothingChosen: Story = {
 
 /** Two chosen variants open in two columns, each scrolling on its own. */
 export const TwoColumns: Story = {
-  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+  play: async ({
+    canvasElement,
+    args,
+  }: {
+    canvasElement: HTMLElement;
+    args: ComparisonViewProps;
+  }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("checkbox", { name: "Version A" }));
-    await userEvent.click(canvas.getByRole("checkbox", { name: "Version B" }));
     expect(
       await canvas.findByRole("heading", { level: 3, name: "Version B" }),
     ).toBeVisible();
     expect(canvas.getAllByTestId("comparison-column-body")).toHaveLength(2);
+    await userEvent.click(canvas.getByRole("button", { name: "Back to list" }));
+    expect(args.onBack).toHaveBeenCalled();
+  },
+};
+
+/** Four chosen variants share the width; none is cut off. */
+export const FourColumns: Story = {
+  args: { selectedIds: ids(["A", "B", "C", "D"]) },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    expect(await canvas.findByText("No text")).toBeVisible();
+    expect(canvas.getAllByTestId("comparison-column-body")).toHaveLength(4);
   },
 };
 
 /** An unreadable variant and an empty one sit beside a readable one. */
 export const MixedStates: Story = {
+  args: { selectedIds: ids(["A", "C", "D"]) },
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
-    for (const name of ["Version A", "Version C", "Version D"]) {
-      await userEvent.click(canvas.getByRole("checkbox", { name }));
-    }
     expect(await canvas.findByRole("alert")).toHaveTextContent("is missing");
     expect(canvas.getByText("No text")).toBeVisible();
   },
 };
 
-/** A limit of 3 passed in: a fourth choice is refused with a message. */
+/** A limit of 3 passed in with four chosen: a message, no columns. */
 export const OverTheLimit: Story = {
-  args: { limit: 3 },
+  args: { limit: 3, selectedIds: ids(["A", "B", "C", "D"]) },
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
-    for (const letter of ["A", "B", "C", "D"]) {
-      await userEvent.click(
-        canvas.getByRole("checkbox", { name: `Version ${letter}` }),
-      );
-    }
     expect(await canvas.findByRole("alert")).toHaveTextContent(
       "At most 3 variants",
     );
@@ -128,11 +144,11 @@ export const OverTheLimit: Story = {
 
 /** A narrative with no variants. */
 export const NoVariants: Story = {
-  args: { variants: [] },
+  args: { variants: [], selectedIds: [] },
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
     expect(
-      await canvas.findByText("This narrative has no variants."),
+      await canvas.findByText(/Choose two or more variants/),
     ).toBeVisible();
   },
 };

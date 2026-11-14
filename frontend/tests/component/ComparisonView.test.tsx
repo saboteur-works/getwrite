@@ -1,22 +1,18 @@
 /** @vitest-environment jsdom */
 /**
- * Feature 110, Task 19 (FR-12, FR-17, FR-18, FR-22): the comparison view.
- * Fakes only (injected reads, a mocked viewport tier); nothing here is
- * evidence about a device or a real WebView.
+ * Feature 110, Task 19 and Task 36 (FR-12, FR-17, FR-18, FR-22): the
+ * comparison view. Variants are chosen only in the list, so the view takes the
+ * chosen ids as a prop. Fakes only (injected reads, a mocked viewport tier);
+ * nothing here is evidence about a device or a real WebView.
  */
 import React from "react";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ComparisonView, {
   type ComparisonVariant,
 } from "../../components/Folklore/ComparisonView";
 import { COMPARISON_COLUMN_LIMIT } from "../../components/Folklore/comparisonLimit";
 import type { VariantTextsDeps } from "../../components/Folklore/useVariantTexts";
-import {
-  folkloreSelectionStorageKey,
-  writeFolkloreSelection,
-} from "../../src/lib/folklore-selection-preference";
 import { COMPARISON_PHONE_MESSAGE } from "../../src/lib/models/folklore-types";
 import { ProjectLockedError } from "../../src/lib/models/locked-access";
 
@@ -26,7 +22,6 @@ vi.mock("../../src/lib/hooks/useViewportTier", () => ({
 }));
 
 const PID = "11111111-1111-4111-8111-111111111111";
-const NARRATIVE = "22222222-2222-4222-8222-222222222222";
 const IDS = [1, 2, 3, 4, 5].map(
   (n) => `3333333${n}-3333-4333-8333-333333333333`,
 );
@@ -61,28 +56,18 @@ function makeDeps(): FakeDeps {
 
 function view(
   deps: VariantTextsDeps,
+  selectedIds: readonly string[],
   extra: Partial<React.ComponentProps<typeof ComparisonView>> = {},
 ): React.ReactElement {
   return (
     <ComparisonView
       projectId={PID}
-      narrativeId={NARRATIVE}
       variants={VARIANTS}
+      selectedIds={selectedIds}
       deps={deps}
       {...extra}
     />
   );
-}
-
-async function choose(names: string[]): Promise<void> {
-  const user = userEvent.setup();
-  for (const name of names) {
-    await user.click(screen.getByRole("checkbox", { name }));
-  }
-}
-
-function remember(variantIds: string[], narrativeId = NARRATIVE): void {
-  writeFolkloreSelection(PID, { narrativeId, variantIds });
 }
 
 beforeEach(() => {
@@ -96,26 +81,50 @@ describe("ComparisonView", () => {
     expect(COMPARISON_COLUMN_LIMIT).toBeNull();
   });
 
-  it("opens as many columns as chosen variants, each in its own scroller", async () => {
+  it("has no chooser: variants are chosen only in the list", () => {
+    render(view(makeDeps(), IDS.slice(0, 2)));
+    expect(
+      screen.queryByRole("group", { name: "Variants to compare" }),
+    ).toBeNull();
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+  });
+
+  it("opens one column per chosen variant, in the order given, each in its own scroller", async () => {
     const deps = makeDeps();
-    render(view(deps));
-    await choose(["Version 1", "Version 2", "Version 3"]);
+    render(view(deps, [IDS[2], IDS[0], IDS[1]]));
     await waitFor(() =>
       expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(3),
     );
-    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(3);
     for (const body of screen.getAllByTestId("comparison-column-body")) {
       expect(body).toHaveAttribute("tabindex", "0");
     }
+    expect(
+      screen
+        .getAllByRole("heading", { level: 3 })
+        .map((h: HTMLElement) => h.textContent),
+    ).toEqual(["Comparing 3 variants", "Version 3", "Version 1", "Version 2"]);
     const readIds = new Set(
       deps.readVariantText.mock.calls.map((c: unknown[]) => c[1]),
     );
     expect([...readIds].sort()).toEqual(IDS.slice(0, 3).sort());
   });
 
+  it("moves focus to its heading when it opens", () => {
+    render(view(makeDeps(), IDS.slice(0, 2)));
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { level: 3, name: "Comparing 2 variants" }),
+    );
+  });
+
+  it("shows Back to list and calls onBack", () => {
+    const onBack = vi.fn();
+    render(view(makeDeps(), IDS.slice(0, 2), { onBack }));
+    screen.getByRole("button", { name: "Back to list" }).click();
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it("states no limit and refuses nothing with the exported null", async () => {
-    render(view(makeDeps()));
-    await choose(VARIANTS.map((v) => v.name));
+    render(view(makeDeps(), IDS));
     await waitFor(() =>
       expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(5),
     );
@@ -123,104 +132,48 @@ describe("ComparisonView", () => {
     expect(screen.queryByText(/at most/i)).toBeNull();
   });
 
-  it("refuses a selection beyond a limit of 3 with a message, dropping nothing", async () => {
-    render(view(makeDeps(), { limit: 3 }));
-    await choose(["Version 1", "Version 2", "Version 3", "Version 4"]);
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "At most 3 variants can be compared at once.",
-    );
-    expect(
-      screen.getByRole("checkbox", { name: "Version 4" }),
-    ).not.toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Version 1" })).toBeChecked();
-    await waitFor(() =>
-      expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(3),
-    );
-  });
-
-  it("shows the limit message and no columns for a remembered selection over the limit", () => {
-    remember(IDS.slice(0, 4));
+  it("shows the limit message and no columns over a limit of 3, reading nothing", () => {
     const deps = makeDeps();
-    render(view(deps, { limit: 3 }));
+    render(view(deps, IDS.slice(0, 4), { limit: 3 }));
     expect(screen.getByRole("alert")).toHaveTextContent("At most 3 variants");
     expect(screen.queryByTestId("comparison-columns")).toBeNull();
     expect(deps.readVariantText).not.toHaveBeenCalled();
-    expect(screen.getAllByRole("checkbox", { checked: true })).toHaveLength(4);
   });
 
-  it("shows the phone message, starts no read, and keeps the selection across 768 px", async () => {
+  it("shows the phone message and starts no read", async () => {
     const deps = makeDeps();
     mockTier = "phone";
-    remember([IDS[0], IDS[1]]);
-    const { rerender } = render(view(deps));
+    const { rerender } = render(view(deps, [IDS[0], IDS[1]]));
     expect(screen.getByText(COMPARISON_PHONE_MESSAGE)).toBeInTheDocument();
     expect(screen.queryByTestId("comparison-columns")).toBeNull();
     await act(async () => {
       await new Promise((r) => setTimeout(r, 20));
     });
     expect(deps.readVariantText).not.toHaveBeenCalled();
-
     mockTier = "tablet";
-    rerender(view(deps));
-    await waitFor(() =>
-      expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(2),
-    );
-    mockTier = "phone";
-    rerender(view(deps));
-    expect(screen.getByText(COMPARISON_PHONE_MESSAGE)).toBeInTheDocument();
-    mockTier = "desktop";
-    rerender(view(deps));
-    expect(screen.getByRole("checkbox", { name: "Version 1" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Version 2" })).toBeChecked();
-  });
-
-  it("shows columns at tablet width", async () => {
-    mockTier = "tablet";
-    remember([IDS[0], IDS[1]]);
-    render(view(makeDeps()));
+    rerender(view(deps, [IDS[0], IDS[1]]));
     await waitFor(() =>
       expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(2),
     );
   });
 
-  it("writes the remembered selection only when the writer changes it", async () => {
+  it("writes nothing to storage, on open or on scroll", async () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem");
-    render(view(makeDeps()));
-    expect(setItem).not.toHaveBeenCalled();
-    await choose(["Version 1", "Version 2"]);
+    render(view(makeDeps(), [IDS[0], IDS[1]]));
     await waitFor(() =>
       expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(2),
     );
-    expect(setItem).toHaveBeenCalledTimes(2);
-    expect(window.localStorage.getItem(folkloreSelectionStorageKey(PID))).toBe(
-      JSON.stringify({ narrativeId: NARRATIVE, variantIds: [IDS[0], IDS[1]] }),
-    );
-    const calls = setItem.mock.calls.length;
     const body = screen.getAllByTestId("comparison-column-body")[0];
     body.scrollTop = 40;
     body.dispatchEvent(new Event("scroll"));
-    expect(setItem.mock.calls.length).toBe(calls);
-  });
-
-  it("restores the remembered selection on open without writing", async () => {
-    remember([IDS[2], IDS[0]]);
-    const setItem = vi.spyOn(Storage.prototype, "setItem");
-    render(view(makeDeps()));
-    await waitFor(() =>
-      expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(2),
-    );
-    expect(
-      screen
-        .getAllByRole("heading", { level: 3 })
-        .map((h: HTMLElement) => h.textContent),
-    ).toEqual(["Version 3", "Version 1"]);
     expect(setItem).not.toHaveBeenCalled();
   });
 
-  it("shows a variant lost from the narrative as lost, in text", async () => {
-    remember([IDS[0], "99999999-9999-4999-8999-999999999999", IDS[1]]);
+  it("names a chosen variant lost from the narrative, in text, and leaves it out", async () => {
     const deps = makeDeps();
-    render(view(deps));
+    render(
+      view(deps, [IDS[0], "99999999-9999-4999-8999-999999999999", IDS[1]]),
+    );
     expect(
       screen.getByText(
         "1 remembered variant is no longer in this narrative and was left out of the selection.",
@@ -232,32 +185,30 @@ describe("ComparisonView", () => {
     expect(deps.readVariantText).toHaveBeenCalledTimes(2);
   });
 
-  it("ignores a remembered selection of another narrative", () => {
-    remember([IDS[0], IDS[1]], "44444444-4444-4444-8444-444444444444");
-    render(view(makeDeps()));
-    expect(screen.queryAllByRole("checkbox", { checked: true })).toHaveLength(
-      0,
-    );
-  });
-
   it("shows a locked project in text, never an empty column", async () => {
     const deps = makeDeps();
     deps.readVariantText.mockRejectedValue(new ProjectLockedError(PID));
-    render(view(deps));
-    await choose(["Version 1", "Version 2"]);
+    render(view(deps, [IDS[0], IDS[1]]));
     expect(await screen.findByText(/project is locked/i)).toBeInTheDocument();
     expect(screen.queryByTestId("comparison-columns")).toBeNull();
   });
 
   it("renders no write control and no difference markup", async () => {
-    render(view(makeDeps()));
-    await choose(["Version 1", "Version 2"]);
+    render(view(makeDeps(), [IDS[0], IDS[1]]));
     await waitFor(() =>
       expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(2),
     );
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
     expect(document.querySelector("ins, del, mark")).toBeNull();
-    const group = screen.getByRole("group", { name: "Variants to compare" });
-    expect(within(group).getAllByRole("checkbox")).toHaveLength(5);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("lets the columns shrink to the region (12rem floor, bounded grid)", async () => {
+    render(view(makeDeps(), IDS.slice(0, 4)));
+    const grid = await screen.findByTestId("comparison-columns");
+    expect(grid.style.gridTemplateColumns).toBe(
+      "repeat(4, minmax(12rem, 1fr))",
+    );
+    expect(grid.className).toContain("max-w-full");
+    expect(grid.className).toContain("min-w-0");
   });
 });

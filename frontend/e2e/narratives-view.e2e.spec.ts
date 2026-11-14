@@ -30,14 +30,17 @@ async function openStory(
   ).toBeVisible();
 }
 
-/** Ticks a variant in the comparison's "Variants to compare" group. */
+/** Ticks a variant in the list. */
 async function choose(page: Page, name: string): Promise<void> {
-  await page.getByRole("checkbox", { name, exact: true }).check();
+  await page
+    .getByRole("checkbox", { name: `Select ${name} for comparison` })
+    .check();
 }
 
 async function chooseTwoAndWaitForColumns(page: Page): Promise<void> {
   await choose(page, "Telling A");
   await choose(page, "Telling B");
+  await page.getByRole("button", { name: "Compare (2)" }).click();
   await expect(
     page.getByRole("heading", { level: 3, name: "Telling A" }),
   ).toBeVisible();
@@ -93,24 +96,37 @@ test("a variant opens from the list", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Narratives" })).toBeVisible();
 });
 
-test("choosing two variants shows two columns, mirrored in the list", async ({
+test("Compare (N) opens two columns and Back to list keeps the ticks", async ({
   page,
 }) => {
   await openStory(page);
   await expect(
-    page.getByText("Choose two or more variants to compare them side by side."),
-  ).toBeVisible();
+    page.getByRole("button", { name: "Compare (0)" }),
+  ).toBeDisabled();
   await expect(page.getByTestId("comparison-columns")).toHaveCount(0);
+  await expect(
+    page.getByRole("group", { name: "Variants to compare" }),
+  ).toHaveCount(0);
 
   await chooseTwoAndWaitForColumns(page);
 
   await expect(page.getByTestId("comparison-column-body")).toHaveCount(2);
+  await expect(
+    page.getByRole("heading", { level: 3, name: "Comparing 2 variants" }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("list", { name: "Variants of Cinderella" }),
+  ).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Back to list" }).click();
+  await expect(page.getByRole("button", { name: "Compare (2)" })).toBeFocused();
   await expect(
     page.getByRole("checkbox", { name: "Select Telling A for comparison" }),
   ).toBeChecked();
   await expect(
     page.getByRole("checkbox", { name: "Select Telling B for comparison" }),
   ).toBeChecked();
+  await page.getByRole("button", { name: "Compare (2)" }).click();
   await expect(
     page.getByRole("region", { name: "Text of Telling A" }),
   ).toContainText("Text of a.");
@@ -177,11 +193,90 @@ test("keyboard: a variant can be chosen with the space bar", async ({
   page,
 }) => {
   await openStory(page);
-  const box = page.getByRole("checkbox", { name: "Telling A", exact: true });
+  const box = page.getByRole("checkbox", {
+    name: "Select Telling A for comparison",
+  });
   await box.focus();
   await page.keyboard.press("Space");
   await expect(box).toBeChecked();
 });
+
+test("keyboard: Compare and Back to list are reachable and operable", async ({
+  page,
+}) => {
+  await openStory(page);
+  await choose(page, "Telling A");
+  await choose(page, "Telling B");
+  const compare = page.getByRole("button", { name: "Compare (2)" });
+  await compare.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("heading", { level: 3, name: "Comparing 2 variants" }),
+  ).toBeFocused();
+  const back = page.getByRole("button", { name: "Back to list" });
+  await back.focus();
+  await page.keyboard.press("Enter");
+  await expect(compare).toBeFocused();
+});
+
+/** The comparison region's right edge and every column's right edge. */
+async function edges(
+  page: Page,
+): Promise<{
+  region: number;
+  columns: number[];
+  hasHScroll: boolean;
+  regionScrollsX: boolean;
+}> {
+  return page.evaluate(() => {
+    const region = document.querySelector('section[aria-label="Comparison"]');
+    const right = (el: Element): number => el.getBoundingClientRect().right;
+    const columns = Array.from(
+      document.querySelectorAll('[data-testid="comparison-column-body"]'),
+    ).map((body) => right(body.closest("section") as Element));
+    const doc = document.documentElement;
+    return {
+      region: right(region as Element),
+      columns,
+      hasHScroll: doc.scrollWidth > doc.clientWidth,
+      regionScrollsX:
+        (region as Element).scrollWidth > (region as Element).clientWidth,
+    };
+  });
+}
+
+for (const count of [2, 4]) {
+  test(`1200px wide with ${count} columns: the page does not scroll sideways and any overflow stays inside the comparison region`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await page.goto(
+      count === 4
+        ? "/iframe.html?id=folklore-narrativesview--four-variants&viewMode=story"
+        : STORY,
+    );
+    await expect(
+      page.getByRole("list", { name: "Variants of Cinderella" }),
+    ).toBeVisible();
+    const names = ["Telling A", "Telling B", "Telling C", "Telling D"];
+    for (const name of names.slice(0, count)) await choose(page, name);
+    await page.getByRole("button", { name: `Compare (${count})` }).click();
+    await expect(page.getByTestId("comparison-column-body")).toHaveCount(count);
+
+    const measured = await edges(page);
+    expect(measured.columns).toHaveLength(count);
+    expect(measured.hasHScroll).toBe(false);
+    const hasOverflow = measured.columns.some(
+      (columnRight) => columnRight > measured.region + 0.5,
+    );
+    if (count === 2) {
+      expect(hasOverflow).toBe(false);
+    } else if (hasOverflow) {
+      // Overflow is allowed, but only inside the region, never the page.
+      expect(measured.regionScrollsX).toBe(true);
+    }
+  });
+}
 
 for (const width of [360, 767]) {
   test(`phone width ${width}px: the message replaces the columns and the list stays`, async ({
@@ -198,19 +293,15 @@ for (const width of [360, 767]) {
     ).toBeVisible();
     await expect(page.getByTestId("comparison-columns")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 3 })).toHaveCount(0);
-    await expect(
-      page.getByRole("group", { name: "Variants to compare" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Compare/ })).toHaveCount(0);
   });
 }
 
-test("768px shows the comparison and not the phone message", async ({
+test("768px shows the Compare button and not the phone message", async ({
   page,
 }) => {
   await openStory(page, 768, 800);
-  await expect(
-    page.getByRole("group", { name: "Variants to compare" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Compare (0)" })).toBeVisible();
   await expect(page.getByText(PHONE_MESSAGE)).toHaveCount(0);
 });
 

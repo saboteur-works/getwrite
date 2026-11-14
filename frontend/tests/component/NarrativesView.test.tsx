@@ -2,9 +2,8 @@
 /**
  * Feature 110, Task 20 (FR-6, FR-7, FR-8, FR-12, FR-19, FR-22): the
  * Narratives tab. Written after the component (order inverted: the props of
- * the committed pieces had to be read first). Selection decision (integration
- * fact 2): the list checkboxes and the comparison's "Variants to compare"
- * group are mirrored, so a change in either shows in both.
+ * the committed pieces had to be read first). Task 36: variants are chosen
+ * only in the list; "Compare (N)" opens the comparison, "Back to list" returns.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -254,38 +253,151 @@ describe("NarrativesView list, comparison and open", () => {
     expect(screen.getByText(/Unreadable:/)).toBeTruthy();
   });
 
-  it("mirrors the selection between the list and the comparison, reading chosen texts", async () => {
-    const texts = textDeps();
-    setup({ ...NARRATIVE, texts });
-    await screen.findByRole("list", { name: "Variants of Cinderella" });
+  const tick = (name: string): void => {
     fireEvent.click(
-      screen.getByRole("checkbox", {
-        name: "Select Telling s1 for comparison",
-      }),
+      screen.getByRole("checkbox", { name: `Select ${name} for comparison` }),
     );
+  };
+
+  it("has no 'Variants to compare' group; variants are chosen only in the list", async () => {
+    setup(NARRATIVE);
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    tick("Telling s1");
     expect(
-      (screen.getByRole("checkbox", { name: "Telling s1" }) as HTMLInputElement)
-        .checked,
-    ).toBe(true);
+      screen.queryByRole("group", { name: "Variants to compare" }),
+    ).toBeNull();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(2);
     expect(readFolkloreSelection(PROJECT_DIR)).toMatchObject({
       status: "stored",
       selection: { narrativeId: "n1", variantIds: ["s1"] },
     });
-    // A change made in the comparison shows in the list.
-    fireEvent.click(screen.getByRole("checkbox", { name: "Telling s2" }));
-    await waitFor(() =>
-      expect(
-        (
-          screen.getByRole("checkbox", {
-            name: "Select Telling s2 for comparison",
-          }) as HTMLInputElement
-        ).checked,
-      ).toBe(true),
-    );
+  });
+
+  it("shows Compare (N) with the count, enabled only at two or more", async () => {
+    setup(NARRATIVE);
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    const button = screen.getByRole("button", { name: "Compare (0)" });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    tick("Telling s1");
+    expect(
+      (screen.getByRole("button", { name: "Compare (1)" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    tick("Telling s2");
+    expect(
+      (screen.getByRole("button", { name: "Compare (2)" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+
+  it("switches to the comparison, reading the chosen texts, and Back keeps the ticks", async () => {
+    const texts = textDeps();
+    setup({ ...NARRATIVE, texts });
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    tick("Telling s1");
+    tick("Telling s2");
+    fireEvent.click(screen.getByRole("button", { name: "Compare (2)" }));
+
+    expect(await screen.findByTestId("comparison-columns")).toBeTruthy();
+    expect(
+      screen.queryByRole("list", { name: "Variants of Cinderella" }),
+    ).toBeNull();
     await waitFor(() =>
       expect(texts.readVariantText).toHaveBeenCalledWith(PROJECT_DIR, "s2"),
     );
-    expect(await screen.findByTestId("comparison-columns")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back to list" }));
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    expect(
+      (
+        screen.getByRole("checkbox", {
+          name: "Select Telling s1 for comparison",
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(true);
+    expect(
+      (
+        screen.getByRole("checkbox", {
+          name: "Select Telling s2 for comparison",
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(true);
+  });
+
+  it("moves focus to the comparison heading, then back to the Compare button", async () => {
+    setup(NARRATIVE);
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    tick("Telling s1");
+    tick("Telling s2");
+    fireEvent.click(screen.getByRole("button", { name: "Compare (2)" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { level: 3, name: "Comparing 2 variants" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Back to list" }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Compare (2)" }),
+      ),
+    );
+  });
+
+  it("does not remember the comparison mode: a new mount shows the list with the ticks", async () => {
+    writeFolkloreSelection(PROJECT_DIR, {
+      narrativeId: "n1",
+      variantIds: ["s1", "s2"],
+    });
+    setup(NARRATIVE);
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    expect(screen.queryByTestId("comparison-columns")).toBeNull();
+    expect(
+      (screen.getByRole("button", { name: "Compare (2)" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+
+  it("writes only the selection when ticks change, never on Compare or Back", async () => {
+    setup(NARRATIVE);
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    tick("Telling s1");
+    tick("Telling s2");
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    fireEvent.click(screen.getByRole("button", { name: "Compare (2)" }));
+    await screen.findByTestId("comparison-columns");
+    fireEvent.click(screen.getByRole("button", { name: "Back to list" }));
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    expect(setItem).not.toHaveBeenCalled();
+    setItem.mockRestore();
+  });
+
+  it("says in text when a remembered variant is no longer in the narrative", async () => {
+    writeFolkloreSelection(PROJECT_DIR, {
+      narrativeId: "n1",
+      variantIds: ["s1", "gone"],
+    });
+    setup(NARRATIVE);
+    await screen.findByRole("list", { name: "Variants of Cinderella" });
+    expect(screen.getByText(/1 remembered variant is no longer/)).toBeTruthy();
+  });
+
+  it("shows the phone message and no Compare button below 768px", async () => {
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    const texts = textDeps();
+    try {
+      setup({ ...NARRATIVE, texts });
+      await screen.findByRole("list", { name: "Variants of Cinderella" });
+      expect(
+        screen.getByText(/Side-by-side comparison needs a wider screen/),
+      ).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /Compare/ })).toBeNull();
+      expect(texts.readVariantText).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(window, "matchMedia");
+    }
   });
 
   it("writes nothing to storage on open", async () => {
@@ -313,8 +425,11 @@ describe("NarrativesView remembered narrative", () => {
       (screen.getByLabelText("Narrative") as HTMLSelectElement).value,
     ).toBe("n2");
     expect(
-      (screen.getByRole("checkbox", { name: "Telling s3" }) as HTMLInputElement)
-        .checked,
+      (
+        screen.getByRole("checkbox", {
+          name: "Select Telling s3 for comparison",
+        }) as HTMLInputElement
+      ).checked,
     ).toBe(true);
   });
 

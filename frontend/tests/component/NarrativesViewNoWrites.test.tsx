@@ -259,6 +259,7 @@ describe("opening, scrolling and closing the comparison writes nothing", () => {
         name: "Select Telling s2 for comparison",
       }),
     );
+    fireEvent.click(screen.getByRole("button", { name: "Compare (2)" }));
     await screen.findByTestId("comparison-columns");
     await waitFor(() =>
       expect(screen.getAllByTestId("comparison-column-body")).toHaveLength(2),
@@ -291,13 +292,19 @@ describe("the one write is the remembered selection", () => {
         name: "Select Telling s1 for comparison",
       }),
     );
+    fireEvent.click(
+      screen.getByRole("checkbox", {
+        name: "Select Telling s2 for comparison",
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Compare (2)" }));
     await screen.findByTestId("comparison-columns");
     const key = folkloreSelectionStorageKey(PROJECT_DIR);
     expect(storageWrites.length).toBeGreaterThan(0);
     expect(storageWrites.every((w) => w === `setItem:${key}`)).toBe(true);
     expect(readFolkloreSelection(PROJECT_DIR)).toMatchObject({
       status: "stored",
-      selection: { narrativeId: "n1", variantIds: ["s1"] },
+      selection: { narrativeId: "n1", variantIds: ["s1", "s2"] },
     });
     expect(spy.calls).toEqual([]);
     expect(nonGetFetches()).toEqual([]);

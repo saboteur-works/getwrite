@@ -6,15 +6,14 @@
  * (`useNarrativeList`), the picked narrative's variants (`useVariantList`),
  * `VariantList` and `ComparisonView`. It lists, compares and opens only; no
  * control here writes a variant, field, tag, list or subtype. The one write is
- * the per-device remembered selection, made by `ComparisonView` or by a
- * checkbox in the list when the writer changes the selection.
+ * the per-device remembered selection, made by a checkbox in the list or the
+ * narrative picker when the writer changes them.
  *
- * Selection (decision for integration fact 2): `ComparisonView` owns a
- * "Variants to compare" group and cannot be controlled, and `VariantList` has
- * its own checkbox per row. Both stay, mirrored: a change in the comparison is
- * copied to the list through `onSelectionChange`; a change in the list is
- * written to the remembered selection here and the comparison is re-mounted,
- * which restores from that selection. So the two always show the same choice.
+ * Selection (Task 36): variants are chosen only in `VariantList`. A "Compare
+ * (N)" button, enabled at two or more, switches the tab to `ComparisonView` at
+ * the tab's full width; "Back to list" returns with the ticks kept. Focus
+ * moves to the comparison heading on open and back to the Compare button on
+ * return. The comparison mode is not remembered, only ticks and narrative.
  */
 import React from "react";
 import { shallowEqual } from "react-redux";
@@ -31,10 +30,17 @@ import {
   writeFolkloreSelection,
 } from "../../src/lib/folklore-selection-preference";
 import type { FolderSubtypeRead } from "../../src/lib/models/folklore-narratives";
-import { FOLKLORE_VIEW_LABEL } from "../../src/lib/models/folklore-types";
+import {
+  COMPARISON_PHONE_MESSAGE,
+  FOLKLORE_VIEW_LABEL,
+} from "../../src/lib/models/folklore-types";
+import useViewportTier from "../../src/lib/hooks/useViewportTier";
 import Button from "../common/UI/Button/Button";
 import UnlockModal from "../common/UnlockModal";
-import ComparisonView, { type ComparisonVariant } from "./ComparisonView";
+import ComparisonView, {
+  lostMessage,
+  type ComparisonVariant,
+} from "./ComparisonView";
 import VariantList, { type VariantListItem } from "./VariantList";
 import {
   useNarrativeList,
@@ -124,18 +130,28 @@ function buildFolderReads(
   return reads;
 }
 
+interface RestoredSelection {
+  ids: string[];
+  lostCount: number;
+}
+
 function rememberedSelection(
   projectId: string | null,
   narrativeId: string,
   variantIds: readonly string[],
-): string[] {
-  if (projectId === null || typeof window === "undefined") return [];
+): RestoredSelection {
+  if (projectId === null || typeof window === "undefined") {
+    return { ids: [], lostCount: 0 };
+  }
   const read = readFolkloreSelection(projectId);
   if (read.status !== "stored" || read.selection.narrativeId !== narrativeId) {
-    return [];
+    return { ids: [], lostCount: 0 };
   }
-  return resolveFolkloreSelection(read.selection, variantIds).selection
-    .variantIds;
+  const resolved = resolveFolkloreSelection(read.selection, variantIds);
+  return {
+    ids: resolved.selection.variantIds,
+    lostCount: resolved.lostVariantIds.length,
+  };
 }
 
 function NearMissLine({
@@ -236,15 +252,25 @@ function PickedNarrative({
     [result],
   );
   const comparable = React.useMemo(() => toComparisonVariants(rows), [rows]);
-  const comparableKey = comparable.map((v) => v.id).join("\u0000");
-  const [selectedIds, setSelectedIds] = React.useState<string[]>(() =>
+  const [restored] = React.useState<RestoredSelection>(() =>
     rememberedSelection(
       projectId,
       narrative.folderId,
       comparable.map((v) => v.id),
     ),
   );
-  const [remountKey, setRemountKey] = React.useState(0);
+  const [selectedIds, setSelectedIds] = React.useState<string[]>(restored.ids);
+  const [isComparing, setIsComparing] = React.useState(false);
+  const compareRef = React.useRef<HTMLButtonElement>(null);
+  const shouldRefocusCompare = React.useRef(false);
+  const isPhone = useViewportTier() === "phone";
+
+  React.useEffect(() => {
+    if (!isComparing && shouldRefocusCompare.current) {
+      shouldRefocusCompare.current = false;
+      compareRef.current?.focus();
+    }
+  }, [isComparing]);
 
   const toggle = (id: string): void => {
     const next = selectedIds.includes(id)
@@ -257,7 +283,12 @@ function PickedNarrative({
         variantIds: next,
       });
     }
-    setRemountKey((k) => k + 1);
+  };
+  const comparableIds = new Set(comparable.map((v) => v.id));
+  const compareCount = selectedIds.filter((id) => comparableIds.has(id)).length;
+  const goBack = (): void => {
+    shouldRefocusCompare.current = true;
+    setIsComparing(false);
   };
 
   if (result.kind === "failed") {
@@ -277,8 +308,22 @@ function PickedNarrative({
       </p>
     );
   }
+  if (isComparing && !isPhone) {
+    return (
+      <ComparisonView
+        projectId={projectId}
+        variants={comparable}
+        selectedIds={selectedIds}
+        onBack={goBack}
+        deps={textsDeps}
+      />
+    );
+  }
   return (
     <div className="flex min-w-0 flex-col gap-3">
+      {restored.lostCount > 0 && (
+        <p role="status">{lostMessage(restored.lostCount)}</p>
+      )}
       {rows.length === 0 ? (
         <p className="text-gw-label text-gw-secondary">
           This narrative has no Sources yet.
@@ -292,14 +337,26 @@ function PickedNarrative({
           onToggleSelect={toggle}
         />
       )}
-      <ComparisonView
-        key={`${narrative.folderId}:${comparableKey}:${remountKey}`}
-        projectId={projectId}
-        narrativeId={narrative.folderId}
-        variants={comparable}
-        onSelectionChange={(ids) => setSelectedIds([...ids])}
-        deps={textsDeps}
-      />
+      {isPhone ? (
+        <p>{COMPARISON_PHONE_MESSAGE}</p>
+      ) : (
+        <div>
+          <Button
+            ref={compareRef}
+            variant="secondary"
+            size="xs"
+            disabled={compareCount < 2}
+            onClick={() => setIsComparing(true)}
+          >
+            {`Compare (${compareCount})`}
+          </Button>
+          {compareCount < 2 && (
+            <p className="mt-1 text-gw-label text-gw-secondary">
+              Tick two or more variants to compare them side by side.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -422,7 +479,10 @@ export default function NarrativesView({
   );
 
   return (
-    <section aria-labelledby="narratives-view-heading" className="p-4">
+    <section
+      aria-labelledby="narratives-view-heading"
+      className="min-w-0 max-w-full p-4"
+    >
       <h2
         id="narratives-view-heading"
         className="workarea-section-title mb-3 text-sm text-gw-primary"
