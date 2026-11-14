@@ -10,10 +10,10 @@ Shape of the work:
 - Tasks 27, 28, 30 and 31 are LEAD-RUN (builds, devices, the long-text run, CI); Task 26 is documentation for the scribe and states no device result and no column limit; Task 31 adds them.
 
 Requirement traceability (every FR-1..FR-25 maps to at least one task; FR-24 is also an inherited rule of every code task):
-- FR-1: 1, 2, 3, 27. FR-2: 4, 5. FR-3: 5, 22. FR-4: 4, 6. FR-5: 7, 18, 32, 33. FR-6: 6. FR-7: 14, 20. FR-8: 15, 18, 20. FR-9: 2, 26. FR-10: 2, 7, 18. FR-11: 26. FR-12: 17, 19, 29, 36. FR-13: 8, 9, 10, 11, 16. FR-14: 12, 13, 22. FR-15: 16, 17. FR-16: 8, 16, 17, 20. FR-17: 12, 19, 34, 36. FR-18: 19. FR-19: 7, 18, 20. FR-20: 21. FR-21: 9, 10, 11, 30, 35. FR-22: 17, 18, 19, 20, 23, 24, 36. FR-23: every task (no task adds a text diff, a bundled index, a new record kind, a draft comparison, a map or timeline, cross-narrative comparison, a typed date, prefix matching, a search index step, a project type, a CSV import or a passage mark; a task that needs one stops and returns to the owner). FR-24: every code task. FR-25: 28, 30, 31.
+- FR-1: 1, 2, 3, 27. FR-2: 4, 5. FR-3: 5, 22. FR-4: 4, 6. FR-5: 7, 18, 32, 33. FR-6: 6. FR-7: 14, 20. FR-8: 15, 18, 20. FR-9: 2, 26. FR-10: 2, 7, 18. FR-11: 26. FR-12: 17, 19, 29, 36, 37. FR-13: 8, 9, 10, 11, 16. FR-14: 12, 13, 22. FR-15: 16, 17. FR-16: 8, 16, 17, 20. FR-17: 12, 19, 34, 36. FR-18: 19. FR-19: 7, 18, 20. FR-20: 21. FR-21: 9, 10, 11, 30, 35. FR-22: 17, 18, 19, 20, 23, 24, 36. FR-23: every task (no task adds a text diff, a bundled index, a new record kind, a draft comparison, a map or timeline, cross-narrative comparison, a typed date, prefix matching, a search index step, a project type, a CSV import or a passage mark; a task that needs one stops and returns to the owner). FR-24: every code task. FR-25: 28, 30, 31.
 
 Compact dependency graph (`a -> b` means b depends on a):
-- 1 -> 5, 8, 14, 15, 26; 2 -> 26; 3 -> 31; 4 -> 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18; 5 -> 20, 21; 6 -> 14, 15; 7 -> 15, 17, 18, 32; 8 -> 9, 10; 9 -> 11; 10 -> 11, 35; 11 -> 16; 12 -> 19, 34; 13 -> 17; 14 -> 20; 15 -> 20; 16 -> 19; 17 -> 19, 32, 33; 18 -> 20, 32, 33; 19 -> 20, 28, 29; 20 -> 22, 23, 24, 26, 27, 28, 30, 34, 36; 32 -> 33; 33 -> 36; 34 -> 36; 21 -> 31; 22 -> 31; 23 -> 31; 24 -> 31; 25 -> 28; 26 -> 31; 27 -> 28, 30; 28 -> 29; 29 -> 31; 30 -> 31.
+- 1 -> 5, 8, 14, 15, 26; 2 -> 26; 3 -> 31; 4 -> 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18; 5 -> 20, 21; 6 -> 14, 15; 7 -> 15, 17, 18, 32; 8 -> 9, 10; 9 -> 11; 10 -> 11, 35; 11 -> 16; 12 -> 19, 34; 13 -> 17; 14 -> 20; 15 -> 20; 16 -> 19; 17 -> 19, 32, 33; 18 -> 20, 32, 33; 19 -> 20, 28, 29; 20 -> 22, 23, 24, 26, 27, 28, 30, 34, 36; 32 -> 33; 33 -> 36; 34 -> 36; 36 -> 37; 21 -> 31; 22 -> 31; 23 -> 31; 24 -> 31; 25 -> 28; 26 -> 31; 27 -> 28, 30; 28 -> 29; 29 -> 31, 37; 30 -> 31.
 
 Parallel waves the orchestrator may run (LEAD-RUN tasks 27, 28, 30 and 31 are never run by the orchestrator):
 - Wave 1: {1, 2, 3, 4, 25}.
@@ -31,6 +31,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 - `specs/features/folklore-variants/experiments.md`: Task 1 creates it, Task 31 closes it; every other task writes only its own `experiments/task-<n>.md`.
 - `frontend/components/Modules/uiRegistry.ts`: Task 5 (entry with a placeholder view), then Task 20 (host and wiring) by dependency. `frontend/src/lib/models/types.ts` (the `ViewName` union), `frontend/src/lib/models/modules/manifest.ts`, `frontend/tests/unit/module-registry.test.ts`, `frontend/tests/unit/module-ui-registry.test.tsx`, `frontend/tests/work-area-view-gating.test.tsx`, `frontend/tests/moduleSwitchSection.test.tsx`, `frontend/components/Layout/AppShell.tsx`: Task 5 only.
 - `frontend/components/Folklore/NarrativesView.tsx`: Task 5 (placeholder), then Task 20, then Task 34, then Task 36 by dependency. `frontend/components/Folklore/comparisonLimit.ts`: Task 19 (creates it as `null`), then Task 29 (the only task that sets the figure).
+- `frontend/components/Folklore/ComparisonView.tsx` and `frontend/tests/component/ComparisonView.test.tsx`: Task 36, then Task 37 by dependency (Task 29 also edits the test file, before Task 37).
 - `frontend/next.config.mjs`: Task 10 only.
 - `docs/`, `frontend/CLAUDE.md`, root `CLAUDE.md`: Task 26 only, then Task 31 for the device-run and column-limit results.
 
@@ -336,7 +337,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done when:** Tests first, then green: the constant holds the figure the owner takes from `experiments/task-28.md` with a comment naming that file; a selection beyond it is refused with a message stating the limit and is never silently dropped, with the default constant and not a test-passed limit; no other file states the figure; `pnpm typecheck` and `pnpm lint` are run.
 **Depends on:** 19, 28
 **Estimate:** 1
-**Notes:** If the run recorded no usable figure, stop and return to the owner; do not choose one. This is the only task that sets the constant (the stated FR-12 dependency on the FR-25 run).
+**Notes:** If the run recorded no usable figure, stop and return to the owner; do not choose one. This is the only task that sets the constant (the stated FR-12 dependency on the FR-25 run). Owner picked 3 from experiments/task-28.md on 2026-11-14.
 **POS:** task_4ee0bb32
 **Done:** [ ]
 
@@ -410,9 +411,19 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **POS:** task_d119f15b
 **Done:** [x]
 
+### Task 37: Raise the comparison column floor
+**What:** Raise the comparison grid's minimum column width so a column's text is never below the 240 px readable bar (owner decision after the FR-25 run, 2026-11-14; FR-12).
+**Files:** `frontend/components/Folklore/ComparisonView.tsx`, `frontend/tests/component/ComparisonView.test.tsx`, `frontend/e2e/narratives-view.e2e.spec.ts`
+**Done when:** The grid's column minimum is raised so a column's text is at least 240 px wide; the e2e asserts that at 1200 px every column's first paragraph is at least 240 px wide, with two columns and with three, and that any overflow is inside the comparison region with no page horizontal scroll; jsdom tests are updated where they pin the old floor; `pnpm typecheck` and `pnpm lint` are run.
+**Depends on:** 29, 36
+**Estimate:** 1
+**Notes:** The e2e runs at close-out (Task 31). The run in `experiments/task-28.md` measured a 192 px column (`minmax(12rem, 1fr)`) giving 174 px of text, so about 18 px goes to border and padding; a floor of about 258 px (16.125rem) is the starting figure and the implementor confirms the exact figure gives at least 240 px of text. Below the floor the comparison region scrolls sideways, as FR-12 allows.
+**POS:** task_8c93e042
+**Done:** [ ]
+
 ## Summary
-- Total tasks: 36
-- Total estimated effort: 123 story points
+- Total tasks: 37
+- Total estimated effort: 124 story points
 - Critical path: Tasks 1 → 8 → 9 → 11 → 16 → 19 → 20 → 27 → 28 → 29 → 31
 - Risks: Task 15 depends on the FR-1(f) measurement (Task 1) for the field source; Task 29 waits on the lead-run long-text run (Task 28) and stops if no usable figure was recorded; Task 5 also edits `AppShell.tsx`'s module-view branches (owner decision at Gate 5, 2026-11-13); Task 2 may find that the query builder or evaluator needs a change, which goes back to the owner because it changes Feature 111's premise; Task 13 (no existing read-only TipTap renderer) and Task 8 (typed read with a distinct failure per case) are the largest new surfaces; Tasks 27, 28, 30 and 31 are lead-run and depend on devices and an unsandboxed main checkout, and Android and paired-device parity are claimed only for what Task 30 observes.
 
