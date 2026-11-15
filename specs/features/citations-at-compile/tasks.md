@@ -137,7 +137,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** Copy values, do not re-derive them; if two records disagree, list both.
 **POS:** task_59887691
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: OWNER GATE (LEAD-RUN): FR-2 engine and licence decision
 **What:** The owner records whether Hayagriva (B, the only candidate) is accepted, the licence decision and the bundle-size judgement.
