@@ -564,9 +564,7 @@ describe("required-details table in the check (Task 44, FR-15)", () => {
     );
   });
 
-  // Task 45 (CitationFieldsSection.tsx) is built in parallel; un-skip once it
-  // has merged and imports `findMissingDetails` from the shared module.
-  it.skip("the editor line source imports findMissingDetails from the same module", () => {
+  it("the editor line source imports findMissingDetails from the same module", () => {
     const editor = readFileSync(
       path.join(
         __dirname,

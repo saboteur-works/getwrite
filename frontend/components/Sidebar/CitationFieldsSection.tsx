@@ -4,12 +4,29 @@ import React from "react";
 import type { AnyResource } from "../../src/lib/models/types";
 import { CITATIONS_MODULE_ID } from "../../src/lib/models/citations-types";
 import { useModuleEnabled } from "../Modules/useModuleEnabled";
+import { findMissingDetails } from "../../src/lib/models/citations-required-details";
+import type { CitationFieldsInput } from "../../src/lib/models/citations-csl-mapper";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
 import CitationFieldsEditor from "./CitationFieldsEditor";
 
 /** Shown instead of the editor on the native (Android) runtime. */
 export const CITATION_FIELDS_NATIVE_MESSAGE =
   "Citation fields can be edited on desktop and web";
+
+/** The bundled style the line is computed for. */
+const STILL_NEEDS_STYLE_ID = "chicago-notes-bibliography";
+export const NOTHING_MISSING_MESSAGE = "Nothing is missing for this style.";
+
+/** The line for a draft: the missing details, or that nothing is missing. */
+function stillNeedsLine(
+  fields: CitationFieldsInput | null,
+): string | undefined {
+  if (fields === null) return undefined;
+  const missing = findMissingDetails(STILL_NEEDS_STYLE_ID, fields);
+  return missing.length === 0
+    ? NOTHING_MISSING_MESSAGE
+    : `Still needs: ${missing.join(", ")}`;
+}
 
 export interface CitationFieldsSectionProps {
   projectId: string;
@@ -29,6 +46,11 @@ export default function CitationFieldsSection({
   resource,
 }: CitationFieldsSectionProps): JSX.Element | null {
   const isEnabled = useModuleEnabled(CITATIONS_MODULE_ID);
+  // Tagged with the Source it came from, so a draft is never read for another.
+  const [draft, setDraft] = React.useState<{
+    resourceId: string;
+    fields: CitationFieldsInput;
+  } | null>(null);
   if (!isEnabled || resource.type !== "source") return null;
   const isNative = process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native";
   return (
@@ -42,6 +64,14 @@ export default function CitationFieldsSection({
           key={resource.id}
           projectId={projectId}
           resourceId={resource.id}
+          stillNeeds={stillNeedsLine(
+            draft !== null && draft.resourceId === resource.id
+              ? draft.fields
+              : null,
+          )}
+          onDraftChange={(fields) =>
+            setDraft({ resourceId: resource.id, fields })
+          }
         />
       )}
     </CollapsibleSection>

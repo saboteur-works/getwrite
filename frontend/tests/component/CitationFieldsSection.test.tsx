@@ -5,7 +5,13 @@
  * is on, independent of the Sources switch. The Task 19 client is mocked.
  */
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Provider } from "react-redux";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import CitationFieldsSection, {
@@ -139,5 +145,67 @@ describe("CitationFieldsSection", () => {
     vi.stubEnv("NEXT_PUBLIC_GETWRITE_RUNTIME", "native");
     const { container } = render(ui(source(), { citations: false }));
     expect(container).toBeEmptyDOMElement();
+  });
+  it("names the details still missing, and follows typing before any save", async () => {
+    render(ui(source(), { citations: true }));
+    const line = await screen.findByText(
+      "Still needs: Authors, Publisher, Date",
+    );
+    expect(line.getAttribute("role")).toBe("status");
+    fireEvent.change(screen.getByLabelText("Publisher"), {
+      target: { value: "Penguin" },
+    });
+    expect(screen.getByText("Still needs: Authors, Date")).toBeInTheDocument();
+    expect(writeCitationFields).not.toHaveBeenCalled();
+  });
+
+  it("states that nothing is missing when complete", async () => {
+    readCitationFields.mockResolvedValue({
+      kind: "fields",
+      fields: {
+        referenceType: "book",
+        authors: [{ family: "Shaw", given: "A" }],
+        title: "T",
+        publisher: "P",
+        date: "2020",
+      },
+    });
+    render(ui(source(), { citations: true }));
+    expect(
+      await screen.findByText("Nothing is missing for this style."),
+    ).toBeInTheDocument();
+  });
+
+  it("changes the line when the reference type changes", async () => {
+    render(ui(source(), { citations: true }));
+    await screen.findByText("Still needs: Authors, Publisher, Date");
+    fireEvent.change(screen.getByLabelText("Reference type"), {
+      target: { value: "interview" },
+    });
+    expect(
+      screen.getByText("Still needs: Interviewee, Interviewer, Date"),
+    ).toBeInTheDocument();
+  });
+
+  it("has exactly one status region for the line", async () => {
+    render(ui(source(), { citations: true }));
+    await screen.findByText("Still needs: Authors, Publisher, Date");
+    const regions = screen
+      .getAllByRole("status")
+      .filter((el: HTMLElement) =>
+        /still needs|nothing is missing/i.test(el.textContent ?? ""),
+      );
+    expect(regions).toHaveLength(1);
+    expect(regions[0].textContent).toBe(
+      "Still needs: Authors, Publisher, Date",
+    );
+  });
+
+  it("shows no line and the editor failure on a failed read", async () => {
+    readCitationFields.mockResolvedValue({ kind: "failed", message: "boom" });
+    render(ui(source(), { citations: true }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("boom");
+    expect(screen.queryByText(/still needs/i)).toBeNull();
+    expect(screen.queryByText(/nothing is missing/i)).toBeNull();
   });
 });

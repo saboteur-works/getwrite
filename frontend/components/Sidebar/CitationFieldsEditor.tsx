@@ -6,6 +6,7 @@ import {
   readCitationFields,
   writeCitationFields,
 } from "../../src/lib/api/citation-fields";
+import type { CitationFieldsInput } from "../../src/lib/models/citations-csl-mapper";
 import {
   CITATION_FIELDS_REFUSAL,
   validateCitationFields,
@@ -117,8 +118,8 @@ function personFromDraft(row: PersonDraft): CitationPerson | null {
 }
 
 /** Builds the value to save; empty fields and rows are left out. */
-function fieldsFromDraft(draft: Draft): Record<string, unknown> {
-  const out: Record<string, unknown> = { referenceType: draft.referenceType };
+function fieldsFromDraft(draft: Draft): CitationFieldsInput {
+  const out: CitationFieldsInput = { referenceType: draft.referenceType };
   for (const spec of CITATION_FIELDS_BY_TYPE[draft.referenceType]) {
     if (spec.kind === "people") {
       const rows = (draft.people[spec.name] ?? [])
@@ -242,6 +243,12 @@ export interface CitationFieldsEditorProps {
   stillNeeds?: string;
   /** Called with the stored fields after a successful save. */
   onSaved?: (fields: CitationFields) => void;
+  /**
+   * Called with the current draft fields (empty fields left out) once the
+   * read has succeeded and on every change after, before any save. Never
+   * called while loading or after a failed read.
+   */
+  onDraftChange?: (fields: CitationFieldsInput) => void;
 }
 
 /**
@@ -258,6 +265,7 @@ export default function CitationFieldsEditor({
   resourceId,
   stillNeeds,
   onSaved,
+  onDraftChange,
 }: CitationFieldsEditorProps): JSX.Element {
   const [load, setLoad] = React.useState<LoadState>({ status: "loading" });
   const [draft, setDraft] = React.useState<Draft>(EMPTY_DRAFT);
@@ -295,6 +303,13 @@ export default function CitationFieldsEditor({
       isStale = true;
     };
   }, [projectId, resourceId, attempt]);
+
+  const draftChangeRef = React.useRef(onDraftChange);
+  draftChangeRef.current = onDraftChange;
+  const isReady = load.status === "ready";
+  React.useEffect(() => {
+    if (isReady) draftChangeRef.current?.(fieldsFromDraft(draft));
+  }, [isReady, draft]);
 
   if (load.status === "loading") {
     return (
@@ -385,7 +400,9 @@ export default function CitationFieldsEditor({
         </Select>
       </div>
       {stillNeeds !== undefined && stillNeeds !== "" && (
-        <p className="mb-3 text-gw-label text-gw-secondary">{stillNeeds}</p>
+        <p role="status" className="mb-3 text-gw-label text-gw-secondary">
+          {stillNeeds}
+        </p>
       )}
       {specs.map((spec) => {
         if (spec.kind === "people") {

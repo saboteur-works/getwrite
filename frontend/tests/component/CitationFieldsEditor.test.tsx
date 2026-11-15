@@ -238,6 +238,52 @@ describe("CitationFieldsEditor", () => {
     expect(screen.queryByText(/still needs/i)).toBeNull();
   });
 
+  it("puts role=status on the still-needs line itself", async () => {
+    await renderEditor({ stillNeeds: "Still needs: Publisher" });
+    const line = screen.getByText("Still needs: Publisher");
+    expect(line.getAttribute("role")).toBe("status");
+    expect(
+      screen
+        .getAllByRole("status")
+        .filter((el: HTMLElement) => el.textContent?.includes("Still needs")),
+    ).toHaveLength(1);
+  });
+
+  it("calls onDraftChange with the draft fields as the writer types, before any save", async () => {
+    const onDraftChange = vi.fn();
+    await renderEditor({ onDraftChange });
+    expect(onDraftChange).toHaveBeenLastCalledWith({ referenceType: "book" });
+    fireEvent.change(screen.getByLabelText(/^title/i), {
+      target: { value: "Tides" },
+    });
+    expect(onDraftChange).toHaveBeenLastCalledWith({
+      referenceType: "book",
+      title: "Tides",
+    });
+    fireEvent.change(screen.getByLabelText("Reference type"), {
+      target: { value: "web-page" },
+    });
+    expect(onDraftChange).toHaveBeenLastCalledWith({
+      referenceType: "web-page",
+      title: "Tides",
+    });
+    expect(writeCitationFields).not.toHaveBeenCalled();
+  });
+
+  it("does not call onDraftChange on a failed read", async () => {
+    const onDraftChange = vi.fn();
+    readCitationFields.mockResolvedValue({ kind: "failed", message: "x" });
+    render(
+      <CitationFieldsEditor
+        projectId="p1"
+        resourceId="r1"
+        onDraftChange={onDraftChange}
+      />,
+    );
+    await screen.findByRole("alert");
+    expect(onDraftChange).not.toHaveBeenCalled();
+  });
+
   it("is operable by keyboard alone: controls are native and focusable", async () => {
     await renderEditor();
     const controls = [
