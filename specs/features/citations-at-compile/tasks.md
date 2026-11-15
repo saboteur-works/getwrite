@@ -227,7 +227,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Model it on `claims-list-core.ts` and `annotations-core.ts` for locked and per-resource failure behaviour. Reading `experiments/task-11.md` is required before writing the tests.
 **POS:** task_faaaa1de
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Citation fields route
 **What:** Add the API route that reads and writes a Source's citation fields, sitting in the storage context.
@@ -287,7 +287,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Where the mark's end is available is recorded in `experiments/task-12.md`; read it first. Engine-free: the rendered text of a note is Task 38.
 **POS:** task_60066ef9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Compile citations option and dispatch seam
 **What:** Add the optional citations option to the PDF and DOCX compile requests and a seam in the compile cores that is entered only when the option is present.
@@ -297,7 +297,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Existing route tests (`compile-pdf-route.test.ts`, `compile-docx-route.test.ts`) must pass unmodified. Only this task edits the routes and `types.ts`; Task 43 edits `compile-core.ts` after it.
 **POS:** task_a0c9858e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Byte-identity test extension (FR-10)
 **What:** Extend the byte-identity test with a document carrying a citation to a Source with filled fields, run once per state, with non-vacuity checks and a spy on the new path.
@@ -337,7 +337,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read `citation-target-state.ts` for `deriveCitationTargetState`. The default missing-detail function reports none until Task 44 injects the table. Only this task and Task 44 edit the file.
 **POS:** task_c7b22a90
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Pre-run check route and client
 **What:** Add the API route and client that run the pre-run check, sitting in the storage context.
