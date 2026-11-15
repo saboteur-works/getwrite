@@ -247,7 +247,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** Follow `frontend/src/lib/api/claims.ts` and `frontend/tests/unit/claims-transport.test.ts`.
 **POS:** task_709eb691
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Citation fields editor component
 **What:** Build the presentational editor with the reference type choice and the fixed fields of the chosen type, showing a failed read and a failed save, with a slot for the "still needs" line.
@@ -367,7 +367,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Only Tasks 26 and 31 edit `CompilePreviewModal.tsx`. The warning's wording of the missing detail comes from Task 44 at runtime; this task tests with a fake check.
 **POS:** task_a78ada8c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 32: Engine adapter module
 **What:** Add the one adapter module that wraps the chosen engine and exposes a typed render of citations and a bibliography from CSL-JSON items, with formatting runs.
