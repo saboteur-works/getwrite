@@ -14,6 +14,7 @@
  */
 import init, { initSync, render } from "./engine/hayagriva_wasm.js";
 import type { CslItem } from "../models/citations-csl-mapper";
+import type { ResolvedCitationLocator } from "../models/citations-collect";
 
 /** A locator the engine understands; Task 34 maps stored labels onto these. */
 export interface CitationLocator {
@@ -26,6 +27,28 @@ export interface CitationOccurrence {
   /** CSL item ids; the locator applies to the first one only. */
   itemIds: readonly string[];
   locator: CitationLocator | null;
+  /**
+   * A locator that is not a CSL label (a timestamp). It is never sent to the
+   * engine, which has no suffix field; GetWrite appends it as ", at <text>".
+   */
+  literalLocator?: string;
+}
+
+/**
+ * Maps the locator chosen by Task 22 onto an occurrence's locator fields: a
+ * label kind goes to the engine, a literal never does, none sets neither.
+ */
+export function occurrenceLocator(
+  resolved: ResolvedCitationLocator,
+): Pick<CitationOccurrence, "locator" | "literalLocator"> {
+  switch (resolved.kind) {
+    case "label":
+      return { locator: { label: resolved.label, value: resolved.value } };
+    case "literal":
+      return { locator: null, literalLocator: resolved.text };
+    case "none":
+      return { locator: null };
+  }
 }
 
 /** A run of text with the formatting a PDF or DOCX renderer can apply. */
@@ -233,6 +256,27 @@ function parseOutput(
   return { citations: outCitations, bibliography: outBib };
 }
 
+const TRAILING_CLOSERS = /[.)]+$/;
+
+/**
+ * Appends ", at <text>" as plain text, before any closing full stop or
+ * parenthesis the style ended the citation with. The text is used as given.
+ */
+function appendLiteralLocator(
+  runs: readonly CitationRun[],
+  text: string,
+): CitationRun[] {
+  const out = runs.map((r) => ({ ...r }));
+  const last = out[out.length - 1];
+  const closers = TRAILING_CLOSERS.exec(last.text)?.[0] ?? "";
+  if (closers !== "") {
+    last.text = last.text.slice(0, last.text.length - closers.length);
+    if (last.text === "") out.pop();
+  }
+  out.push({ text: `, at ${text}${closers}` });
+  return out;
+}
+
 function validateRequest(
   req: CitationRenderRequest,
 ): CitationRenderFailure | null {
@@ -292,6 +336,14 @@ export function renderCitations(
       "result",
       "the engine returned output that does not match the request",
     );
+  }
+  for (const [i, c] of req.citations.entries()) {
+    if (c.literalLocator !== undefined && c.literalLocator !== "") {
+      parsed.citations[i].runs = appendLiteralLocator(
+        parsed.citations[i].runs,
+        c.literalLocator,
+      );
+    }
   }
   if (req.placement === "in-text") {
     for (const c of parsed.citations) c.noteNumber = null;
