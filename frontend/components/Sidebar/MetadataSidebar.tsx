@@ -47,6 +47,7 @@ import {
   selectActiveProjectStatuses,
   selectActiveProjectMetadataSchema,
   selectSelectedProjectId,
+  selectActiveProjectDirectoryId,
   selectSynopsisEnabled,
   selectNotesEnabled,
   selectPovEnabled,
@@ -234,6 +235,9 @@ export default function MetadataSidebar({
 }: MetadataSidebarProps): JSX.Element {
   const schema = useAppSelector(selectActiveProjectMetadataSchema);
   const selectedProjectId = useAppSelector(selectSelectedProjectId);
+  // Directory basename, not the project.json id: the citations routes resolve
+  // the root from it (see `selectActiveProjectDirectoryId` in projectsSlice).
+  const projectDirectoryId = useAppSelector(selectActiveProjectDirectoryId);
   const isSynopsisEnabled = useAppSelector(selectSynopsisEnabled);
   const isNotesEnabled = useAppSelector(selectNotesEnabled);
   const isPovEnabled = useAppSelector(selectPovEnabled);
@@ -527,9 +531,9 @@ export default function MetadataSidebar({
                 />
               </CollapsibleSection>
             )}
-            {editableResource.type === "source" && selectedProjectId && (
+            {editableResource.type === "source" && projectDirectoryId && (
               <CitationFieldsSection
-                projectId={selectedProjectId}
+                projectId={projectDirectoryId}
                 resource={editableResource}
               />
             )}
