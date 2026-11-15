@@ -232,9 +232,19 @@ export function parseCompileCitationsOption(
  * client input; the compile never produces output without the citations.
  */
 export class CitationsCompileError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
+  /**
+   * `"writer"` marks a failure the writer can correct (the routes answer 4xx);
+   * every other failure is `"system"` (engine, style, data or PDF layout; 5xx).
+   */
+  readonly kind: "writer" | "system";
+
+  constructor(
+    message: string,
+    options?: ErrorOptions & { kind?: "writer" | "system" },
+  ) {
     super(message, options);
     this.name = "CitationsCompileError";
+    this.kind = options?.kind ?? "system";
   }
 }
 
@@ -328,6 +338,7 @@ function unplacedError(
   if (parts.length === 0) return undefined;
   return new CitationsCompileError(
     `Citations could not be placed because their passages are not in the document: ${parts.join("; ")}.`,
+    { kind: "writer" },
   );
 }
 
@@ -711,6 +722,7 @@ async function renderPdfWithCitations(
       if (note.noteNumber === null) {
         throw new CitationsCompileError(
           "In-text citation styles are not available for PDF.",
+          { kind: "writer" },
         );
       }
       notes.push({

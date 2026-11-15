@@ -282,4 +282,16 @@ describe("runCompileAndDownload citations option (Feature 116, FR-9)", () => {
     expect(JSON.stringify(sent)).toBe(JSON.stringify(compileBody));
     expect("citations" in sent).toBe(false);
   });
+
+  it("lets a rejection's message reach the caller's toast unchanged (Task 63)", async () => {
+    compilePdfMock.mockRejectedValue(
+      new Error("A citation is not in the document."),
+    );
+    await expect(
+      runCompileAndDownload(compileBody, {
+        format: "pdf",
+        compilationName: "",
+      }),
+    ).rejects.toThrow("A citation is not in the document.");
+  });
 });

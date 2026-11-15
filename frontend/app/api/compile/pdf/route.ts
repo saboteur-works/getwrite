@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { CompileBody } from "../../../../src/lib/export/types";
 import {
+  CitationsCompileError,
   CitationsUnavailableError,
   InvalidCitationsOptionError,
   compilePdfCore,
@@ -33,6 +34,14 @@ async function handlePost(req: NextRequest) {
       return respondInvalidProjectId();
     if (err instanceof CitationsUnavailableError)
       return NextResponse.json({ error: err.message }, { status: 501 });
+    // The message names what failed and carries no client input, but may name
+    // a resource, so only the status goes to the client with it and nothing is
+    // logged (docs/standards/failure-visibility.md, security.md).
+    if (err instanceof CitationsCompileError)
+      return NextResponse.json(
+        { error: err.message },
+        { status: err.kind === "writer" ? 422 : 500 },
+      );
     throw err;
   }
 

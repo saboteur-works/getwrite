@@ -12,9 +12,9 @@
  *
  * What this file does not show: a real paired device, a real hosted session,
  * a packaged build or any browser. The paired-device case runs `runGate`, the
- * function `proxy.ts` calls. A pin that fails is a finding for the owner; the
- * one such pin (a CitationsCompileError the compile routes do not map) is
- * written with `it.fails` so it is visible and flips when the route is fixed.
+ * function `proxy.ts` calls. A pin that fails is a finding for the owner. The
+ * CitationsCompileError pins (Task 63) are ordinary tests now that the compile
+ * routes map the error.
  */
 // @vitest-environment node
 import fs from "node:fs/promises";
@@ -881,12 +881,10 @@ describe("boundary input is refused without echoing it", () => {
 // ---------------------------- 7. a CitationsCompileError the routes do not map
 
 describe("a citations compile that fails is answered with a status and a sentence", () => {
-  // FINDING (Task 43 reported it, this pin measures it): `compile/{pdf,docx}`
-  // map InvalidProjectIdCoreError and CitationsUnavailableError only. A
-  // CitationsCompileError (here FR-17: a citation whose passage is not in the
-  // document) escapes the handler, so the route rejects instead of returning a
-  // JSON error. `it.fails` keeps the suite green while the pin is red; it
-  // flips (and then fails the suite) when a route maps the error.
+  // Task 43 reported, and this group measured, that the routes did not map a
+  // CitationsCompileError: the handler rejected with no JSON. Task 63 maps it:
+  // 422 for the writer's own cases (here FR-17, a citation whose passage is not
+  // in the document), 500 for engine, style and PDF-layout failures.
   async function unplaced(): Promise<Seeded> {
     tenantState.root = await tmp("gw-cite-sec-unplaced-");
     const seeded = await seedProject(tenantState.root);
@@ -900,26 +898,59 @@ describe("a citations compile that fails is answered with a status and a sentenc
     return seeded;
   }
 
-  it("the rejection is a CitationsCompileError naming the unplaced citation", async () => {
-    const seeded = await unplaced();
-    const err = await docxPOST(sendDocx(compileBody(seeded))).then(
-      () => null,
-      (e: unknown) => e,
-    );
-    expect((err as Error | null)?.name).toBe("CitationsCompileError");
-    expect((err as Error).message).toContain("not in the document");
-  });
-
-  it.fails.each([
+  it.each([
     ["docx", sendDocx, docxPOST],
     ["pdf", sendPdf, pdfPOST],
   ] as const)(
-    "%s route returns a 4xx or 5xx JSON error",
+    "%s route answers the writer's own case (unplaced citation) with a 4xx and the core's message",
     async (_n, send, route) => {
       const seeded = await unplaced();
       const res = await route(send(compileBody(seeded)));
       expect(res.status).toBeGreaterThanOrEqual(400);
-      expect(typeof (await res.json()).error).toBe("string");
+      expect(res.status).toBeLessThan(500);
+      expect(res.headers.get("Content-Type")).toContain("application/json");
+      const { error } = (await res.json()) as { error: unknown };
+      expect(typeof error).toBe("string");
+      expect(error).toContain("not in the document");
+    },
+  );
+
+  it.each([
+    ["docx", sendDocx, docxPOST],
+    ["pdf", sendPdf, pdfPOST],
+  ] as const)(
+    "%s route answers a style failure with a 5xx and the core's message",
+    async (_n, send, route) => {
+      tenantState.root = await tmp("gw-cite-sec-style-");
+      const seeded = await seedProject(tenantState.root);
+      vi.mocked(loadBundledStyle).mockResolvedValueOnce({
+        ok: false,
+        message: "STYLE-LOAD-FAILURE-SENTENCE",
+      } as Awaited<ReturnType<typeof loadBundledStyle>>);
+      const res = await route(send(compileBody(seeded)));
+      expect(res.status).toBeGreaterThanOrEqual(500);
+      expect(((await res.json()) as { error: string }).error).toBe(
+        "STYLE-LOAD-FAILURE-SENTENCE",
+      );
+    },
+  );
+
+  it.each([
+    ["docx", sendDocx, docxPOST],
+    ["pdf", sendPdf, pdfPOST],
+  ] as const)(
+    "%s route logs no message or cause of the error it maps",
+    async (_n, send, route) => {
+      const seeded = await unplaced();
+      const spies = (["log", "info", "warn", "error", "debug"] as const).map(
+        (m) => vi.spyOn(console, m).mockImplementation(() => undefined),
+      );
+      const res = await route(send(compileBody(seeded)));
+      expect(res.status).toBeGreaterThanOrEqual(400);
+      const logged = JSON.stringify(spies.flatMap((s) => s.mock.calls));
+      expect(logged).not.toContain("not in the document");
+      expect(logged).not.toContain("Ledger");
+      expect(logged).not.toContain("Chapter");
     },
   );
 

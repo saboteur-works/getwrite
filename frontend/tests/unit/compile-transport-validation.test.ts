@@ -137,3 +137,62 @@ describe("httpCompileTransport.markdown", () => {
     consoleWarnSpy.mockRestore();
   });
 });
+
+describe("httpCompileTransport.pdf and .docx on a non-ok response (Feature 116, Task 63)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function failing(status: number, json: () => Promise<unknown>): Response {
+    return { ok: false, status, json } as Response;
+  }
+
+  it.each(["pdf", "docx"] as const)(
+    "%s rejects with the { error } sentence the route sent",
+    async (format) => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValue(
+            failing(422, async () => ({
+              error: "A citation is not in the document.",
+            })),
+          ),
+      );
+      await expect(httpCompileTransport[format](compileBody)).rejects.toThrow(
+        "A citation is not in the document.",
+      );
+    },
+  );
+
+  it.each(["pdf", "docx"] as const)(
+    "%s keeps `Compile failed (<status>)` for a non-JSON body",
+    async (format) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          failing(500, async () => {
+            throw new SyntaxError("Unexpected token <");
+          }),
+        ),
+      );
+      await expect(httpCompileTransport[format](compileBody)).rejects.toThrow(
+        "Compile failed (500)",
+      );
+    },
+  );
+
+  it.each([{}, { error: "" }, { error: 5 }, null, "text"])(
+    "keeps `Compile failed (<status>)` for a JSON body without a usable error (%j)",
+    async (body) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(failing(502, async () => body)),
+      );
+      await expect(httpCompileTransport.pdf(compileBody)).rejects.toThrow(
+        "Compile failed (502)",
+      );
+    },
+  );
+});

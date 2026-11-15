@@ -56,8 +56,31 @@ async function postCompileRequest(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(`Compile failed (${response.status})`);
+  if (!response.ok) {
+    throw new Error(
+      (format === "pdf" || format === "docx"
+        ? await readErrorSentence(response)
+        : undefined) ?? `Compile failed (${response.status})`,
+    );
+  }
   return response;
+}
+
+/**
+ * The `{ error }` sentence of a failed PDF or DOCX compile (Feature 116,
+ * Task 63), or `undefined` for an empty, non-JSON or sentence-less body.
+ */
+async function readErrorSentence(
+  response: Response,
+): Promise<string | undefined> {
+  try {
+    const body: unknown = await response.json();
+    if (typeof body !== "object" || body === null) return undefined;
+    const error: unknown = (body as { error?: unknown }).error;
+    return typeof error === "string" && error.trim() !== "" ? error : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // ---------------------------------------------------------------------------
