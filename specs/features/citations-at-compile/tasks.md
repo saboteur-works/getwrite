@@ -537,7 +537,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Existing tests are run, not edited; list the exact existing test files run in `experiments/task-48.md`.
 **POS:** task_eff93270
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 49: Accessibility and keyboard tests (FR-23)
 **What:** Add axe and keyboard tests for the editor, the compile switch, the style choice and the warning dialog.
