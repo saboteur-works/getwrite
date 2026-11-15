@@ -77,7 +77,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Record already made by the lead (see `experiments/task-2.md`); after it the owner dropped citeproc-js as a shipping candidate on 2026-11-14 (reference processor only), so its CPAL-1.0 questions no longer apply to shipping and the licences to decide at Task 9 are Hayagriva's, the style's and the locale's. The tick state is unchanged. LEAD-RUN with owner install: the owner places the pinned package or checkout of each candidate under the scratchpad (an owner step by `!`) before this task; no agent installs anything or edits `package.json`. Network fetches of upstream LICENSE files are done by the lead if the sandbox blocks them.
 **POS:** task_361b66fd
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: FR-1 (b) and (f): fidelity fixture and harness
 **What:** Write the 12-item CSL-JSON fixture and the script that renders it through a named candidate in a note style and an author-date style and lists differences against the reference processor.
@@ -97,7 +97,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** LEAD-RUN with owner install: the owner installs B and its toolchain by `!` before this task, and citeproc-js in the session scratchpad only as the test-only reference processor (never added to GetWrite, never distributed; owner decision 2026-11-14). A citeproc-js run of its own is the reference output, not a candidate result. The lead runs it and records observations only. This task is not ticked and its substance is unchanged beyond B being the only candidate; an existing lead record `experiments/task-4.md` is left as it stands.
 **POS:** task_8f242109
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: LEAD-RUN: FR-1 (c) runtime in four runtimes with the network disabled
 **What:** Run B (Hayagriva compiled to WebAssembly, the only candidate) in the Next.js server route, the browser build, the Electron bundle and the Android static export build loaded in the browser, with the network disabled.
@@ -107,7 +107,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** LEAD-RUN with owner install, outside the sandbox from the main checkout (builds fail in worktrees). Covers B only: citeproc-js is not a shipping candidate and is not run in these runtimes. The probe is not committed. No agent edits `package.json` or the lockfile.
 **POS:** task_b12420f0
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: LEAD-RUN: FR-1 (e) Hayagriva to WebAssembly build
 **What:** Record whether a pinned Hayagriva commit builds to WebAssembly from a clean checkout and what bindings, input format and output formatting result.
@@ -117,7 +117,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** LEAD-RUN with owner install of the Rust toolchain and `wasm-pack` by `!`. If the build fails, the failure text is the record; B is then reported as not buildable, not dropped.
 **POS:** task_77863b28
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: LEAD-RUN: FR-1 (d) bundle size
 **What:** Record the added bytes of B, its bundled style and locale in the server bundle, `frontend/out` and the Electron package.
@@ -127,7 +127,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** LEAD-RUN with owner install, outside the sandbox from the main checkout. If B failed in Task 5 it is recorded as "not measured" with the reason. Covers B only; citeproc-js is not measured.
 **POS:** task_6bb81292
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: FR-1 comparison table for B
 **What:** Write the single table of B on FR-1 (a) to (f) from the recorded task files, with a note naming citeproc-js as the test-only reference processor, and no recommendation.
@@ -147,7 +147,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 1
 **Notes:** OWNER GATE, LEAD-RUN. No agent decides the engine, treats the recorded facts as a legal opinion or proceeds on a licence the owner has not accepted. The owner installs the chosen dependency by `!` before Task 32. Every engine-dependent task depends on this one.
 **POS:** task_feb4b05a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: FR-3 (a), (b) before, (h): module readers, switch label and a citation in a Source body
 **What:** Record every reader of module state, what the Modules screen shows for an entry with no view, and whether a citation can be made in a Source body.
