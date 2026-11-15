@@ -14,6 +14,8 @@ import { NextRequest } from "next/server";
 
 import { POST as postPdf } from "../../app/api/compile/pdf/route";
 import { POST as postDocx } from "../../app/api/compile/docx/route";
+import { POST as postMarkdown } from "../../app/api/compile/markdown/route";
+import { POST as postText } from "../../app/api/compile/text/route";
 import {
   CitationsNotSupportedForFormatError,
   CitationsUnavailableError,
@@ -196,4 +198,25 @@ describe("Markdown and text refuse the option", () => {
     );
     expect(pass).not.toHaveBeenCalled();
   });
+});
+
+describe("Markdown and text routes answer the option with HTTP 400", () => {
+  const routes = [
+    ["markdown", postMarkdown, "/api/compile/markdown"],
+    ["text", postText, "/api/compile/text"],
+  ] as const;
+  for (const [name, post, url] of routes) {
+    it(`${name}: 400 with the fixed message, no echo, no pass call`, async () => {
+      const pass = fakePass();
+      registerCitationsPass(pass);
+      const res = await post(
+        req(url, { ...body(), citations: { styleId: "SECRET-STYLE" } }),
+      );
+      expect(res.status).toBe(400);
+      const text = await res.text();
+      expect(text).toMatch(/Citations are available for PDF and DOCX/);
+      expect(text).not.toMatch(/SECRET/);
+      expect(pass).not.toHaveBeenCalled();
+    });
+  }
 });
