@@ -257,7 +257,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Presentational with props for data and callbacks, except the save which uses the client. Read `frontend/components/Sources/SourceAttachmentsPanel.tsx` and its stories before using any prop of a shared control.
 **POS:** task_0a5f974a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Sidebar section and module gating
 **What:** Mount the editor in the metadata sidebar for a Source while the module is on, independent of the Sources switch.
