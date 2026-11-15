@@ -515,7 +515,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Only Tasks 21 and 45 edit the section. Edit to Task 20's component allowed (Owner, Gate 5, 2026-11-15): an `onDraftChange` prop and `role="status"` on the still-needs line, both needed by this task's Done when and neither previously in its Files. Estimate raised from 2 to 3 for the second component and its test. Task 44's skipped test waits on this task because it asserts the editor line source reads the same function as the check; Task 44 itself stays as committed.
 **POS:** task_f7118183
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 46: Licences entry in App Settings and bundled licence texts
 **What:** Add a "Licences" entry to App Settings showing the engine, style and locale attributions and bundle their licence texts in the static export and the Electron package.
@@ -635,7 +635,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Facts it starts from (`experiments/task-36.md`): a two-pass prototype with a fixed footer put 24 of 24 notes on the page of their reference across 6 page breaks, but only with `lineHeight: 1` on the footer `Text` (cause not established), and it found each reference's page by extracting text per page with `pdfjs-dist`, a devDependency only; FR-25 forbids adding dependencies. Owner decision (Owner, Gate 5, 2026-11-15): run this experiment before Task 43; if it finds no such construction the result goes back to the owner, who chooses between shipping `pdfjs-dist` and the OQ-8 endnote fallback. Do not edit `CompilePDFDocument.tsx` (Task 42 only); use library calls or a throwaway harness in the test. The lead runs this before Task 43 and Task 43 follows its result.
 **POS:** task_e6a5ee2c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 58: PDF font failure reproduction (experiment)
 **What:** Reproduce, through `compilePdfCore`, the fontkit `RangeError` reported with the bundled IBM Plex fonts, and find by experiment whether it depends on the `.woff2` faces.
@@ -645,7 +645,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Facts it starts from: the Task 42 implementor reported, without reproducing it, that a bare react-pdf `Document` using the bundled IBM Plex fonts threw the `RangeError` from fontkit when body text had `"`, `:` or `;` between letters, and that Helvetica rendered fine; the error does not match `isFontError`, so no fallback applies; it was not run through `compilePdfCore`. FR-17 requires a font failure to be visible and never to yield output without the citations. Owner decision (Owner, Gate 5, 2026-11-15): reproduce and discriminate first; no fix here. The lead runs this before Task 43.
 **POS:** task_3f43d29b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 59: Repair: lint ignore for the vendored engine and required-details wiring in the check route
 **What:** Stop `pnpm lint` failing on the vendored engine glue, and make the check route pass the required-details table so the production pre-run check reports missing details.
@@ -655,7 +655,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** Measured: in production `checkCitationsCore(projectId, resourceIds)` is called without the `missingDetails` option, so the pre-run check reports no missing details (Task 44 injects the option but the route never passes it). Edits to `route.ts`, its test and `eslint.config.mjs` by this task (Owner, Gate 5, 2026-11-15). Do not edit the vendored files under `engine/`. The lead runs this before Task 43.
 **POS:** task_cb376e18
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 59
