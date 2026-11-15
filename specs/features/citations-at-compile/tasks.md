@@ -499,7 +499,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 - Anchors: the render pass returns TipTap `{path, offset}` anchors (`citations-anchor.ts`); the builders place by UTF-16 offsets in their section text. Task 43 MUST map each anchor to the builders' UTF-16 section offset, tested with a multi-byte character and a surrogate pair before an anchor, so a note never lands off its mark.
 - `section.unplaced` (citations whose `annotation` mark is not in the document): the spec has no requirement naming this case. The nearest are FR-16 (an incomplete citation is never skipped) and FR-17 (never produce output without the citations the writer asked for). Decided (Owner, Gate 5, 2026-11-15): if `section.unplaced` is not empty, the compile refuses, under FR-17, with a message naming each such citation (its resource and Source), and never silently drops one; a test covers it. This is in Task 43 only: no pre-run check change (Tasks 28 and 44 are untouched) and no spec change.
 **POS:** task_5f56f9b8
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 44: Missing details into the pre-run check
 **What:** Inject the required-details table into the pre-run check so a citation whose Source lacks a required detail is reported.
@@ -539,7 +539,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** No production code is expected to change. A hosted tenant is checked by this test, not claimed from a device.
 **POS:** task_a2743ceb
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 48: Module-off, Sources-off, isolation and annotation-unchanged pins (FR-4, FR-6, FR-8)
 **What:** Pin that the module is independent of the Sources module, switching it off deletes nothing, citation fields are isolated from custom fields, and citation creation and storage are unchanged.
@@ -559,7 +559,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Follow `docs/standards/accessibility.md` and an existing a11y test for the helper.
 **POS:** task_63a7fcb5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 50: Documentation (handbook, feature docs, Code Map, glossary)
 **What:** Write the handbook page with the field lists and the warning, and update the feature docs, the Code Map and the glossary, with no device result.
@@ -569,7 +569,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Use the `write-user-guide` skill for the handbook page. Only the scribe edits these files until Task 54 adds the results. Task 14 found the lower-case "citations module" label in `ProjectTypeEditorForm.tsx`; it is placed here (Task 14 is ticked, and no other unstarted UI task touches that form) as a one-line label fix, with the Electron and CLI typechecks not needed (the file is under `frontend/components`).
 **POS:** task_9d0330cd
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 51: LEAD-RUN: build and inlining check, FR-3 (g)
 **What:** Record that `NEXT_PUBLIC_GETWRITE_RUNTIME` is inlined in every new client module, that the web and native builds succeed and that the licence texts and style assets land in the export and the package inputs.
