@@ -297,7 +297,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Existing route tests (`compile-pdf-route.test.ts`, `compile-docx-route.test.ts`) must pass unmodified. Only this task edits the routes and `types.ts`; Task 43 edits `compile-core.ts` after it. Reopened 2026-11-14 for the route mapping: the Markdown and plain-text routes are added to Files and the HTTP 400 pins to Done when, and the box stays unticked until the repair passes.
 **POS:** task_a0c9858e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Byte-identity test extension (FR-10)
 **What:** Extend the byte-identity test with a document carrying a citation to a Source with filled fields, run once per state, with non-vacuity checks and a spy on the new path.
