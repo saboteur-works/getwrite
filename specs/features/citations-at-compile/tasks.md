@@ -679,7 +679,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Owner decision (Owner, Gate 5, 2026-11-15, after reading `experiments/task-58.md` and `experiments/task-60.md`). The fix lands on this branch, before Task 43; the lead runs it before Task 43's PDF work. Commit type `fix:`, because the fault shipped in getwrite-v2.3.0. The `.woff` and `.woff2` are different builds of each face (192 to 240 glyphs differ byte for byte, `experiments/task-60.md`); the visual difference is not measured, and no cause is written beyond what Tasks 58 and 60 recorded. The other fonts bundled for the editor UI (`styles/bundled-fonts.css`) are out of scope, because fontkit does not embed them. Record results in `experiments/task-61.md`. Task 43 edits `CompilePDFDocument.tsx` after this task.
 **POS:** task_c3b5765d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 62: Repair: remove machine-specific details from Task 60's record and test
 **What:** Remove the names of local Python environments, pyenv versions and search paths from `experiments/task-60.md` and its test, and make the test find the Python with fontTools only through an opt-in environment variable.
@@ -689,7 +689,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** Owner decision (Owner, Gate 5, 2026-11-15). The measured values in the record are not changed, only how the interpreter is named. Task 61 also edits the test file (the assertions about the shipped faces); the lead runs Task 61 first, then this task, so the two edits do not collide.
 **POS:** task_e366b0a3
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 62
