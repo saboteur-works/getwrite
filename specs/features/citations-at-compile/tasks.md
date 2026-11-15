@@ -377,7 +377,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** The adapter imports the vendored engine from `frontend/src/lib/citations/engine/` (Tasks 55 and 56, run by the lead before this task; no Depends on is added because the validator allows only lower numbers). No agent edits `package.json` or the lockfile. Locator labels are Task 34; the style and locale assets are Task 33; use a throwaway style string in tests only until Task 33 lands. Only Tasks 32 and 34 edit this file.
 **POS:** task_431c574d
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 33: Bundled style, locale and style loader
 **What:** Bundle the Chicago notes and bibliography style and the en-US locale unmodified with their author metadata, load them from the app bundle and accept a style id only from the bundled list.
@@ -387,7 +387,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Assets are never modified (its share-alike terms are not triggered by a change). The static-export and Electron bundling of the licence texts is Task 46.
 **POS:** task_03eeb6fb
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 34: Locator labels in the adapter
 **What:** Pass page, paragraph and line to the engine as CSL locator labels and a timestamp as literal text.
