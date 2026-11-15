@@ -67,7 +67,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** Index only; measurements go to the per-task files. The Decision heading says the owner's decision is written in `experiments/task-9.md` and linked at Task 54 (the spec names `experiments/task-9.md` as the record; one writer per file, owner-approved at Gate 4).
 **POS:** task_9139f94a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: FR-1 (a): licence facts from the upstream files
 **What:** Record the licence facts of both candidates, the bundled style and the bundled locale, copied from upstream files at pinned versions, with the compatibility questions stated as questions for a legal read.
@@ -157,7 +157,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Reads and throwaway probes only; probes live in the scratchpad and no production file is edited. Read `frontend/src/lib/models/modules/registry.ts`, `frontend/components/Modules/ModuleSwitchSection.tsx`, `frontend/components/Modules/useModuleEnabled.ts`, `frontend/components/Modules/useEnabledModuleViews.ts`, `frontend/src/lib/models/modules/manifest.ts`, `frontend/components/Editor/TipTapEditor.tsx` (citation control slot around lines 934-940) and `frontend/src/lib/export/section-loader.ts`.
 **POS:** task_3473313a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: FR-3 (c), (d): sidecar writers and a new top-level key
 **What:** Record whether a new top-level key on a Source sidecar survives every sidecar writer and whether the metadata schema sweeps touch it.
@@ -167,7 +167,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Probes live in the scratchpad; no production file is edited. Task 17 reads this record and returns any value-losing behaviour to the owner rather than working round it.
 **POS:** task_8dc7cfdc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: FR-3 (e), (f): what compile and annotation marks give PDF and DOCX; PDF byte reproducibility
 **What:** Record what the section loader and annotation marks provide to PDF and DOCX and whether PDF bytes are reproducible with a fixed creation date.
@@ -177,7 +177,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Probes in the scratchpad. Read `frontend/src/lib/export/section-loader.ts`, `frontend/src/lib/models/compile-core.ts`, `frontend/src/lib/export/CompilePDFDocument.tsx`, `frontend/src/lib/export/CompileDocxDocument.ts` and `frontend/tests/unit/compile-citation-byte-identity.test.ts`. FR-3 (g) is recorded in Task 51 (build).
 **POS:** task_17b98ecc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Contract: citations types, constants and result types
 **What:** Define the inert shared contract: module id and label, reference types, field names and limits, the citations option, style ids, marker format and messages.
@@ -187,7 +187,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** No behaviour here. Wording constants are worded exactly as FR-9, FR-16 and OQ-10, OQ-11, OQ-13 state them.
 **POS:** task_2fb9f640
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Module declaration and optional manifest label
 **What:** Declare the `citations` module in the manifest with an optional `label` added to `ModuleManifestEntry` and read by the Modules screen, and pin the switch behaviour.
