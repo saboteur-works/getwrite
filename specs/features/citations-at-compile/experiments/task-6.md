@@ -34,6 +34,17 @@ Warnings printed during the build: "the following packages contain code that wil
 - `hayagriva_wasm_probe_bg.wasm`: 3,937,489 bytes raw; 840,135 bytes with `gzip -9`.
 - Same size for both targets. Size inside the GetWrite bundles is Task 7's.
 
+### Optimised (added 2026-11-14, after the owner installed `binaryen` 133 with Homebrew)
+
+`wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-mutable-globals --enable-reference-types --enable-multivalue <in.wasm> -o opt.wasm` (wasm-opt version 133), exit 0 for both targets.
+
+| Build | Raw bytes | `gzip -9` | `brotli -q 11` |
+|---|---|---|---|
+| Unoptimised (`wasm-pack` output) | 3,937,489 | 840,135 | 625,316 |
+| `wasm-opt -Oz` | 2,485,125 | 795,819 | 585,826 |
+
+The optimised Node build rendered the Task 3 fixture in the notes style with output byte-identical to the unoptimised build's (compared with `cmp`, timing line excluded); one render call took 54.4 ms against 63.1 ms, one run each.
+
 ## Input format
 
 - With the `csl-json` feature, Hayagriva implements its `EntryLike` trait for `citationberg::json::Item` (`src/csl/taxonomy.rs`, `#[cfg(feature = "csl-json")] impl EntryLike for citationberg::json::Item`). A CSL-JSON item array is accepted directly with `serde_json::from_str::<Vec<Item>>`; no conversion step.
