@@ -580,7 +580,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** LEAD-RUN: the orchestrator does not run it; builds fail in worktrees here.
 **POS:** task_fd9bfcb2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 52: LEAD-RUN: packaged desktop run, network disabled
 **What:** Run the feature on the packaged desktop app with the network disabled and record only what was observed.
