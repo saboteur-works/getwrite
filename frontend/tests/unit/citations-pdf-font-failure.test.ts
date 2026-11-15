@@ -3,6 +3,9 @@
  * IBM Plex faces throw a fontkit `RangeError` when body text has `"`, `:` or
  * `;` between letters? The outcomes are logged with `PROBE` and recorded in
  * `specs/features/citations-at-compile/experiments/task-58.md`. No fix here.
+ * Task 61 (2026-11-15): the shipped faces are now `.woff`, so the assertions
+ * about the shipped faces expect a render; the `.woff2` and `.woff` file
+ * comparisons below are unchanged.
  */
 // @vitest-environment node
 import fs from "node:fs/promises";
@@ -253,29 +256,13 @@ describe("Task 58: compilePdfCore with bundled IBM Plex and quote, colon, semico
           `threw ${describeError(r.error)}; matchesIsFontError=${matchesIsFontError(r.error)}`,
         );
       }
-      // Observed (2026-11-15): every input with `"`, `:` or `;` throws and
-      // matches no font-error fallback; the plain input renders.
-      if (name === "plain") {
-        expect(r).toEqual({ ok: true, warning: undefined });
-      } else {
-        expect(r.ok).toBe(false);
-        if (!r.ok) {
-          expect(describeError(r.error)).toBe(
-            "RangeError: Offset is outside the bounds of the DataView",
-          );
-          expect(matchesIsFontError(r.error)).toBe(false);
-        }
-      }
+      // Task 61 (2026-11-15): the shipped faces are the .woff files, so every
+      // input renders with no font-fallback warning. Before Task 61 every
+      // input with `"`, `:` or `;` threw `RangeError: Offset is outside the
+      // bounds of the DataView` (experiments/task-58.md).
+      expect(r).toEqual({ ok: true, warning: undefined });
     });
   }
-
-  it("logs the top of the stack of the thrown error", async () => {
-    const r = await viaCompilePdfCore(INPUTS.all);
-    expect(r.ok).toBe(false);
-    if (!r.ok && r.error instanceof Error) {
-      probe("stack", (r.error.stack ?? "").split("\n").slice(0, 8).join(" | "));
-    }
-  });
 
   it("renders every input with Helvetica (fallback document)", async () => {
     for (const [name, text] of Object.entries(INPUTS)) {
@@ -286,7 +273,7 @@ describe("Task 58: compilePdfCore with bundled IBM Plex and quote, colon, semico
   });
 });
 
-describe("Task 58: which characters trigger it (direct render, bundled woff2)", () => {
+describe("Task 58: which characters trigger it (direct render, shipped faces; Task 61: now .woff)", () => {
   it("renders each ASCII punctuation character between letters", async () => {
     registerIBMPlexFonts();
     const failing: string[] = [];
@@ -298,14 +285,15 @@ describe("Task 58: which characters trigger it (direct render, bundled woff2)", 
         messages.add(describeError(r.error));
       }
     }
-    probe("woff2 failing chars", JSON.stringify(failing));
-    probe("woff2 failing messages", JSON.stringify([...messages]));
-    expect(failing).toEqual(['"', ":", ";"]);
+    probe("shipped failing chars", JSON.stringify(failing));
+    probe("shipped failing messages", JSON.stringify([...messages]));
+    // Before Task 61 (.woff2 faces) this was ['"', ":", ";"].
+    expect(failing).toEqual([]);
     const lone = await renderPlex("abcd");
     expect(lone.ok).toBe(true);
     const bare = await renderPlex('"');
     probe(
-      "woff2 text is only a quote",
+      "shipped faces, text is only a quote",
       bare.ok ? "rendered" : describeError(bare.error),
     );
   });

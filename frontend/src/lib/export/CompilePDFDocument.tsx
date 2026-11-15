@@ -40,25 +40,25 @@ function plexFontFiles(): {
   return {
     serifRegular: localFontPath(
       new URL(
-        "../../../node_modules/@fontsource/ibm-plex-serif/files/ibm-plex-serif-latin-400-normal.woff2",
+        "../../../node_modules/@fontsource/ibm-plex-serif/files/ibm-plex-serif-latin-400-normal.woff",
         import.meta.url,
       ),
     ),
     serifItalic: localFontPath(
       new URL(
-        "../../../node_modules/@fontsource/ibm-plex-serif/files/ibm-plex-serif-latin-400-italic.woff2",
+        "../../../node_modules/@fontsource/ibm-plex-serif/files/ibm-plex-serif-latin-400-italic.woff",
         import.meta.url,
       ),
     ),
     sansRegular: localFontPath(
       new URL(
-        "../../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff2",
+        "../../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-400-normal.woff",
         import.meta.url,
       ),
     ),
     sansBold: localFontPath(
       new URL(
-        "../../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff2",
+        "../../../node_modules/@fontsource/ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff",
         import.meta.url,
       ),
     ),
