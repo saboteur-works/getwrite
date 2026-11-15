@@ -447,7 +447,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Read `citation-target-state.ts` (`deriveCitationTargetState`, around lines 66-83 per the spec) before writing tests. This task may edit `citations-render.ts` only to call the marker function; list any such edit in `experiments/task-39.md`.
 **POS:** task_43a8ef24
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 40: Bibliography
 **What:** Build the bibliography of the Sources cited in the compiled resources, each once, in the style's order, with its heading.
@@ -457,7 +457,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** A citation here is by Task 22's definition. The bibliography output is part of the typed result of Task 38.
 **POS:** task_47bacd83
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 41: DOCX document with footnotes and bibliography
 **What:** Make the DOCX document carry each rendered note as a Word footnote, the formatting runs, and the bibliography at the end.
