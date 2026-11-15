@@ -1,3 +1,5 @@
+import type { CompileCitationsOption } from "../models/citations-types";
+
 export interface ResourceMeta {
   id: string;
   name: string;
@@ -10,6 +12,8 @@ export interface CompileBody {
   resources: ResourceMeta[];
   includeHeaders: boolean;
   projectName: string;
+  /** Feature 116 (FR-9): absent means today's compile path, byte for byte. */
+  citations?: CompileCitationsOption;
 }
 
 /**

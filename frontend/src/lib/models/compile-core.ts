@@ -47,6 +47,11 @@ import {
 import { loadTextSections } from "../export/section-loader";
 import { slugify } from "../utils";
 import type { CompileBody, MarkdownConstructWarning } from "../export/types";
+import {
+  BUNDLED_CITATION_STYLES,
+  CITATIONS_FORMAT_UNAVAILABLE_REASON,
+  type CompileCitationsOption,
+} from "./citations-types";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { resolveProjectRoot } from "./project-root-resolver";
 
@@ -104,6 +109,102 @@ function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
   ) as ArrayBuffer;
 }
 
+/** The citations option is malformed or names a style that is not bundled (FR-18). */
+export class InvalidCitationsOptionError extends Error {
+  constructor() {
+    super("The citations option is not valid.");
+    this.name = "InvalidCitationsOptionError";
+  }
+}
+
+/** A citations compile was asked for but no engine pass is registered (FR-9). */
+export class CitationsUnavailableError extends Error {
+  constructor() {
+    super("Citations are not available in this build.");
+    this.name = "CitationsUnavailableError";
+  }
+}
+
+/** The citations option was sent to a Markdown or text compile (FR-9). */
+export class CitationsNotSupportedForFormatError extends Error {
+  constructor() {
+    super(CITATIONS_FORMAT_UNAVAILABLE_REASON);
+    this.name = "CitationsNotSupportedForFormatError";
+  }
+}
+
+/** What the citations pass receives; it replaces the whole PDF or DOCX render. */
+export interface CompileCitationsRequest {
+  format: "pdf" | "docx";
+  body: CompileBody;
+  option: CompileCitationsOption;
+  projectPath: string;
+}
+
+/** What the citations pass returns. */
+export interface CompileCitationsPassResult {
+  arrayBuffer: ArrayBuffer;
+  warning?: string;
+}
+
+export type CompileCitationsPass = (
+  request: CompileCitationsRequest,
+) => Promise<CompileCitationsPassResult>;
+
+let registeredCitationsPass: CompileCitationsPass | undefined;
+
+/**
+ * Registers (or with `undefined`, clears) the citations pass. No pass is
+ * registered until the engine task (Task 43) lands, so a present option fails
+ * visibly rather than producing output without citations.
+ */
+export function registerCitationsPass(
+  pass: CompileCitationsPass | undefined,
+): void {
+  registeredCitationsPass = pass;
+}
+
+/**
+ * Validates the raw citations option from a request. Returns `undefined` only
+ * when the option is absent; anything else must be exactly `{ styleId }` with a
+ * bundled style id. Throws a fixed-message error that echoes no client input.
+ */
+export function parseCompileCitationsOption(
+  raw: unknown,
+): CompileCitationsOption | undefined {
+  if (raw === undefined) return undefined;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    throw new InvalidCitationsOptionError();
+  }
+  const keys = Object.keys(raw);
+  const styleId = (raw as Record<string, unknown>).styleId;
+  if (keys.length !== 1 || keys[0] !== "styleId") {
+    throw new InvalidCitationsOptionError();
+  }
+  if (
+    typeof styleId !== "string" ||
+    !BUNDLED_CITATION_STYLES.some((style) => style.id === styleId)
+  ) {
+    throw new InvalidCitationsOptionError();
+  }
+  return { styleId };
+}
+
+/** Enters the seam; only called when the option is present. */
+async function runCitationsSeam(
+  request: CompileCitationsRequest,
+): Promise<CompileCitationsPassResult> {
+  if (!registeredCitationsPass) throw new CitationsUnavailableError();
+  return registeredCitationsPass(request);
+}
+
+/** Markdown and text refuse any citations option, even an invalid one. */
+function refuseCitationsOption(body: CompileBody): void {
+  if (body.citations !== undefined) {
+    throw new CitationsNotSupportedForFormatError();
+  }
+}
+
 /**
  * Compiles the requested text resources into a PDF.
  *
@@ -123,6 +224,21 @@ export async function compilePdfCore(
   } = body;
 
   const projectPath = resolveProjectPathOrThrow(projectId);
+
+  const option = parseCompileCitationsOption(body.citations);
+  if (option !== undefined) {
+    const result = await runCitationsSeam({
+      format: "pdf",
+      body,
+      option,
+      projectPath,
+    });
+    return {
+      arrayBuffer: result.arrayBuffer,
+      filename: `${slugify(projectName)}.pdf`,
+      warning: result.warning,
+    };
+  }
 
   const sections = await loadTextSections<CompileSection>(
     projectPath,
@@ -181,6 +297,20 @@ export async function compileDocxCore(
 
   const projectPath = resolveProjectPathOrThrow(projectId);
 
+  const option = parseCompileCitationsOption(body.citations);
+  if (option !== undefined) {
+    const result = await runCitationsSeam({
+      format: "docx",
+      body,
+      option,
+      projectPath,
+    });
+    return {
+      arrayBuffer: result.arrayBuffer,
+      filename: `${slugify(projectName)}.docx`,
+    };
+  }
+
   const sections = await loadTextSections<CompileSection>(
     projectPath,
     resourceIds,
@@ -206,6 +336,7 @@ export async function compileDocxCore(
 export async function compileTextCore(
   body: CompileBody,
 ): Promise<CompileTextCoreResult> {
+  refuseCitationsOption(body);
   const {
     projectId,
     resourceIds,
@@ -239,6 +370,7 @@ export async function compileTextCore(
 export async function compileMarkdownCore(
   body: CompileBody,
 ): Promise<CompileMarkdownCoreResult> {
+  refuseCitationsOption(body);
   const {
     projectId,
     resourceIds,
