@@ -417,6 +417,32 @@ with the app without hand-rewriting it (see OQ-90).
   `specs/concepts/folklore-variants-motifs.md`: the same shape of problem
   without motifs. It reuses the comparison of US-51 and adds no requirement of
   its own beyond FR-198; whether it needs its own naming is OQ-235.)
+- US-53: As a nonfiction, true-crime or local-history writer who cites books,
+  archives, newspapers, interviews and web pages, I want to enter each Source's
+  bibliographic details once, choose a citation style when I compile, and get
+  my cited passages as footnotes or in-text references with a bibliography of
+  the Sources I cited, so that a manuscript leaves GetWrite in the style my
+  editor or publisher expects without my rebuilding every note by hand in a word
+  processor. [Next] (Added 2026-11-14; FR-210 to FR-231. Concept
+  `specs/concepts/citations-at-compile.md`; runway 11 and build-order item 12,
+  note_31c82491 and note_a6991b90, Run G. Owner answers, 2026-11-14,
+  ideation: citations only, the podcast and script formats are a separate run; a
+  small bundled set of CSL styles; fixed citation fields defined by the module on
+  a Source. Citations stay as Feature 103 made them, an annotation `target`.
+  Read 2026-11-14, not run: no citation field, style or footnote rendering exists
+  today. Milestones from the concept: MVP is the fields, one style per run, PDF
+  and DOCX, and the pre-compile warnings; v1 is the full bundled set, a
+  project default style, Markdown, plain text and Android, and bibliography
+  options; v2 is deferred, see Out of Scope. The shape questions, OQ-238 to
+  OQ-250, were answered by the owner at Gate 1, 2026-11-14, except the engine
+  pick of OQ-246, which stays open.)
+- US-54: As a student, academic or folklore writer who must hand in APA, MLA or
+  Chicago, I want to see before I compile which of my citations cannot be
+  rendered, and to keep a project's preferred style that compile starts from, so
+  that I do not discover gaps in the output or re-pick the style on every draft.
+  [Next] (Added 2026-11-14. Secondary audience of
+  `specs/concepts/citations-at-compile.md`. FR-218, FR-219 and FR-224. v1 for
+  the project default style, MVP for the warnings.)
 
 **Maintainer of a repository that publishes GetWrite's online documentation**
 
@@ -2737,6 +2763,163 @@ with the app without hand-rewriting it (see OQ-90).
   and no output of the comparison is added. [US-51] (Added 2026-11-12. OQ-230,
   resolved from evidence, confirmed by owner at Gate 1, 2026-11-12. The module's
   own index step for its tag fields is FR-204 and is not a compile.)
+
+- FR-210: The citations-at-compile feature MUST ship as a first-party module with
+  its own module id and its own on/off switch in Project Settings > Modules
+  (`config.modules`), declared at build time in the module manifest and
+  registered through the contribution seam (FR-125 to FR-132), with no runtime
+  loading and no third-party plugin. It MUST be off for a project with no
+  `config.modules` entry for it (`defaultEnabled: false`, as for claims, FR-163),
+  and on only after the writer switches it on or a project type's `modules`
+  record declares it at creation. Switching it off MUST keep all data: the
+  stored citation field values and the citations themselves stay as they are.
+  An off module MUST hide only the compile "citations" switch and the
+  citation-field editor; it MUST delete nothing, and the stored fields and
+  citations stay. The module owns no index, so there is none to stop. It MUST
+  NOT depend on the Sources module being on (as FR-190): compile reads the
+  stored annotation targets and the Source sidecars directly, and the
+  citation-field editor MUST sit outside the Sources switch (to be confirmed in
+  the feature spec). [US-53] (Added 2026-11-14. Concept "Core Concept" and
+  Open Questions. OQ-245 and OQ-248, resolved from evidence, confirmed by owner
+  at Gate 1, 2026-11-14. Milestone: MVP.)
+- FR-211: A Source MUST carry a fixed set of citation fields that the module
+  defines, not writer-defined: at least reference type, authors, title,
+  container (such as a book or journal), publisher, date, place, URL and accessed
+  date. The writer MUST be able to enter and edit them on the Source, as on its
+  other metadata. The MVP reference types MUST be book, article (journal), web
+  page and interview; archival item and recording ship in v1. Each type has
+  fixed fields, mapped to a CSL-JSON item type. [US-53] (Added 2026-11-14.
+  Owner answer, 2026-11-14: fixed module-defined fields. OQ-238, Owner decision,
+  Gate 1, 2026-11-14. Milestone: MVP for four types, v1 for the other two.)
+- FR-212: Citation field values MUST be kept apart from the writer's own custom
+  fields: they MUST NOT appear in, be editable through, or clash by name with
+  the project's metadata schema, and a custom field the writer already made MUST
+  be unaffected. Where they are stored is a feature-spec question. [US-53]
+  (Added 2026-11-14. Concept "Caveats & Pitfalls", Overlap, and Technical
+  Considerations. Milestone: MVP.)
+- FR-213: The module MUST NOT change how a citation is made or stored: a
+  citation stays an annotation whose `target` names a Source and optionally an
+  excerpt, an attachment and a locator (FR-120). Citations made before the module
+  existed MUST keep working and MUST be renderable once their Source's fields are
+  filled in. [US-53] (Added 2026-11-14. Concept "What This Is Not" and
+  Assumption caveat. Milestone: MVP.)
+- FR-214: The compile dialog MUST offer a switch to render citations, shown only
+  while the module is on. With the switch off, or the module off, compile MUST
+  produce output byte-identical to compile without this feature, in every format
+  and on every platform, as FR-89 and FR-124 require for annotations and
+  citations. [US-53] (Added 2026-11-14. Concept "Core Concept" and Execution
+  caveat. The byte-identical check follows the FR-89 test. Milestone: MVP.)
+- FR-215: With the switch on, the writer MUST be able to choose one citation
+  style from a small bundled set for the run, rendered by a Citation Style
+  Language engine. The MVP set MUST contain at least one style; the v1 set MUST
+  contain the full bundled set, for example Chicago notes and bibliography,
+  Chicago author-date, APA and MLA. The bundled set is exactly these four
+  styles, in the en-US locale only; non-English locales and styles are out of
+  scope. [US-53] (Added 2026-11-14. Owner answer, 2026-11-14: a small bundled
+  set. OQ-250, Owner decision, Gate 1, 2026-11-14. Milestone: MVP for one style,
+  v1 for the four.)
+- FR-216: With citations on, each citation in a compiled resource MUST be
+  rendered as a footnote or an in-text reference, as the chosen style says, in
+  PDF and DOCX output. A citation in a resource left out of compile MUST NOT be
+  rendered. In a multi-resource compile, PDF and DOCX footnote placement follows
+  the style and the renderer (per page); to be confirmed in the feature spec
+  (OQ-249). [US-53] (Added 2026-11-14. Concept "Core Concept" and MVP.
+  Milestone: MVP.)
+- FR-217: With citations on, the compiled manuscript MUST end with a bibliography
+  of the Sources cited in the compiled resources, formatted in the chosen style.
+  A Source's own exclusion from compile (FR-109) MUST NOT stop it being cited
+  or listed. [US-53] (Added 2026-11-14. OQ-243, resolved from evidence,
+  confirmed by owner at Gate 1, 2026-11-14. Milestone: MVP, cited Sources
+  only.)
+- FR-218: Before a compile with citations on runs, the writer MUST be told which
+  citations cannot be rendered in full: a citation whose Source is removed, and a
+  citation whose Source lacks a detail the chosen style requires, naming the
+  citation, the Source and the missing detail. The warning MUST list the gaps
+  grouped by Source, each Source once, with a summary count ("N citations, M
+  Sources incomplete"), and offer proceed or cancel. A guided pass over the
+  Sources is a v1 candidate, not required. The writer MUST be able to see,
+  while entering a Source's fields, which details the chosen style still needs.
+  [US-53][US-54] (Added 2026-11-14. Concept MVP: a silent gap in a submitted
+  manuscript is the failure that matters. OQ-247, Owner decision, Gate 1,
+  2026-11-14. Milestone: MVP.)
+- FR-219: Compile MUST warn before the run (FR-218), and if the writer proceeds
+  it MUST render what an incomplete citation has with a visible marker, for
+  example "[citation incomplete: <Source name>]", the same in every format. It
+  MUST NOT skip the citation silently and MUST NOT refuse the compile.
+  [US-53][US-54] (Added 2026-11-14. OQ-240, Owner decision, Gate 1, 2026-11-14.
+  Milestone: MVP.)
+- FR-220: A citation's locator MUST be rendered in the chosen style's locator
+  terms. Page, paragraph and line MUST map to the CSL locator terms, the style
+  and locale supplying "p.", "para." and "l."; a timestamp MUST be rendered as
+  literal text (for example "at 12:30"), since CSL has no timestamp locator.
+  The citation's own locator MUST win; if it has none, an excerpt citation MUST
+  fall back to the excerpt's locator. [US-53] (Added 2026-11-14. OQ-241 and
+  OQ-242, Owner decision, Gate 1, 2026-11-14. Milestone: MVP.)
+- FR-221: In a note style, a later note to a Source already cited MUST follow the
+  style's own rule for repeated citations (short form, "ibid." or other); GetWrite
+  MUST add nothing of its own, and a test checks the engine's behaviour.
+  [US-53] (Added 2026-11-14. OQ-244, Owner decision, Gate 1, 2026-11-14.
+  Milestone: v1.)
+- FR-222: The writer MUST be able to choose a bibliography of cited Sources only
+  or of every Source in the project. The default MUST be cited Sources only;
+  every Source is opt-in. [US-53] (Added 2026-11-14. Concept v1, bibliography
+  options. OQ-243, Owner decision, Gate 1, 2026-11-14. Milestone: v1.)
+- FR-223: The writer MUST be able to keep a preferred style per project, saved as
+  a compile default (FR-81, FR-82), so compile starts from it and the dialog shows
+  it is a default that can be overridden for one run without changing it. The
+  style is both a per-project saved default and a per-run override. It MUST be
+  stored as its own optional `config` key, with a locked setter that touches only
+  that key, and MUST NOT be stored inside `config.compileDefaults`
+  (`setSavedDefaults` rewrites that whole key). The default is per project only,
+  the same on every device, with no per-device memory. [US-54] (Added
+  2026-11-14. Concept v1. OQ-239, Owner decision with evidence, Gate 1,
+  2026-11-14. Milestone: v1.)
+- FR-224: Compile with citations on MUST also work in Markdown and plain-text
+  output. Markdown MUST use `[^n]` footnotes with the definitions at the end of
+  the manuscript; plain text MUST use `[n]` markers and a numbered "Notes" list
+  at the end. A style that uses in-text references MUST put the citation inline.
+  There MUST be one final "Bibliography" section. [US-53] (Added 2026-11-14.
+  Concept v1. OQ-249, Owner decision, Gate 1, 2026-11-14. Milestone: v1.)
+- FR-225: Compile with citations on MUST work on desktop, hosted web and Android,
+  including the in-app PDF render path of Feature 101, and the citation engine
+  MUST run in all three without a network. The engine MUST be pure JavaScript,
+  or otherwise run without Node-only APIs, in the Next.js server, the Electron
+  bundle and the Android static export. One format working MUST NOT be taken as
+  evidence that another works. [US-53] (Added 2026-11-14. Concept Execution
+  caveat and Technical Considerations. Milestone: PDF and DOCX on desktop and web
+  MVP; Android and every other format v1.)
+- FR-226: The bundled styles, their locales and the rendering engine MUST be used
+  within their licences, with the required attribution shown to the writer where
+  a licence asks for it. Which engine, and its licence terms, is
+  [BLOCKED: OQ-246]: a feasibility check decides the engine, and the
+  compatibility of its licence and of the CC BY-SA styles and locales, before
+  the feature spec names one. [US-53] (Added 2026-11-14. Concept Licensing caveat.
+  Milestone: MVP.)
+- FR-227: How a citation made before the Source had any citation fields is handled
+  at the first compile of an existing project MUST be visible to the writer
+  through FR-218, never rendered as empty text. A project with many such
+  citations MUST see the grouped-by-Source summary of FR-218. [US-54] (Added
+  2026-11-14. Concept Assumption caveat. OQ-247, Owner decision, Gate 1,
+  2026-11-14. Milestone: MVP.)
+- FR-228: The module MUST NOT index or compile Sources or citations differently
+  from today when citations are off, and MUST NOT change a Source's default
+  exclusion from compile (FR-109). [US-53] (Added 2026-11-14. OQ-245, Gate 1,
+  2026-11-14. Milestone: MVP.)
+- FR-229: This feature MUST NOT include a reference manager (a library shared
+  across projects, or sync with Zotero or similar), a podcast or script compile
+  format, checking that a citation or quote is correct, citation styles beyond
+  the bundled set, importing a `.csl` file, importing BibTeX, CSL-JSON or DOI
+  references, or citations in the Compile Entity Resources dialog or in export.
+  [US-53][US-54] (Added 2026-11-14. Concept "What This Is Not" and v2. The
+  pattern is FR-175 and FR-201. Milestone: MVP and v1.)
+- FR-230: This feature supersedes FR-124 and the citation part of FR-175 only for
+  a compile run in which the writer has switched citations on in a project whose
+  module is on; for every other run FR-124, FR-89 and FR-175's scope stand as
+  written. [US-53] (Added 2026-11-14. FR-124 and FR-175 were scoped to Run C and
+  Feature 106, not to this feature. Milestone: MVP.)
+- FR-231: The compile dialog's citation controls MUST be keyboard operable and
+  have accessible names, to the project's WCAG 2.1 AA target. [US-53] (Added
+  2026-11-14. `docs/standards/accessibility.md`. Milestone: MVP.)
 
 ### Later Requirements
 
@@ -6202,6 +6385,97 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 
 (Raised 2026-11-12 for FR-190 to FR-209. From `specs/concepts/folklore-variants-motifs.md`.)
 
+**OQ-238 (resolved): Which reference types, and which fields per type, ship (book, chapter, article, newspaper, web page, interview, archival item, recording)?**
+**Resolution:** Resolved (2026-11-14, Owner decision, Gate 1): MVP reference types are book, article (journal), web page and interview; archival item and recording are v1; fixed per-type fields mapped to CSL-JSON item types. Applied in FR-211.
+**Impact:** FR-211; US-53. Also which types the first MVP style must support.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. From `specs/concepts/citations-at-compile.md`.)
+
+**OQ-239 (resolved): Is the style chosen per compile, per project, or both, and where is the project default stored?**
+**Resolution:** Resolved (2026-11-14, Owner decision, Gate 1, with evidence): both a per-project saved default and a per-run override; stored as its own optional `config` key with a locked setter touching only that key, not inside `config.compileDefaults` (`setSavedDefaults` rewrites that whole key); per project only, no per-device memory. Applied in FR-223.
+**Impact:** FR-223; US-54. Precedent: FR-81, FR-82, OQ-132.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. From `specs/concepts/citations-at-compile.md`.)
+
+**OQ-240 (resolved): What does compile do with a citation whose Source is removed or whose required details are missing: skip it, render what it has with a marker, or refuse the compile?**
+**Resolution:** Resolved (2026-11-14, Owner decision, Gate 1): warn before the run listing incomplete citations, with proceed or cancel; proceeding renders what the citation has with a visible marker (for example "[citation incomplete: <Source name>]"), the same in every format. Never silent, never refuse. Applied in FR-218 and FR-219.
+**Impact:** FR-218, FR-219; US-53, US-54.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. From `specs/concepts/citations-at-compile.md`.)
+
+**OQ-241 (resolved): How does a locator type (page, timestamp, paragraph, line) map into each style's locator terms?**
+**Resolution:** Resolved (2026-11-14, Owner decision, Gate 1): page, paragraph and line map to CSL locator terms, the style and locale supplying "p.", "para." and "l."; a timestamp is rendered as literal text (for example "at 12:30"), since CSL has no timestamp locator. Applied in FR-220.
+**Impact:** FR-220; US-53.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. From `specs/concepts/citations-at-compile.md`.)
+
+**OQ-242 (resolved): Does a citation to an excerpt cite the excerpt's locator, the citation's own, or both?**
+**Resolution:** Resolved (2026-11-14, Owner decision, Gate 1): the citation's own locator wins; if it has none, fall back to the excerpt's locator. Applied in FR-220.
+**Impact:** FR-220; US-53.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. From `specs/concepts/citations-at-compile.md`.)
+
+**OQ-243 (resolved): Does the bibliography list cited Sources only, and are Sources excluded from compile still cited?**
+**Resolution:** Resolved (2026-11-14, first half resolved from evidence and confirmed by owner, second half Owner decision, Gate 1): the bibliography lists Sources cited by citations in compiled resources; a Source's own exclusion from compile does not stop it being cited or listed; the FR-222 default is cited Sources only, and every Source is opt-in. Applied in FR-217 and FR-222.
+**Impact:** FR-217, FR-222; US-53. Related: FR-109.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. From `specs/concepts/citations-at-compile.md`.)
+
+**OQ-244 (resolved): How are subsequent notes to the same Source handled in note styles (short form, "ibid.")?**
+**Resolution:** Resolved (2026-11-14, Owner decision, Gate 1): follow the chosen CSL style's own subsequent-note rule and add nothing; this becomes a test of engine behaviour. Applied in FR-221.
+**Impact:** FR-221; US-53.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. From `specs/concepts/citations-at-compile.md`.)
+
+**OQ-245 (resolved): Does turning the module off hide only the compile option and the fields, leaving stored field values in place, as Claims and Narratives do?**
+**Resolution:** Resolved (2026-11-14, from evidence, confirmed by owner, Gate 1): module off hides only the compile "citations" switch and the citation-field editor; nothing is deleted; stored fields and citations stay; the module owns no index; compile with the module off is byte-identical. Applied in FR-210, FR-214 and FR-228.
+**Impact:** FR-210; US-53. Precedent: FR-163, FR-190.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. From `specs/concepts/citations-at-compile.md`.)
+
+**OQ-246: Which CSL engine runs in the Next.js server, the Electron bundle and the Android static export alike, and are its licence and the licences of the bundled styles and locales (CC BY-SA) compatible with bundling in GetWrite?**
+**Partial resolution (2026-11-14, Owner decision, Gate 1):** the constraint is recorded in FR-225: the engine must be pure JavaScript, or otherwise run without Node-only APIs, in the Next.js server, the Electron bundle and the Android static export, offline. Still open: the engine pick. Engine choice and licence compatibility (the engine's licence and the CC BY-SA styles and locales) are decided by a feasibility check before the feature spec names an engine. npm lists citeproc-js as "CPAL-1.0 OR AGPL" and @citation-js/plugin-csl as MIT but built on citeproc-js; neither is verified against upstream LICENSE files. Owner decision at Gate 1 (2026-11-14) on the feasibility-check candidate pool: (A) citeproc-js, the reference CSL engine, pure JavaScript; npm lists "CPAL-1.0 OR AGPL"; the AGPL option is incompatible with GetWrite's own licence FSL-1.1-ALv2 (`LICENSE.md`), so only CPAL-1.0 is a candidate and needs a legal read (file-level copyleft plus an attribution clause). (B) Hayagriva (Typst's Rust CSL engine, MIT/Apache-2.0) compiled to WebAssembly: no maintained npm package, needs a WASM build and JS bindings; fidelity on note styles unknown. (C) citeproc-rs is dropped (work-in-progress, last release 2021). (D) A hand-written formatter is kept only as a fallback; it would reverse the CSL decision. CSL styles and locales are CC BY-SA 3.0 (keep author metadata; share-alike on modified styles); a legal read is needed for a source-available product. All licence facts are as listed on npm and project docs, not checked against upstream LICENSE files. OQ-246 stays open. FR-226 stays blocked on this.
+**Impact:** FR-225, FR-226; US-53. The concept notes that citeproc-js's licence terms have not been checked and that the Feature 101 PDF fix showed a Node-only library failing in the native build.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. Added while speccing, from the concept's Technical Considerations and Licensing caveat.)
+
+**OQ-247 (resolved): How should the first compile of an existing project be handled, when every citation made since Feature 103 points at a Source with no citation fields filled?**
+**Resolution:** Resolved (2026-11-14, Owner decision, Gate 1): the pre-run warning lists gaps grouped by Source (each Source once) with a summary count ("N citations, M Sources incomplete"); a guided pass is a v1 candidate, not required. Applied in FR-218 and FR-227.
+**Impact:** FR-218, FR-227; US-54. For example, a summary count of gaps, or a guided pass over the Sources.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. Added while speccing, from the concept's Assumption caveat.)
+
+**OQ-248 (resolved): Does the module depend on the Sources module being on, given that the citation control is a Sources-module slot and the Sources switch hides the citation control?**
+**Resolution:** Resolved (2026-11-14, from evidence, confirmed by owner, Gate 1): no dependency on the Sources module (as FR-190); compile reads stored annotation targets and Source sidecars directly. The feature spec must confirm the citation-field editor is outside the Sources switch. Applied in FR-210.
+**Impact:** FR-210; US-53. Precedent: FR-190 (no dependency), the Claims module (Relink needs Sources).
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. Added while speccing.)
+
+**OQ-249 (resolved): What form do a footnote and the bibliography take in Markdown and plain-text output, and in a style that uses in-text references, where do footnotes sit in a multi-resource compile (end of each resource, end of the manuscript)?**
+**Resolution:** Resolved (2026-11-14, Owner decision, Gate 1): Markdown uses `[^n]` footnotes with definitions at the end of the manuscript; plain text uses `[n]` markers and a numbered "Notes" list at the end; in-text styles put the citation inline; one final "Bibliography" section. PDF and DOCX footnote placement follows the style and renderer (per page), to be confirmed in the feature spec. Applied in FR-216 and FR-224.
+**Impact:** FR-216, FR-217, FR-224; US-53.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. Added while speccing.)
+
+**OQ-250 (resolved): Which styles make up the bundled set and which locales, and are non-English styles in scope?**
+**Resolution:** Resolved (2026-11-14, Owner decision, Gate 1): four styles (Chicago notes-bibliography, Chicago author-date, APA, MLA), en-US locale only; non-English out of scope; one style in MVP, the four in v1. Applied in FR-215.
+**Impact:** FR-215; US-53. The concept names Chicago notes and bibliography, Chicago author-date, APA and MLA only as examples.
+**Owner:** Product owner.
+
+(Raised 2026-11-14 for FR-210 to FR-231. Added while speccing.)
+
 
 ## Out of Scope (Deferred)
 
@@ -6452,3 +6726,10 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   exact-value grouping are not defined.
 - A stored order per grid cell (FR-179, FR-189; OQ-206, Owner decision, Gate 1,
   2026-11-11): later. Order within a cell follows tree order.
+- Importing a writer's own `.csl` style file, importing references (BibTeX,
+  CSL-JSON, DOI lookup) into a Source's citation fields, and citations in the
+  Compile Entity Resources dialog and in export (FR-229; concept
+  `specs/concepts/citations-at-compile.md`, v2): later. The podcast and script
+  compile formats (Run G's other half) are a separate run (Owner answer,
+  2026-11-14). Citations and bibliography at compile are specified in FR-210 to
+  FR-231 (US-53, US-54, added 2026-11-14).
