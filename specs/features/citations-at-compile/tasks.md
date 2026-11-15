@@ -437,7 +437,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Defines the typed rendered-section output that Tasks 39 to 43 use. The incomplete marker is Task 39; the bibliography is Task 40.
 **POS:** task_8ddf200a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 39: Incomplete-citation marker
 **What:** Render an incomplete citation with what it has and the visible marker, never skipped and never refusing the compile.
