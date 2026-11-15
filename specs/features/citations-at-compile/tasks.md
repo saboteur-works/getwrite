@@ -668,7 +668,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** An agent task, not LEAD-RUN: it needs no install and no unsandboxed run (fontkit is reached as in Task 58's test, through `@react-pdf/renderer`). The orchestrator runs it before Task 43, after which the owner chooses any font fix. Owner decision (Owner, Gate 5, 2026-11-15): the cause is established before any fix is chosen. Whether a fix lands on main as a hotfix or on this branch is decided by the owner after Task 60 and is not part of this task. Any font fix the owner chooses runs before Task 43's PDF work. Start from `experiments/task-58.md` and `frontend/tests/unit/citations-pdf-font-failure.test.ts`.
 **POS:** task_320115d7
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 60
