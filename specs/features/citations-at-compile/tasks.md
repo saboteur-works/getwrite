@@ -3,7 +3,7 @@
 Source spec: `specs/features/citations-at-compile.md` (FR-1..FR-26, US-1 to US-5; approved by the owner at Gate 3, 2026-11-14; OQ-3 to OQ-7 and OQ-9 to OQ-16 resolved and not reopened; OQ-1, OQ-2 and OQ-8 open by design, decided at Tasks 9 and 37). Granularity: story points (1/2/3/5/8). Parent: `specs/product/getwrite.features.md` Feature 116. Depends on the shipped Features 101, 102, 103 and 108. Branch: `feat/citations-at-compile`; one PR. The module is "Citations", id `citations`, off by default. Measurements: `specs/features/citations-at-compile/experiments.md` (an index created by Task 1); each task records its results in `specs/features/citations-at-compile/experiments/task-<n>.md`, never directly in `experiments.md`, so tasks running in parallel never edit the same file; Task 54 links them at close-out.
 
 Shape of the work:
-- Engine feasibility (FR-1), Tasks 1 to 8: Task 1 creates the index and environment record; Task 2 records licence facts (a); Task 3 writes the 12-item fixture and harness for (b) and (f); Task 4 runs fidelity for candidates A and B; Task 5 records runtime (c); Task 6 records the Hayagriva WebAssembly build (e); Task 7 records bundle size (d); Task 8 writes the A against B table. Tasks 2, 4, 5, 6 and 7 need a candidate installed or a toolchain, so they are LEAD-RUN with owner install: the owner installs the package, the Rust toolchain or `wasm-pack` by `!` before the task starts, and no agent edits `package.json`, the lockfile or the toolchain (FR-2, FR-25).
+- Engine feasibility (FR-1), Tasks 1 to 8: Task 1 creates the index and environment record; Task 2 records licence facts (a); Task 3 writes the 12-item fixture and harness for (b) and (f); Task 4 runs fidelity for Hayagriva (B) against citeproc-js as the test-only reference processor; Task 5 records runtime (c) for B; Task 6 records the Hayagriva WebAssembly build (e); Task 7 records bundle size (d) for B; Task 8 writes the table for B with a note on the reference processor. Engine pool changed (Owner, 2026-11-14, after Task 2): citeproc-js is dropped as a shipping candidate (the owner reads its licence as AGPL per its `package.json`); Hayagriva (B) is the ONLY engine candidate and D (hand-written formatter) is a fallback only if B is not accepted; citeproc-js is test-only, installed by the owner in the session scratchpad, never added to GetWrite and never distributed. Tasks 2, 4, 5, 6 and 7 need a candidate installed or a toolchain, so they are LEAD-RUN with owner install: the owner installs the package, the Rust toolchain or `wasm-pack` by `!` before the task starts, and no agent edits `package.json`, the lockfile or the toolchain (FR-2, FR-25).
 - Task 9 is the FR-2 OWNER GATE (LEAD-RUN): the owner records "Decision: <engine, version>, <licence accepted>, <date>, <by>" and judges bundle size. Because only Task 1 and Task 54 edit `experiments.md`, the decision is written in `experiments/task-9.md` and linked from `experiments.md` at Task 54. Every engine-dependent task (32 to 46) depends on Task 9, directly or through a task that does.
 - Work that does not need the engine proceeds in parallel with Tasks 1 to 9: FR-3 records (10, 11, 12), the contract (13), the module (14), field validation, mapper, core, route, client, editor and sidebar (15 to 21), citation collection and anchoring (22, 23), the compile option and its seam (24), the byte-identity test (25), the dialog switch and its wiring (26, 27), the pre-run check data reads, route and warning dialog (28 to 31). The engine adapter, the style and locale, the required-details table, rendering, bibliography, documents and the engine-dependent parts of the check start at Task 32.
 - FR-12 (Task 36) returns its result to the owner; Task 37 is the OQ-8 decision point (LEAD-RUN) and gates only the PDF document (Task 42). The DOCX document (Task 41) depends on Task 36 and not on Task 37.
@@ -35,13 +35,13 @@ Parallel waves the orchestrator may run (LEAD-RUN tasks 2, 4, 5, 6, 7, 9, 37, 51
 
 Hot files and the only tasks allowed to edit them (file conflicts for wave planning):
 - `specs/features/citations-at-compile/experiments.md`: Task 1 creates it, Task 54 closes it; every other task writes only its own `experiments/task-<n>.md`.
-- `frontend/components/common/CompilePreviewModal.tsx`: Task 26, then Task 31 by dependency. `frontend/components/Layout/ShellModalCoordinator.tsx`, `frontend/components/Start/StartPage.tsx`, `frontend/src/lib/compile/run-compile-and-download.ts`: Task 27 only.
-- `frontend/src/lib/models/compile-core.ts`: Task 24, then Task 43 by dependency. `frontend/src/lib/export/types.ts`, `frontend/app/api/compile/pdf/route.ts`, `frontend/app/api/compile/docx/route.ts`: Task 24 only (Task 43 edits the cores, not these).
+- `frontend/components/common/CompilePreviewModal.tsx`: Task 26, then Task 31 by dependency. `frontend/components/Layout/ShellModalCoordinator.tsx`, `frontend/components/Layout/AppShell.tsx`, `frontend/components/Start/StartPage.tsx`, `frontend/src/lib/compile/run-compile-and-download.ts`: Task 27 only.
+- `frontend/src/lib/models/compile-core.ts`: Task 24, then Task 43 by dependency. `frontend/src/lib/export/types.ts`, `frontend/app/api/compile/pdf/route.ts`, `frontend/app/api/compile/docx/route.ts`, `frontend/app/api/compile/markdown/route.ts`, `frontend/app/api/compile/text/route.ts`: Task 24 only (Task 43 edits the cores, not these).
 - `frontend/src/lib/models/modules/manifest.ts`, `frontend/src/lib/models/modules/registry.ts`, `frontend/components/Modules/ModuleSwitchSection.tsx`, `frontend/tests/unit/module-registry.test.ts`, `frontend/tests/moduleSwitchSection.test.tsx`: Task 14 only.
 - `frontend/components/Sidebar/MetadataSidebar.tsx`: Task 21 only. `frontend/components/Sidebar/CitationFieldsSection.tsx`: Task 21, then Task 45. `frontend/components/Sidebar/CitationFieldsEditor.tsx`: Task 20 only.
 - `frontend/src/lib/citations/citation-engine.ts`: Task 32, then Task 34. `frontend/src/lib/models/citations-precheck-core.ts`: Task 28, then Task 44.
 - `frontend/src/lib/export/CompileDocxDocument.ts`: Task 41 only. `frontend/src/lib/export/CompilePDFDocument.tsx`: Task 42 only.
-- `docs/`, `frontend/CLAUDE.md`, root `CLAUDE.md`: Task 50 only.
+- `docs/`, `frontend/CLAUDE.md`, root `CLAUDE.md`, `frontend/components/project-types/ProjectTypeEditorForm.tsx` and `frontend/tests/ProjectTypeEditorForm.test.tsx`: Task 50 only.
 
 **Builds and devices:** `next build`, `pnpm build:native`, `pnpm test:e2e`, Storybook build, Electron packaging and every real-browser or device run happen only from the main checkout, outside the command sandbox, by the lead with the owner. No orchestrator task runs them; a worktree cannot run `next build` or `build:native`. Tasks that write a story check only that it typechecks and lints.
 
@@ -70,12 +70,12 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done:** [x]
 
 ### Task 2: FR-1 (a): licence facts from the upstream files
-**What:** Record the licence facts of both candidates, the bundled style and the bundled locale, copied from upstream files at pinned versions, with the compatibility questions stated as questions for a legal read.
+**What:** Record the licence facts of the candidates, the bundled style and the bundled locale, copied from upstream files at pinned versions, with the compatibility questions stated as questions for a legal read.
 **Files:** `specs/features/citations-at-compile/experiments/task-2.md` (new; this task's results only)
 **Done when:** `experiments/task-2.md` records, for citeproc-js (CPAL-1.0 option only), Hayagriva, the Chicago notes and bibliography style and the en-US locale, the pinned version or commit, the URL, the copied licence text and the attribution each asks for, each as an observed fact with the command or fetch that produced it; the compatibility of CPAL-1.0 and of CC BY-SA 3.0 with FSL-1.1-ALv2 is written as a question for a legal read and not answered; no recommendation is made.
 **Depends on:** 1
 **Estimate:** 3
-**Notes:** LEAD-RUN with owner install: the owner places the pinned package or checkout of each candidate under the scratchpad (an owner step by `!`) before this task; no agent installs anything or edits `package.json`. Network fetches of upstream LICENSE files are done by the lead if the sandbox blocks them.
+**Notes:** Record already made by the lead (see `experiments/task-2.md`); after it the owner dropped citeproc-js as a shipping candidate on 2026-11-14 (reference processor only), so its CPAL-1.0 questions no longer apply to shipping and the licences to decide at Task 9 are Hayagriva's, the style's and the locale's. The tick state is unchanged. LEAD-RUN with owner install: the owner places the pinned package or checkout of each candidate under the scratchpad (an owner step by `!`) before this task; no agent installs anything or edits `package.json`. Network fetches of upstream LICENSE files are done by the lead if the sandbox blocks them.
 **POS:** task_361b66fd
 **Done:** [ ]
 
@@ -89,23 +89,23 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **POS:** task_225c32db
 **Done:** [x]
 
-### Task 4: LEAD-RUN: FR-1 (b) and (f) fidelity run for A and B
-**What:** Run the Task 3 harness for candidate A and candidate B in one note style and one author-date style and record every difference and the formatting, locator and repeated-citation behaviour.
+### Task 4: LEAD-RUN: FR-1 (b) and (f) fidelity run for B against the reference processor
+**What:** Run the Task 3 harness for Hayagriva (B), compared against citeproc-js used as the test-only reference processor, in one note style and one author-date style, and record every difference and the formatting, locator and repeated-citation behaviour.
 **Files:** `specs/features/citations-at-compile/experiments/task-4.md` (new; this task's results only)
-**Done when:** `experiments/task-4.md` records, for each of A and B and each of the two styles, the command, the reference processor and its version, the list of differences verbatim (or "no difference"), whether the output carries formatting runs such as italics, the locator and label handling for each locator type, the repeated-citation behaviour, whether notes are numbered once across a manuscript (OQ-16) and whether the style or locale supplies a bibliography heading (OQ-12), and how an interviewee is mapped; nothing is judged pass or fail by the agent.
+**Done when:** `experiments/task-4.md` records, for B and each of the two styles, the command, the reference processor (citeproc-js, test-only) and its version, the list of differences verbatim (or "no difference"), whether the output carries formatting runs such as italics, the locator and label handling for each locator type, the repeated-citation behaviour, whether notes are numbered once across a manuscript (OQ-16) and whether the style or locale supplies a bibliography heading (OQ-12), and how an interviewee is mapped; nothing is judged pass or fail by the agent.
 **Depends on:** 3
 **Estimate:** 5
-**Notes:** LEAD-RUN with owner install: the owner installs both candidates and, for B, the toolchain, by `!` before this task. The lead runs it and records observations only.
+**Notes:** LEAD-RUN with owner install: the owner installs B and its toolchain by `!` before this task, and citeproc-js in the session scratchpad only as the test-only reference processor (never added to GetWrite, never distributed; owner decision 2026-11-14). A citeproc-js run of its own is the reference output, not a candidate result. The lead runs it and records observations only. This task is not ticked and its substance is unchanged beyond B being the only candidate; an existing lead record `experiments/task-4.md` is left as it stands.
 **POS:** task_8f242109
 **Done:** [ ]
 
 ### Task 5: LEAD-RUN: FR-1 (c) runtime in four runtimes with the network disabled
-**What:** Run each candidate in the Next.js server route, the browser build, the Electron bundle and the Android static export build loaded in the browser, with the network disabled.
+**What:** Run B (Hayagriva compiled to WebAssembly, the only candidate) in the Next.js server route, the browser build, the Electron bundle and the Android static export build loaded in the browser, with the network disabled.
 **Files:** `specs/features/citations-at-compile/experiments/task-5.md` (new; this task's results only)
-**Done when:** `experiments/task-5.md` records for each candidate and each of the four runtimes: ran or failed, the error text on failure, whether any Node-only API or network request was used, and the build commit and time; the Android static export is built with `pnpm build:native` and loaded in the browser build of the export only, and no device run is claimed; probe code is throwaway and removed after the run.
+**Done when:** `experiments/task-5.md` records for B and each of the four runtimes: ran or failed, the error text on failure, whether any Node-only API or network request was used, and the build commit and time; the Android static export is built with `pnpm build:native` and loaded in the browser build of the export only, and no device run is claimed; probe code is throwaway and removed after the run.
 **Depends on:** 1
 **Estimate:** 5
-**Notes:** LEAD-RUN with owner install, outside the sandbox from the main checkout (builds fail in worktrees). The probe is not committed. No agent edits `package.json` or the lockfile.
+**Notes:** LEAD-RUN with owner install, outside the sandbox from the main checkout (builds fail in worktrees). Covers B only: citeproc-js is not a shipping candidate and is not run in these runtimes. The probe is not committed. No agent edits `package.json` or the lockfile.
 **POS:** task_b12420f0
 **Done:** [ ]
 
@@ -120,19 +120,19 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done:** [ ]
 
 ### Task 7: LEAD-RUN: FR-1 (d) bundle size
-**What:** Record the added bytes of each candidate, its bundled style and locale in the server bundle, `frontend/out` and the Electron package.
+**What:** Record the added bytes of B, its bundled style and locale in the server bundle, `frontend/out` and the Electron package.
 **Files:** `specs/features/citations-at-compile/experiments/task-7.md` (new; this task's results only)
-**Done when:** `experiments/task-7.md` records, for each candidate that ran in Task 5 and each of the three artefacts, the baseline and with-candidate byte counts, raw and gzipped, and the commands that measured them; no ceiling is set (OQ-2).
+**Done when:** `experiments/task-7.md` records, for B (if it ran in Task 5) and each of the three artefacts, the baseline and with-candidate byte counts, raw and gzipped, and the commands that measured them; no ceiling is set (OQ-2).
 **Depends on:** 5, 6
 **Estimate:** 3
-**Notes:** LEAD-RUN with owner install, outside the sandbox from the main checkout. A candidate that failed in Task 5 is recorded as "not measured" with the reason.
+**Notes:** LEAD-RUN with owner install, outside the sandbox from the main checkout. If B failed in Task 5 it is recorded as "not measured" with the reason. Covers B only; citeproc-js is not measured.
 **POS:** task_6bb81292
 **Done:** [ ]
 
-### Task 8: FR-1 comparison table, A against B
-**What:** Write the single table comparing A and B on FR-1 (a) to (f) from the recorded task files, with no recommendation.
+### Task 8: FR-1 comparison table for B
+**What:** Write the single table of B on FR-1 (a) to (f) from the recorded task files, with a note naming citeproc-js as the test-only reference processor, and no recommendation.
 **Files:** `specs/features/citations-at-compile/experiments/task-8.md` (new; this task's results only)
-**Done when:** `experiments/task-8.md` holds one table with rows (a) to (f) and columns A and B, each cell copied from or linking to `experiments/task-2.md`, `task-4.md`, `task-5.md`, `task-6.md` or `task-7.md`, a cell with no record reading "not measured"; the licence compatibility questions are repeated as questions; D (hand-written formatter) is named as a fallback only; no cell is judged pass or fail and no engine is recommended.
+**Done when:** `experiments/task-8.md` holds one table with rows (a) to (f) and a B column, each cell copied from or linking to `experiments/task-2.md`, `task-4.md`, `task-5.md`, `task-6.md` or `task-7.md`, a cell with no record reading "not measured"; a reference note states that citeproc-js was used only as the test-only reference processor of (b), is not a shipping candidate (owner decision 2026-11-14) and its licence record in `experiments/task-2.md` is listed for completeness only; the licence compatibility questions for B, the style and the locale are repeated as questions; D (hand-written formatter) is named as a fallback only if B is not accepted; no cell is judged pass or fail and no engine is recommended.
 **Depends on:** 2, 4, 7
 **Estimate:** 2
 **Notes:** Copy values, do not re-derive them; if two records disagree, list both.
@@ -140,9 +140,9 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Done:** [ ]
 
 ### Task 9: OWNER GATE (LEAD-RUN): FR-2 engine and licence decision
-**What:** The owner records the engine and licence decision and the bundle-size judgement.
+**What:** The owner records whether Hayagriva (B, the only candidate) is accepted, the licence decision and the bundle-size judgement.
 **Files:** `specs/features/citations-at-compile/experiments/task-9.md` (new; this task's results only)
-**Done when:** `experiments/task-9.md` contains the line "Decision: <engine, version>, <licence accepted>, <date>, <by>" written by the owner, the owner's bundle-size judgement against the Task 7 figures (OQ-2) and the owner's licence acceptance for the engine, the bundled style and the locale (OQ-1); or it records that neither candidate was accepted, in which case the work stops and returns to the owner before any hand-written formatter (D) is built.
+**Done when:** `experiments/task-9.md` contains the line "Decision: <engine, version>, <licence accepted>, <date>, <by>" written by the owner, the owner's bundle-size judgement against the Task 7 figures (OQ-2) and the owner's licence acceptance for B, the bundled style and the locale (OQ-1); or it records that B was not accepted, in which case the work stops and returns to the owner before any hand-written formatter (D) is built.
 **Depends on:** 8
 **Estimate:** 1
 **Notes:** OWNER GATE, LEAD-RUN. No agent decides the engine, treats the recorded facts as a legal opinion or proceeds on a licence the owner has not accepted. The owner installs the chosen dependency by `!` before Task 32. Every engine-dependent task depends on this one.
@@ -291,13 +291,13 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 
 ### Task 24: Compile citations option and dispatch seam
 **What:** Add the optional citations option to the PDF and DOCX compile requests and a seam in the compile cores that is entered only when the option is present.
-**Files:** `frontend/src/lib/export/types.ts`, `frontend/src/lib/models/compile-core.ts`, `frontend/app/api/compile/pdf/route.ts`, `frontend/app/api/compile/docx/route.ts`, `frontend/tests/unit/compile-citations-option.test.ts` (new)
-**Done when:** Tests first, then green: `CompileBody` gains an optional citations option and its existing fields are unchanged; an absent option runs exactly today's path and the seam is not entered (a spy asserts no call); a present option with a style id from the bundled list is passed to the seam; a style id not in the bundled list, a client-supplied path and an unknown key in the option are refused at the route without echoing client input; the option on a Markdown or text route is refused with a visible message; until the engine pass is registered (Task 43), a present option fails the compile with a message naming that citations are not available, never producing output without citations; `pnpm typecheck`, `pnpm lint`, both Electron typecheck passes and the CLI typecheck are run.
+**Files:** `frontend/src/lib/export/types.ts`, `frontend/src/lib/models/compile-core.ts`, `frontend/app/api/compile/pdf/route.ts`, `frontend/app/api/compile/docx/route.ts`, `frontend/app/api/compile/markdown/route.ts`, `frontend/app/api/compile/text/route.ts`, `frontend/tests/unit/compile-citations-option.test.ts` (new)
+**Done when:** Tests first, then green: `CompileBody` gains an optional citations option and its existing fields are unchanged; an absent option runs exactly today's path and the seam is not entered (a spy asserts no call); a present option with a style id from the bundled list is passed to the seam; a style id not in the bundled list, a client-supplied path and an unknown key in the option are refused at the route without echoing client input; the option on a Markdown or text route is refused with a visible message; a citations option on the Markdown route (the route that calls `compileMarkdownCore`) and on the plain-text route (the route that calls `compileTextCore`) returns HTTP 400 with the message "Citations are available for PDF and DOCX", not HTTP 500, pinned by one route test for each route in `compile-citations-option.test.ts`; until the engine pass is registered (Task 43), a present option fails the compile with a message naming that citations are not available, never producing output without citations; `pnpm typecheck`, `pnpm lint`, both Electron typecheck passes and the CLI typecheck are run.
 **Depends on:** 12, 13, 14
 **Estimate:** 5
-**Notes:** Existing route tests (`compile-pdf-route.test.ts`, `compile-docx-route.test.ts`) must pass unmodified. Only this task edits the routes and `types.ts`; Task 43 edits `compile-core.ts` after it.
+**Notes:** Existing route tests (`compile-pdf-route.test.ts`, `compile-docx-route.test.ts`) must pass unmodified. Only this task edits the routes and `types.ts`; Task 43 edits `compile-core.ts` after it. Reopened 2026-11-14 for the route mapping: the Markdown and plain-text routes are added to Files and the HTTP 400 pins to Done when, and the box stays unticked until the repair passes.
 **POS:** task_a0c9858e
-**Done:** [x]
+**Done:** [ ]
 
 ### Task 25: Byte-identity test extension (FR-10)
 **What:** Extend the byte-identity test with a document carrying a citation to a Source with filled fields, run once per state, with non-vacuity checks and a spy on the new path.
@@ -321,11 +321,11 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 
 ### Task 27: Compile dialog host wiring
 **What:** Pass module state, Start Page availability and the runtime to the dialog and carry the citations option into the compile request.
-**Files:** `frontend/components/Layout/ShellModalCoordinator.tsx`, `frontend/components/Start/StartPage.tsx`, `frontend/src/lib/compile/run-compile-and-download.ts`, `frontend/tests/component/compile-citations-availability.test.tsx` (new)
-**Done when:** Tests first, then green: in the shell the module state comes from `useModuleEnabled`; on a Start Page entry that carries no `config` (encrypted, locked or unusable) the dialog receives unavailable with the reason "Open the project to turn on citations" and no config fetch is made; on the native Android runtime the switch is disabled with the reason "Citations are available for PDF and DOCX"; `run-compile-and-download.ts` sends the citations option only when the dialog's confirmed options carry it, and an absent option leaves the request body byte-identical to today; entity mode shows neither control; the existing compile entry tests (`native-compile-entry-paths.test.tsx`) pass unmodified; `pnpm typecheck` and `pnpm lint` are run.
+**Files:** `frontend/components/Layout/ShellModalCoordinator.tsx`, `frontend/components/Layout/AppShell.tsx`, `frontend/components/Start/StartPage.tsx`, `frontend/src/lib/compile/run-compile-and-download.ts`, `frontend/tests/component/compile-citations-availability.test.tsx` (new)
+**Done when:** Tests first, then green: in the shell the module state comes from `useModuleEnabled`; on a Start Page entry that carries no `config` (encrypted, locked or unusable) the dialog receives unavailable with the reason "Open the project to turn on citations" and no config fetch is made; on the native Android runtime the switch is disabled with the reason "Citations are available for PDF and DOCX"; `run-compile-and-download.ts` sends the citations option only when the dialog's confirmed options carry it, and an absent option leaves the request body byte-identical to today; entity mode shows neither control; the existing compile entry tests (`native-compile-entry-paths.test.tsx`) pass unmodified; AppShell's `onConfirmCompile` (`frontend/components/Layout/AppShell.tsx`, near line 1440) passes the confirmed `citations` option to `runCompileAndDownload`, pinned by a test of the shell route end to end (the dialog is confirmed with citations on, and the `runCompileAndDownload` call carries `citations`), and a test that the Start Page path sends it as well; `pnpm typecheck` and `pnpm lint` are run.
 **Depends on:** 26
 **Estimate:** 3
-**Notes:** Read `StartPage.tsx` near the entry built without `config` (lines 373-387 per the spec) and `ShellModalCoordinator.tsx` first. The in-app PDF path and Android are not claimed.
+**Notes:** Read `StartPage.tsx` near the entry built without `config` (lines 373-387 per the spec) and `ShellModalCoordinator.tsx` first. The in-app PDF path and Android are not claimed. The commit landed without the AppShell wiring (the shell route dropped `citations`), and the box stays unticked until the repair passes.
 **POS:** task_0640fbb4
 **Done:** [ ]
 
@@ -551,11 +551,11 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 
 ### Task 50: Documentation (handbook, feature docs, Code Map, glossary)
 **What:** Write the handbook page with the field lists and the warning, and update the feature docs, the Code Map and the glossary, with no device result.
-**Files:** `docs/user/handbook/write/citations.md` (new), `docs/user/handbook/index.md`, `docs/features/modules.md`, `docs/features/sources.md`, `docs/features/compile-export-defaults.md`, `frontend/CLAUDE.md`, `CLAUDE.md`, `specs/features/citations-at-compile/experiments/task-50.md` (new; this task's results only)
-**Done when:** The handbook page states in plain language the exact steps (switch the module on, enter a Source's fields for each of the four types and their fixed fields, what the style still needs line shows, switch citations on in the compile dialog for PDF or DOCX, the pre-run warning with Proceed and Cancel, the visible marker for an incomplete citation, the bibliography, and that Markdown, plain text and Android show the switch disabled); it claims no Android, paired-device or Word result and no placement result beyond what `experiments/task-36.md` and `experiments/task-37.md` record, and no sentence states an unmeasured result as fact; `docs/features/modules.md`, `docs/features/sources.md`, `docs/features/compile-export-defaults.md`, the `frontend/CLAUDE.md` Code Map and the `CLAUDE.md` glossary (Citation fields, Citations switch, Pre-run citation check) are updated and the module list names `citations` as switchable and off by default; the user-guide conventions (no "verified against" lines) are followed.
+**Files:** `docs/user/handbook/write/citations.md` (new), `docs/user/handbook/index.md`, `frontend/components/project-types/ProjectTypeEditorForm.tsx`, `frontend/tests/ProjectTypeEditorForm.test.tsx`, `docs/features/modules.md`, `docs/features/sources.md`, `docs/features/compile-export-defaults.md`, `frontend/CLAUDE.md`, `CLAUDE.md`, `specs/features/citations-at-compile/experiments/task-50.md` (new; this task's results only)
+**Done when:** The handbook page states in plain language the exact steps (switch the module on, enter a Source's fields for each of the four types and their fixed fields, what the style still needs line shows, switch citations on in the compile dialog for PDF or DOCX, the pre-run warning with Proceed and Cancel, the visible marker for an incomplete citation, the bibliography, and that Markdown, plain text and Android show the switch disabled); it claims no Android, paired-device or Word result and no placement result beyond what `experiments/task-36.md` and `experiments/task-37.md` record, and no sentence states an unmeasured result as fact; `docs/features/modules.md`, `docs/features/sources.md`, `docs/features/compile-export-defaults.md`, the `frontend/CLAUDE.md` Code Map and the `CLAUDE.md` glossary (Citation fields, Citations switch, Pre-run citation check) are updated and the module list names `citations` as switchable and off by default; the user-guide conventions (no "verified against" lines) are followed; the project type editor (`ProjectTypeEditorForm.tsx`, around line 708, which labels each manifest entry `${entry.view?.label ?? entry.id} module` and so reads "citations module" in lower case) shows "Citations" for the `citations` entry via the manifest label (`entry.view?.label ?? entry.label ?? entry.id`), pinned by a test added to `ProjectTypeEditorForm.test.tsx`, with the labels of the existing entries unchanged.
 **Depends on:** 14, 31, 35, 43, 46
 **Estimate:** 5
-**Notes:** Use the `write-user-guide` skill for the handbook page. Only the scribe edits these files until Task 54 adds the results.
+**Notes:** Use the `write-user-guide` skill for the handbook page. Only the scribe edits these files until Task 54 adds the results. Task 14 found the lower-case "citations module" label in `ProjectTypeEditorForm.tsx`; it is placed here (Task 14 is ticked, and no other unstarted UI task touches that form) as a one-line label fix, with the Electron and CLI typechecks not needed (the file is under `frontend/components`).
 **POS:** task_9d0330cd
 **Done:** [ ]
 
@@ -603,11 +603,11 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 - Total tasks: 54
 - Total estimated effort: 211 story points
 - Critical path: Tasks 1 → 3 → 4 → 8 → 9 → 32 → 34 → 38 → 40 → 41 → 43 → 47 → 52 → 54
-- Risks: the engine decision (Task 9) is the owner's and gates Tasks 32 to 46; Task 4 may show neither candidate matches the reference processor or that B does not build (Task 6), which stops the work and returns to the owner before any hand-written formatter is built; Task 36 may show PDF cannot place a note on its page, which waits on the owner's decision at Task 37 and holds only the PDF document (Task 42), not DOCX; Task 11 may show a sidecar writer loses `citationFields`, which Task 17 returns to the owner; Task 33 assumes the engine reads the unmodified CSL style and locale files, and the owner's decision may change the asset format; Task 46's packaging of licence texts is only checked in Tasks 51 and 52 (LEAD-RUN); Tasks 2, 4, 5, 6, 7, 9, 37, 51, 52, 53 and 54 are LEAD-RUN or owner steps and depend on installs, devices and an unsandboxed main checkout, and a DOCX opened in Word, Android and a paired device are claimed only for what Tasks 52 and 53 observe.
+- Risks: the engine decision (Task 9) is the owner's and gates Tasks 32 to 46; Task 4 may show B does not match the reference processor, or Task 6 that B does not build, which stops the work and returns to the owner before any hand-written formatter is built; Task 36 may show PDF cannot place a note on its page, which waits on the owner's decision at Task 37 and holds only the PDF document (Task 42), not DOCX; Task 11 may show a sidecar writer loses `citationFields`, which Task 17 returns to the owner; Task 33 assumes the engine reads the unmodified CSL style and locale files, and the owner's decision may change the asset format; Task 46's packaging of licence texts is only checked in Tasks 51 and 52 (LEAD-RUN); Tasks 2, 4, 5, 6, 7, 9, 37, 51, 52, 53 and 54 are LEAD-RUN or owner steps and depend on installs, devices and an unsandboxed main checkout, and a DOCX opened in Word, Android and a paired device are claimed only for what Tasks 52 and 53 observe.
 
 ## Open Questions
 
-- OQ-1 (from the spec, still open): which engine, A (citeproc-js, CPAL-1.0 only), B (Hayagriva compiled to WebAssembly) or D as a fallback, and whether the licences of the engine, the bundled style and the locale are acceptable. Decided by the owner at Task 9; not answered here.
+- OQ-1 (from the spec, still open): is Hayagriva compiled to WebAssembly (B, the only candidate; citeproc-js was dropped as a shipping candidate on 2026-11-14 and is a test-only reference) accepted, or D as a fallback, and are the licences of B, the bundled style and the locale acceptable. Decided by the owner at Task 9; not answered here.
 - OQ-2 (from the spec, still open): the acceptable bundle-size ceiling. Task 7 records raw and gzipped bytes; the owner judges them at Task 9.
 - OQ-8 (from the spec, still open): what ships if PDF cannot place a note on the page of its reference. Decided by the owner at Task 37 after Task 36 reports; no silent fallback.
 - Task-list question, resolved (Owner, Gate 4, 2026-11-14): the "Decision: ..." line is recorded in `experiments/task-9.md` and Task 54 links it from `experiments.md`; only Task 1 and Task 54 edit `experiments.md`. The spec's FR-2 says the same.

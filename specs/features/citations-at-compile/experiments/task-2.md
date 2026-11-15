@@ -1,5 +1,8 @@
 # Task 2: FR-1 (a) licence facts from the upstream files
 
+> Note (2026-11-14, added after this record): after this record the owner dropped citeproc-js as a shipping candidate (reference processor only, test-only, never added to GetWrite). The CPAL-1.0 questions recorded below for citeproc-js therefore no longer apply to shipping; Hayagriva, the style and the locale remain the licences to be decided at Task 9.
+
+
 Run by the lead on 2026-11-14. Each candidate and each CSL repository was cloned shallow (`git clone --depth 1 https://github.com/<repo>.git`) into the session scratchpad (`…/scratchpad/engines/`), outside the repo. Nothing was installed into GetWrite and no `package.json` was edited. Values below are copied from the files named. This record states facts and questions only; it makes no recommendation and gives no legal opinion.
 
 ## Pinned sources
