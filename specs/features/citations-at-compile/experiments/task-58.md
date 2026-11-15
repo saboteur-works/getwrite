@@ -49,3 +49,7 @@ Not established: why. Candidate causes not discriminated: the WOFF2 decoder's re
 ## Test
 
 `frontend/tests/unit/citations-pdf-font-failure.test.ts` (new, test-only). Green: 11 tests. It asserts the observed outcomes; if a dependency upgrade changes them it will fail and the record should be re-measured. Fix options are not part of this task and go to the lead.
+
+## Observed in the running app (added by the lead, 2026-11-15)
+
+The owner compiled a document containing `He said: "hi"; then left.` to PDF in their locally installed GetWrite and reported that the compile failed. The app version, the surface (desktop or web), and the error text shown were not captured in this record. This is the first observation outside Node tests; it does not change the cause stated above (dependence on the `.woff2` faces), which Task 60 investigates.
