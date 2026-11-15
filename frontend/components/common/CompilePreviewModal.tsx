@@ -26,6 +26,12 @@ import {
 } from "./useSaveDefaultsAction";
 import { readCompileDefaults } from "../../src/lib/api/saved-defaults-read";
 import { setCompileDefaults } from "../../src/lib/api/compile-defaults";
+import {
+  BUNDLED_CITATION_STYLES,
+  CITATIONS_FORMAT_UNAVAILABLE_REASON,
+  CITATIONS_OPEN_PROJECT_REASON,
+  type CompileCitationsOption,
+} from "../../src/lib/models/citations-types";
 
 export type { EntityCompileEntry };
 
@@ -48,7 +54,15 @@ export interface CompileOptions {
   includeHeaders: boolean;
   format: CompileFormat;
   compilationName: string;
+  /** Feature 116 (FR-9): present only when the writer turned citations on. */
+  citations?: CompileCitationsOption;
 }
+
+/**
+ * Whether citations can be turned on at all (FR-23). `unknown` is never
+ * treated as off: it disables the switch with the open-the-project reason.
+ */
+export type CitationsAvailability = "available" | "unavailable" | "unknown";
 
 export interface CompilePreviewModalProps {
   isOpen: boolean;
@@ -80,6 +94,29 @@ export interface CompilePreviewModalProps {
    * See `EntityCompileMode`.
    */
   entityMode?: EntityCompileMode;
+  /**
+   * Feature 116: the Citations module is on. The controls show when this is
+   * true, or when `citationsAvailability` is not "available" (a disabled
+   * switch with its reason). Never shown in entity mode.
+   */
+  citationsModuleEnabled?: boolean;
+  /** Defaults to "available". See `CitationsAvailability`. */
+  citationsAvailability?: CitationsAvailability;
+  /** Native Android runtime: the switch is disabled (FR-19). */
+  isAndroidRuntime?: boolean;
+}
+
+/** Why the citations switch is disabled, or undefined when it is usable. */
+function citationsDisabledReason(
+  availability: CitationsAvailability,
+  format: CompileFormat,
+  isAndroidRuntime: boolean,
+): string | undefined {
+  if (availability !== "available") return CITATIONS_OPEN_PROJECT_REASON;
+  if (isAndroidRuntime || format === "txt" || format === "md") {
+    return CITATIONS_FORMAT_UNAVAILABLE_REASON;
+  }
+  return undefined;
 }
 
 export default function CompilePreviewModal(
@@ -128,6 +165,9 @@ function CompileModalBody(
     resource,
     onConfirm,
     entityMode,
+    citationsModuleEnabled: isCitationsModuleOn = false,
+    citationsAvailability = "available",
+    isAndroidRuntime = false,
     readSavedDefaults = readCompileDefaults,
     saveDefaults = setCompileDefaults,
     shouldIncludeHeaders,
@@ -140,6 +180,22 @@ function CompileModalBody(
   );
   const [format, setFormat] = useState<CompileFormat>("txt");
   const [compilationName, setCompilationName] = useState("");
+  // Off on every open: the body mounts only while open, and the reset below
+  // covers a reopen without unmount.
+  const [isCitationsOn, setIsCitationsOn] = useState(false);
+  const [citationStyleId, setCitationStyleId] = useState(
+    BUNDLED_CITATION_STYLES[0].id,
+  );
+  const shouldShowCitations =
+    !entityMode &&
+    (isCitationsModuleOn || citationsAvailability !== "available");
+  const citationsReason = citationsDisabledReason(
+    citationsAvailability,
+    format,
+    isAndroidRuntime,
+  );
+  const isCitationsActive =
+    shouldShowCitations && isCitationsOn && !citationsReason;
 
   // Reset the choices each time the modal opens. A parent re-render while it
   // is open passes `resources` as a new array; that must not discard the
@@ -150,6 +206,8 @@ function CompileModalBody(
       setCheckedIds(initAllChecked(buildCompileTree(resources)));
       setFormat("txt");
       setCompilationName("");
+      setIsCitationsOn(false);
+      setCitationStyleId(BUNDLED_CITATION_STYLES[0].id);
     }
     wasOpen.current = isOpen;
   }, [isOpen, resources]);
@@ -308,6 +366,54 @@ function CompileModalBody(
         </Select>
       </div>
 
+      {shouldShowCitations ? (
+        <div className="mt-3" data-testid="compile-citations-controls">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="compile-citations"
+              checked={isCitationsActive}
+              disabled={citationsReason !== undefined}
+              onChange={(e) => setIsCitationsOn(e.target.checked)}
+              aria-describedby="compile-citations-status"
+            />
+            <label
+              htmlFor="compile-citations"
+              className="compile-modal-meta-text cursor-pointer select-none"
+            >
+              Citations
+            </label>
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <label
+              htmlFor="compile-citation-style"
+              className="compile-modal-label mb-0"
+            >
+              Citation style
+            </label>
+            <Select
+              id="compile-citation-style"
+              value={citationStyleId}
+              onChange={(e) => setCitationStyleId(e.target.value)}
+              disabled={!isCitationsActive}
+              className="w-auto"
+            >
+              {BUNDLED_CITATION_STYLES.map((style) => (
+                <option key={style.id} value={style.id}>
+                  {style.label}, {style.locale}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <p
+            id="compile-citations-status"
+            role="status"
+            className="compile-modal-meta-text mt-1"
+          >
+            {citationsReason ?? ""}
+          </p>
+        </div>
+      ) : null}
+
       <div className="mt-3">
         <input
           spellCheck={false}
@@ -337,6 +443,9 @@ function CompileModalBody(
               includeHeaders: shouldIncludeHeaders,
               format,
               compilationName,
+              ...(isCitationsActive
+                ? { citations: { styleId: citationStyleId } }
+                : {}),
             });
             onConfirm?.();
             onClose?.();

@@ -94,3 +94,64 @@ describe("CompilePreviewModal saved defaults a11y", () => {
     }
   });
 });
+
+describe("CompilePreviewModal citations controls a11y (Feature 116, Task 26)", () => {
+  function renderCitations(
+    extra: Partial<React.ComponentProps<typeof CompilePreviewModal>>,
+  ): void {
+    render(
+      <CompilePreviewModal
+        isOpen={true}
+        resources={resources}
+        onClose={vi.fn()}
+        {...extra}
+      />,
+    );
+  }
+  const chooseFormat = (value: string): void => {
+    fireEvent.change(screen.getByLabelText(/compile as/i), {
+      target: { value },
+    });
+  };
+
+  it("has no violations with the switch available", async () => {
+    renderCitations({ citationsModuleEnabled: true });
+    chooseFormat("pdf");
+    await runAxe(document.body, ["region"]);
+  });
+
+  it("has no violations with the switch on", async () => {
+    renderCitations({ citationsModuleEnabled: true });
+    chooseFormat("pdf");
+    fireEvent.click(screen.getByRole("checkbox", { name: /citations/i }));
+    await runAxe(document.body, ["region"]);
+  });
+
+  it("has no violations with the switch disabled and a reason shown", async () => {
+    renderCitations({ citationsModuleEnabled: true });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Citations are available for PDF and DOCX",
+    );
+    await runAxe(document.body, ["region"]);
+  });
+
+  it("has no violations when unavailable on the Start Page", async () => {
+    renderCitations({ citationsAvailability: "unavailable" });
+    await runAxe(document.body, ["region"]);
+  });
+
+  it("names the switch and style choice and makes them keyboard reachable", () => {
+    renderCitations({ citationsModuleEnabled: true });
+    chooseFormat("pdf");
+    // The style choice is disabled until the switch is on.
+    fireEvent.click(screen.getByRole("checkbox", { name: /citations/i }));
+    for (const control of [
+      screen.getByRole("checkbox", { name: /citations/i }),
+      screen.getByRole("combobox", { name: /citation style/i }),
+    ]) {
+      expect(control).toHaveProperty("tabIndex", 0);
+      control.focus();
+      expect(control).toHaveFocus();
+    }
+  });
+});
