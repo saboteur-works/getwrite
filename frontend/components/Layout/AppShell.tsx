@@ -1458,6 +1458,10 @@ export default function AppShell({
                         await runCompileAndDownload(compileBody, {
                           format: options.format,
                           compilationName: options.compilationName,
+                          // Feature 116 (FR-9): only when the dialog confirmed it.
+                          ...(options.citations
+                            ? { citations: options.citations }
+                            : {}),
                         });
                       } catch (err) {
                         toastService.error(
