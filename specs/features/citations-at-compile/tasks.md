@@ -710,7 +710,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Found during the Task 52 packaged desktop run on 2026-11-15. Measured by the lead: in the packaged app the Citation fields section of a Source in the owner's throwaway project showed "Error: The citation fields could not be loaded."; that project's `project.json` `id` is `eab25dde-...` and its folder name is `d278b38b-...`; against the packaged standalone server with sharing off, `GET /api/citations/fields?projectId=<folder id>&resourceId=<id>` returned 200 `{"kind":"fields","fields":null}` and the same call with `projectId=<project.json id>` returned 404 `{"error":"The resource was not found."}`. `components/Sidebar/MetadataSidebar.tsx` line 532 passes `projectId={selectedProjectId}` (from `selectSelectedProjectId`) to `CitationFieldsSection`; the compile path (`AppShell.tsx`) passes `getProjectDirectoryId(project.rootPath)`, and `selectActiveProjectDirectoryId` exists in `projectsSlice.ts`; project routes resolve the root as `path.join(resolveProjectsDir(), projectId)`, which takes the directory id. No cause beyond that is written: that `selectedProjectId` is the `project.json` id is inferred, and this task confirms it. Existing tests used projects whose two ids were equal, which is why the suite did not catch this. Task 52 resumes on a rebuilt package after Task 64; Task 52 cannot list 64 under Depends on (the validator allows only lower numbers), so the lead runs 64 first.
 **POS:** task_20fd292d
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 64
