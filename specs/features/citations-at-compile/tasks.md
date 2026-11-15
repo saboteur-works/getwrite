@@ -467,7 +467,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Only this task edits `CompileDocxDocument.ts`. Task 36 records what the renderer can do; read `experiments/task-36.md` first.
 **POS:** task_03e0b91c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 42: PDF document with notes and bibliography
 **What:** Make the PDF document carry each rendered note in the way Task 36 and the owner's Task 37 decision settled, and the bibliography at the end.
@@ -477,7 +477,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Only this task edits `CompilePDFDocument.tsx`. If the owner held PDF back (OQ-8), stop and return to the owner; do not build.
 **POS:** task_f178c6e6
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 43: Wire the citations pass into the PDF and DOCX cores
 **What:** With the option present, read the TipTap sections, run the pass and bibliography and render through the PDF or DOCX document; with it absent, stay on today's plain-text path.
