@@ -607,7 +607,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Grounded in `experiments/task-6.md` (throwaway wrapper, `csl-json` feature, `wasm-opt -Oz`), `experiments/task-5.md` (Turbopack needs the `.wasm` beside the glue, so `build.sh` copies both into one directory) and `experiments/task-9.md` (the decision) and the Owner's vendoring decision of 2026-11-15. The lead runs Tasks 55 and 56 before dispatching Task 32; Task 32 has no Depends on them (the validator allows only lower numbers).
 **POS:** task_3e4f17b2
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 56: LEAD-RUN: build and vendor the engine
 **What:** Build the wrapper crate with the owner-installed toolchain, run its tests, and check in the built engine and the Hayagriva licence files.
