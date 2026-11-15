@@ -35,6 +35,7 @@ import SubtypeSection from "./SubtypeSection";
 import CapturedSection from "./CapturedSection";
 import FolderMetadataSection from "./FolderMetadataSection";
 import SourceAttachmentsSection from "./SourceAttachmentsSection";
+import CitationFieldsSection from "./CitationFieldsSection";
 import { isFieldVisibleForSubtype } from "../../src/lib/models/field-subtype-scope";
 import { isFieldDeprecated } from "../../src/lib/models/field-deprecation";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
@@ -525,6 +526,12 @@ export default function MetadataSidebar({
                   resource={editableResource}
                 />
               </CollapsibleSection>
+            )}
+            {editableResource.type === "source" && selectedProjectId && (
+              <CitationFieldsSection
+                projectId={selectedProjectId}
+                resource={editableResource}
+              />
             )}
             <CapturedSection resource={editableResource} />
             <CollapsibleSection title="Subtype" variant="sidebar">
