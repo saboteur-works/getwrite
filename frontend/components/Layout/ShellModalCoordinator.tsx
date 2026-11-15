@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, type ComponentProps } from "react";
 
 import type {
   AnyResource,
@@ -17,6 +17,9 @@ import ExportPreviewModal, {
   type ExportFormat,
 } from "../common/ExportPreviewModal";
 import CompilePreviewModal from "../common/CompilePreviewModal";
+import { useModuleEnabled } from "../Modules/useModuleEnabled";
+import { CITATIONS_MODULE_ID } from "../../src/lib/models/citations-types";
+import { resolveRuntime } from "../../src/store/transport/runtime";
 import UserPreferencesPage from "../preferences/UserPreferencesPage";
 import AppSettingsDialog from "../AppSettings/AppSettingsDialog";
 import ProjectTypesManagerPage from "../project-types/ProjectTypesManagerPage";
@@ -177,6 +180,24 @@ function onDialogClose(setter: (open: boolean) => void) {
   return (open: boolean) => {
     if (!open) setter(false);
   };
+}
+
+/**
+ * The compile dialog with Feature 116's module state and runtime filled in.
+ * Kept apart so the module hook (which reads the store) runs only while the
+ * dialog is open.
+ */
+function CompileModalWithCitations(
+  props: ComponentProps<typeof CompilePreviewModal>,
+): JSX.Element {
+  const isCitationsModuleOn = useModuleEnabled(CITATIONS_MODULE_ID);
+  return (
+    <CompilePreviewModal
+      {...props}
+      citationsModuleEnabled={isCitationsModuleOn}
+      isAndroidRuntime={resolveRuntime() === "native"}
+    />
+  );
 }
 
 export default function ShellModalCoordinator({
@@ -361,23 +382,25 @@ export default function ShellModalCoordinator({
         }}
       />
 
-      <CompilePreviewModal
-        isOpen={compileModal.open}
-        isSourceEncrypted={isProjectEncrypted}
-        resource={
-          compileModal.resourceId
-            ? resources?.find((r) => r.id === compileModal.resourceId)
-            : undefined
-        }
-        resources={[...(resources ?? []), ...(folders ?? [])]}
-        projectId={projectId}
-        preview={compileModal.preview}
-        onClose={() => setCompileModal({ open: false })}
-        onConfirmCompile={(selectedIds, options) => {
-          void onConfirmCompile(selectedIds, options);
-          setCompileModal({ open: false });
-        }}
-      />
+      {compileModal.open ? (
+        <CompileModalWithCitations
+          isOpen={compileModal.open}
+          isSourceEncrypted={isProjectEncrypted}
+          resource={
+            compileModal.resourceId
+              ? resources?.find((r) => r.id === compileModal.resourceId)
+              : undefined
+          }
+          resources={[...(resources ?? []), ...(folders ?? [])]}
+          projectId={projectId}
+          preview={compileModal.preview}
+          onClose={() => setCompileModal({ open: false })}
+          onConfirmCompile={(selectedIds, options) => {
+            void onConfirmCompile(selectedIds, options);
+            setCompileModal({ open: false });
+          }}
+        />
+      ) : null}
 
       <ProjectSettingsDialog
         open={isProjectSettingsOpen}
