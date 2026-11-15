@@ -397,7 +397,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** The label terms come from the style and locale (Task 33) once it lands; where a style string is needed before then use the Task 32 test string.
 **POS:** task_24831d52
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 35: Required-details table
 **What:** Write the hand-written table of what the bundled style needs for each reference type and test it against the engine's output.
@@ -407,7 +407,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** OQ-4 resolved to a hand-written table read by both the editor and the check. Do not infer required fields from the style file; the table is written by hand.
 **POS:** task_e905b6ff
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 36: FR-12 footnote placement experiment
 **What:** Record what each renderer can do with notes and build a compile of at least 3 resources with at least 20 notes crossing at least 3 page breaks to test placement.
@@ -417,7 +417,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** An in-text style is not checked here. The result returns to the owner at Task 37 whether it passes or fails. Do not edit the production document files in this task; use the renderer's own library calls or a throwaway harness in the test.
 **POS:** task_aa73975e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 37: OWNER DECISION POINT (LEAD-RUN): OQ-8 PDF note placement
 **What:** The owner reads the FR-12 result and, if PDF cannot place notes on the page of their reference, decides what ships.
@@ -517,7 +517,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Hayagriva's Apache-2.0 licence text and NOTICE, vendored at `frontend/src/lib/citations/engine/` (Task 56), are added to the bundled licence texts and to the Licences entry, with the Hayagriva attribution. The licence texts are copied from the upstream files, not written. That the files land in the package and the export is verified in Tasks 51 and 52 (LEAD-RUN), not here. Read `experiments/task-9.md` for any compile-dialog line the owner requires.
 **POS:** task_214fab05
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 47: Security, tenancy and gate pins (FR-21, FR-22)
 **What:** Pin that every route this feature adds or extends validates its boundary, sits in the storage context, is classified by the paired-device gate, fails closed on a locked project and scopes a hosted tenant.
