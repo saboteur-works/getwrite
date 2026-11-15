@@ -617,7 +617,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** LEAD-RUN with the owner-installed toolchain, outside the sandbox from the main checkout. Run before Task 32. This is the first point at which the Task 55 source is compiled.
 **POS:** task_bbd15324
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 56

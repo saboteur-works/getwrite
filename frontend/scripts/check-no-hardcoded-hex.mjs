@@ -51,6 +51,7 @@ const IGNORED_EXTENSIONS = new Set([
   ".md",
   ".txt",
   ".svg",
+  ".wasm",
   ".png",
   ".jpg",
 ]);
