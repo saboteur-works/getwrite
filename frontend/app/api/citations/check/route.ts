@@ -24,6 +24,7 @@ import {
   CitationCheckProjectNotFoundError,
   InvalidCitationCheckResourceIdError,
   InvalidProjectIdCoreError,
+  requiredDetailsCheck,
 } from "../../../../src/lib/models/citations-precheck-core";
 import { withStorageContext } from "../../_tenant/with-storage-context";
 
@@ -75,7 +76,9 @@ async function handlePost(req: NextRequest): Promise<Response> {
     return failure("The resource ids must be a list of ids.", 400);
   }
   try {
-    const result = await checkCitationsCore(projectId, resourceIds);
+    const result = await checkCitationsCore(projectId, resourceIds, {
+      missingDetails: requiredDetailsCheck("chicago-notes-bibliography"),
+    });
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     return mapCoreError(error);

@@ -146,7 +146,56 @@ describe("POST /api/citations/check", () => {
     const res = await POST(send(BODY));
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(OK_RESULT);
-    expect(checkCitationsCore).toHaveBeenCalledWith(PROJECT, [RESOURCE]);
+    expect(checkCitationsCore).toHaveBeenCalledWith(PROJECT, [RESOURCE], {
+      missingDetails: expect.any(Function),
+    });
+  });
+
+  it("reports a citation whose Source lacks a required detail (Task 59, FR-15)", async () => {
+    const SOURCE = "33333333-3333-4333-8333-333333333333";
+    // The fake core applies the missing-detail test the route hands it, as the
+    // real core does for each cited Source, here one with no citation fields.
+    vi.mocked(checkCitationsCore).mockImplementationOnce(
+      async (_projectId, resourceIds, options) => {
+        const missing =
+          options?.missingDetails?.(null, {
+            resourceId: resourceIds[0],
+            sourceId: SOURCE,
+          } as never) ?? [];
+        return {
+          status: "ok",
+          gaps:
+            missing.length > 0
+              ? [
+                  {
+                    kind: "missing-detail",
+                    resourceId: resourceIds[0],
+                    sourceId: SOURCE,
+                    sourceName: "Ledger",
+                    missingDetails: missing,
+                  },
+                ]
+              : [],
+          citationCount: missing.length > 0 ? 1 : 0,
+          incompleteSourceCount: missing.length > 0 ? 1 : 0,
+        };
+      },
+    );
+    const res = await POST(send(BODY));
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as Extract<
+      CitationCheckResult,
+      { status: "ok" }
+    >;
+    expect(json.gaps).toHaveLength(1);
+    expect(json.gaps[0]).toMatchObject({
+      kind: "missing-detail",
+      resourceId: RESOURCE,
+      sourceId: SOURCE,
+    });
+    expect(json.gaps[0].missingDetails).toEqual(
+      expect.arrayContaining(["Authors", "Date"]),
+    );
   });
 
   it("returns a failed result as a distinct failed body, never as ok", async () => {
