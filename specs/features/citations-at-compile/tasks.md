@@ -327,7 +327,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Read `StartPage.tsx` near the entry built without `config` (lines 373-387 per the spec) and `ShellModalCoordinator.tsx` first. The in-app PDF path and Android are not claimed. The commit landed without the AppShell wiring (the shell route dropped `citations`), and the box stays unticked until the repair passes.
 **POS:** task_0640fbb4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Pre-run check core (no engine)
 **What:** Add the typed core that, over the citations of the resources about to be compiled, groups by Source the citations that cannot be rendered in full, taking the "missing detail" test as an injected function.
