@@ -12,7 +12,10 @@
  * - Reads go through the storage adapter (`io.ts`, `sidecar.ts`); `node:*` is
  *   not imported, so a hosted tenant's `StorageContext` scopes the read.
  * - The "missing detail" test is injected (`MissingDetailFn`); the default
- *   reports none, until the engine-dependent table is injected (Task 44).
+ *   reports none. `requiredDetailsCheck(styleId)` builds the injectable test
+ *   from the hand-written table in `citations-required-details.ts`, the same
+ *   `findMissingDetails` the editor line reads (Task 44). A Source with no
+ *   fields has no reference type, so every detail any type needs is reported.
  * - A citation is as `citations-collect.ts` defines it. A Source in Trash and
  *   a purged Source are both "removed": no sidecar under `resources/`.
  * - A read that fails is never an empty result. A listed resource that cannot
@@ -44,6 +47,11 @@ import {
 import { CITATION_FIELDS_KEY } from "./citations-types";
 import type { CitationCheckResult, CitationGap } from "./citations-types";
 import { deriveCitationTargetState } from "./citation-target-state";
+import {
+  findMissingDetails,
+  REQUIRED_DETAILS_BY_STYLE,
+  type RequiredDetailsStyleId,
+} from "./citations-required-details";
 import type { Annotation, MetadataValue } from "./types";
 
 export { InvalidProjectIdCoreError };
@@ -76,6 +84,24 @@ export type MissingDetailFn = (
 export interface CitationCheckOptions {
   /** Defaults to reporting no missing detail. */
   missingDetails?: MissingDetailFn;
+}
+
+/**
+ * The missing-detail test backed by the required-details table of the given
+ * style. Pass it as `options.missingDetails`.
+ *
+ * @param styleId - A bundled style the table covers.
+ */
+export function requiredDetailsCheck(
+  styleId: RequiredDetailsStyleId,
+): MissingDetailFn {
+  return (fields) => {
+    if (fields !== null) return findMissingDetails(styleId, fields);
+    const labels = Object.values(REQUIRED_DETAILS_BY_STYLE[styleId])
+      .flat()
+      .map((detail) => detail.label);
+    return [...new Set(labels)];
+  };
 }
 
 const READ_FAILED_MESSAGE = "The citations could not be read.";

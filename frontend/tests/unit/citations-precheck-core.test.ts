@@ -6,6 +6,7 @@
  * tenant-scoped.
  */
 import fs from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -36,8 +37,10 @@ import {
   checkCitationsCore,
   CitationCheckProjectNotFoundError,
   InvalidCitationCheckResourceIdError,
+  requiredDetailsCheck,
   type MissingDetailFn,
 } from "../../src/lib/models/citations-precheck-core";
+import { findMissingDetails } from "../../src/lib/models/citations-required-details";
 import { TEST_ARGON2_PARAMS } from "../helpers/argon2";
 import { removeDirRetry } from "./helpers/fs-utils";
 
@@ -469,5 +472,110 @@ describe("checkCitationsCore under a StorageContext", () => {
         ),
       ).rejects.toSatisfy((err: unknown) => isLockedAccessError(err));
     });
+  });
+});
+
+describe("required-details table in the check (Task 44, FR-15)", () => {
+  const STYLE = "chicago-notes-bibliography" as const;
+  const check = requiredDetailsCheck(STYLE);
+
+  it("reports the citation, the Source and the missing detail", async () => {
+    const src = await makeSource(projectRoot, "Ledger", bookFields);
+    const doc = await makeText(projectRoot, "Doc", [
+      citingAnnotation(src, "Ledger"),
+    ]);
+    const result = await checkCitationsCore(projectId, [doc], {
+      missingDetails: check,
+    });
+    if (result.status !== "ok") throw new Error("expected ok");
+    expect(result.gaps).toEqual([
+      {
+        kind: "missing-detail",
+        resourceId: doc,
+        sourceId: src,
+        sourceName: "Ledger",
+        missingDetails: ["Authors", "Publisher", "Date"],
+      },
+    ]);
+    expect(result.citationCount).toBe(1);
+    expect(result.incompleteSourceCount).toBe(1);
+  });
+
+  it("does not report a Source that has every required detail", async () => {
+    const src = await makeSource(projectRoot, "Full", {
+      referenceType: "book",
+      title: "Ledger",
+      authors: [{ family: "Doe", given: "Jo" }],
+      publisher: "Press",
+      date: "1999",
+    });
+    const doc = await makeText(projectRoot, "Doc", [
+      citingAnnotation(src, "Full"),
+    ]);
+    const result = await checkCitationsCore(projectId, [doc], {
+      missingDetails: check,
+    });
+    expect(result).toEqual({
+      status: "ok",
+      gaps: [],
+      citationCount: 0,
+      incompleteSourceCount: 0,
+    });
+  });
+
+  it("reports a Source never filled in with every required detail missing", async () => {
+    const src = await makeSource(projectRoot, "Early");
+    const doc = await makeText(projectRoot, "Doc", [
+      citingAnnotation(src, "Early"),
+    ]);
+    const result = await checkCitationsCore(projectId, [doc], {
+      missingDetails: check,
+    });
+    if (result.status !== "ok") throw new Error("expected ok");
+    expect(result.gaps).toHaveLength(1);
+    expect(result.gaps[0]).toMatchObject({
+      kind: "missing-detail",
+      sourceId: src,
+      missingDetails: [
+        "Authors",
+        "Title",
+        "Publisher",
+        "Date",
+        "Journal",
+        "Website",
+        "URL",
+        "Interviewee",
+        "Interviewer",
+      ],
+    });
+  });
+
+  it("reads the same table as the editor line", () => {
+    const fields = { referenceType: "book", title: "Ledger" } as const;
+    expect(check(fields, {} as never)).toEqual(
+      findMissingDetails(STYLE, fields),
+    );
+    const source = readFileSync(
+      path.join(__dirname, "../../src/lib/models/citations-precheck-core.ts"),
+      "utf8",
+    );
+    expect(source).toMatch(
+      /import\s*\{[^}]*\bfindMissingDetails\b[^}]*\}\s*from\s*"\.\/citations-required-details"/,
+    );
+  });
+
+  // Task 45 (CitationFieldsSection.tsx) is built in parallel; un-skip once it
+  // has merged and imports `findMissingDetails` from the shared module.
+  it.skip("the editor line source imports findMissingDetails from the same module", () => {
+    const editor = readFileSync(
+      path.join(
+        __dirname,
+        "../../components/Sidebar/CitationFieldsSection.tsx",
+      ),
+      "utf8",
+    );
+    expect(editor).toMatch(
+      /import\s*\{[^}]*\bfindMissingDetails\b[^}]*\}\s*from\s*"[^"]*citations-required-details"/,
+    );
   });
 });
