@@ -267,7 +267,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Model on `SourceAttachmentsSection.tsx`, which already ignores the Sources switch. Only this task edits `MetadataSidebar.tsx`.
 **POS:** task_76c25905
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Citation collection and locator resolution (pure)
 **What:** Collect the citations of a resource from its annotations under the FR-11 definition and resolve each citation's locator.
