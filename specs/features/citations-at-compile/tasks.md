@@ -237,7 +237,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Follow `frontend/app/api/claims/route.ts` and `frontend/tests/unit/claims-route.test.ts`. No native backend is added here (Android is not claimed; see Open Questions).
 **POS:** task_2df366de
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Citation fields client
 **What:** Add the client function that calls the route and returns the typed result.
@@ -307,7 +307,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read the existing file and `experiments/task-12.md` first. A failing pin is a finding returned to the owner, not a fix made here.
 **POS:** task_f7609bf9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Compile dialog switch and style choice
 **What:** Add the citations switch and the style choice to the compile dialog as props-driven controls, shown only while the module is on and the dialog is not in entity mode.
@@ -317,7 +317,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read `CompilePreviewModal.tsx` and its stories first. Only this task and Task 31 edit the file. The host wiring of the props is Task 27.
 **POS:** task_0e154f0f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Compile dialog host wiring
 **What:** Pass module state, Start Page availability and the runtime to the dialog and carry the citations option into the compile request.
@@ -347,7 +347,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Follow `frontend/app/api/claims/route.ts`. No native backend (Android is not claimed).
 **POS:** task_8ff07a6f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Pre-run warning dialog component
 **What:** Build the presentational warning dialog grouped by Source with a summary, Proceed and Cancel.
