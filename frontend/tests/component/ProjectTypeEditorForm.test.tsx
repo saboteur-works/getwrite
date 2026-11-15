@@ -543,7 +543,9 @@ describe("ProjectTypeEditorForm module declaration (Feature 108, FR-5)", () => {
   it("shows one labelled on/off/not-set control per manifest module", () => {
     render(<Harness initial={base} modulesEditable />);
     for (const entry of MODULE_MANIFEST) {
-      const group = groupFor(`${entry.view?.label ?? entry.id} module`);
+      const group = groupFor(
+        `${entry.view?.label ?? entry.label ?? entry.id} module`,
+      );
       const radios = within(group).getAllByRole("radio");
       expect(
         radios.map((r: HTMLElement) => r.parentElement?.textContent),
@@ -552,6 +554,21 @@ describe("ProjectTypeEditorForm module declaration (Feature 108, FR-5)", () => {
         within(group).getByRole("radio", { name: "Not set" }),
       ).toBeChecked();
     }
+  });
+
+  it("labels each module by its manifest label: Citations for citations, the view labels unchanged (Feature 116, Task 50)", () => {
+    render(<Harness initial={base} modulesEditable />);
+    expect(groupFor("Citations module")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "citations module" }),
+    ).toBeNull();
+    expect(groupFor("Sources module")).toBeInTheDocument();
+    expect(groupFor("Claims module")).toBeInTheDocument();
+    expect(
+      groupFor(
+        `${MODULE_MANIFEST.find((e) => e.id === "folklore")?.view?.label} module`,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("reflects a declared state and writes the choice into the definition", () => {
@@ -577,7 +594,7 @@ describe("ProjectTypeEditorForm module declaration (Feature 108, FR-5)", () => {
     render(<Harness initial={base} modulesEditable />);
     const names = MODULE_MANIFEST.map((entry) => {
       const radios = within(
-        groupFor(`${entry.view?.label ?? entry.id} module`),
+        groupFor(`${entry.view?.label ?? entry.label ?? entry.id} module`),
       ).getAllByRole("radio");
       const group = new Set(
         radios.map((r: HTMLElement) => r.getAttribute("name")),
@@ -597,14 +614,14 @@ describe("ProjectTypeEditorForm module declaration (Feature 108, FR-5)", () => {
     const { unmount } = render(<Harness initial={base} modulesEditable />);
     const first = MODULE_MANIFEST[0];
     const radio = within(
-      groupFor(`${first.view?.label ?? first.id} module`),
+      groupFor(`${first.view?.label ?? first.label ?? first.id} module`),
     ).getAllByRole("radio")[0];
     expect(radio.closest("label")).toHaveClass("text-gw-primary");
     expect(radio).toHaveClass("accent-current");
     unmount();
     render(<Harness initial={base} modulesEditable={false} />);
     const line = screen.getByText(
-      new RegExp(`${first.view?.label ?? first.id} module:`),
+      new RegExp(`${first.view?.label ?? first.label ?? first.id} module:`),
     );
     expect(line).toHaveClass("text-gw-primary");
   });

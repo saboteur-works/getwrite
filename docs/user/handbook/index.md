@@ -25,6 +25,7 @@ summary: Contents of the GetWrite handbook, grouped by part.
 - [Editor Appearance](write/editor-appearance.md) — What sets the look of the writing surface and the body text and heading settings you can change in a project.
 - [Annotations](write/annotations.md) — Attach private notes to passages of a document, edit or delete them, re-attach detached ones, and find them in search.
 - [Claims](write/claims.md) — Mark a statement in your text as a claim, record whether you have checked it, tie it to a Source, and review every claim in the project.
+- [Citations](write/citations.md) — Describe each Source once, then compile a PDF or DOCX with numbered notes and a bibliography built from your citations.
 - [Search](write/search.md) — Open search with a keyboard shortcut and jump to a document by name.
 
 ## Story

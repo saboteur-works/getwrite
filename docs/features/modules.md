@@ -1,6 +1,6 @@
 # Modules and the contribution seam (developer)
 
-Feature 103, first cut. Spec: [specs/features/sources-module-seam.md](../../specs/features/sources-module-seam.md) (FR-1 to FR-14). Measurements: [experiments.md](../../specs/features/sources-module-seam/experiments.md). The modules built on it are Sources ([sources.md](sources.md)), from Feature 108 Claims ([claims.md](claims.md)), and from Feature 110 Narratives (id `folklore`, below).
+Feature 103, first cut. Spec: [specs/features/sources-module-seam.md](../../specs/features/sources-module-seam.md) (FR-1 to FR-14). Measurements: [experiments.md](../../specs/features/sources-module-seam/experiments.md). The modules built on it are Sources ([sources.md](sources.md)), from Feature 108 Claims ([claims.md](claims.md)), from Feature 110 Narratives (id `folklore`, below), and from Feature 116 Citations (id `citations`, below).
 
 A module is a first-party unit that adds interface or background work to the app and can be switched on or off per project. The registry is the single place a module declares what it adds. It is internal: modules are plain objects declared in this repository, collected at build time. It is not a plugin system.
 
@@ -12,8 +12,8 @@ A module is a first-party unit that adds interface or background work to the app
 
 ## Model registry
 
-- `frontend/src/lib/models/modules/manifest.ts`: `MODULE_MANIFEST`, the modules this build ships. Three entries: `{ id: "sources", view: { id: "sources", label: "Sources" }, indexSteps: [] }`, `{ id: "claims", view: { id: "claims", label: "Claims" }, defaultEnabled: false, indexSteps: [] }` (Feature 108) and the Narratives entry (Feature 110): id `folklore`, view `{ id: "folklore", label: "Narratives" }` (`FOLKLORE_MODULE_ID` and `FOLKLORE_VIEW_LABEL` in `folklore-types.ts`), `defaultEnabled: false`, `indexSteps: []`.
-- `frontend/src/lib/models/modules/registry.ts`: `createModuleRegistry(modules)` (a duplicate id throws), `ModuleManifestEntry` (`id`, optional `view`, `indexSteps`, optional `defaultEnabled`), `ModuleIndexStep` (`{ id, run(projectRoot) }`), `isModuleEnabled(config, id, manifest?)`, and the registry's `views()`, `enabledViews(config)` and `indexSteps(config)`.
+- `frontend/src/lib/models/modules/manifest.ts`: `MODULE_MANIFEST`, the modules this build ships. Four entries: `{ id: "sources", view: { id: "sources", label: "Sources" }, indexSteps: [] }`, `{ id: "claims", view: { id: "claims", label: "Claims" }, defaultEnabled: false, indexSteps: [] }` (Feature 108) and the Narratives entry (Feature 110): id `folklore`, view `{ id: "folklore", label: "Narratives" }` (`FOLKLORE_MODULE_ID` and `FOLKLORE_VIEW_LABEL` in `folklore-types.ts`), `defaultEnabled: false`, `indexSteps: []`; and the Citations entry (Feature 116): id `citations` (`CITATIONS_MODULE_ID` in `citations-types.ts`), no `view`, `label: "Citations"` (`CITATIONS_MODULE_LABEL`), `defaultEnabled: false`, `indexSteps: []`.
+- `frontend/src/lib/models/modules/registry.ts`: `createModuleRegistry(modules)` (a duplicate id throws), `ModuleManifestEntry` (`id`, optional `view`, optional `label`, `indexSteps`, optional `defaultEnabled`), `ModuleIndexStep` (`{ id, run(projectRoot) }`), `isModuleEnabled(config, id, manifest?)`, and the registry's `views()`, `enabledViews(config)` and `indexSteps(config)`.
 - The model-side entry has no field for resource types, Trash kinds, importers, permissions or project-type keys.
 
 ## UI registry
@@ -38,7 +38,7 @@ The Trash tab is registered as a view slot with `alwaysEnabled: true` (id `trash
 
 - `ProjectConfig.modules?: Record<string, boolean>` (`types.ts`; `z.record(z.string(), z.boolean()).optional()` in `ProjectConfigSchema`). `config.features` is unchanged.
 - An id this build does not know is kept on write, so a flag written by a newer build survives.
-- An explicit entry wins: `true` is on and `false` is off. With no entry, the module's default applies (Feature 108). The default is its manifest entry's `defaultEnabled`: `false` makes the module off until the writer turns it on, and an entry that omits the field is on. Today `claims` and `folklore` set `defaultEnabled: false`, so both are switchable and off by default. Sources, and an id this build does not know, are on when absent, as before; a flag written by a newer build for an unknown id still survives. This replaces "an absent entry means on" for the claims module only.
+- An explicit entry wins: `true` is on and `false` is off. With no entry, the module's default applies (Feature 108). The default is its manifest entry's `defaultEnabled`: `false` makes the module off until the writer turns it on, and an entry that omits the field is on. Today `claims`, `folklore` and `citations` set `defaultEnabled: false`, so all three are switchable and off by default. Sources, and an id this build does not know, are on when absent, as before; a flag written by a newer build for an unknown id still survives. This replaces "an absent entry means on" for the claims module only.
 - One lookup, `moduleDefaultEnabled` in `registry.ts`, is used by `isModuleEnabled`, and every reader reaches the decision through `isModuleEnabled`: the registry's `enabledViews` and `indexSteps`, `useModuleEnabled`, `useModuleViews`, the Project Settings > Modules screen and the annotations panel's `useModuleSwitch`. `registry.ts` imports `MODULE_MANIFEST` as a value and `manifest.ts` imports the registry types only, so there is no runtime cycle (`core-import-graph.test.ts`).
 - Nothing writes a `claims` or `folklore` entry automatically. A project type may declare entries that are written once at creation (see [project-types.md](project-types.md)). The Modules screen shows only on or off, not whether off is the default or the writer's choice.
 - Switching a module off keeps its data and stops its background indexing. It does not delete anything.
@@ -48,7 +48,7 @@ The Trash tab is registered as a view slot with `alwaysEnabled: true` (id `trash
 - Core `frontend/src/lib/models/module-config-core.ts`: `setModuleEnabledCore({ projectId, moduleId, enabled })`. Validates before any lock (module id format `^[a-z][a-z0-9-]{0,63}$`, boolean `enabled`, no other field; refusal texts in `MODULE_SWITCH_MESSAGES`), then a read-modify-write of `project.json` in `withMetaLock` through `updateProjectJson`. Only the one `config.modules` entry changes: no `updatedAt`, no `metadataRevision`. The id is checked for format only, not against the registry. Locked-access errors propagate.
 - Route `PUT /api/project/modules` (`app/api/project/modules/route.ts`), in `withStorageContext`. Body `{ projectId, moduleId, enabled }`, returns `{ modules }`; validation errors are 400.
 - Client `lib/api/modules.ts` `setModuleEnabled` on `createTransport`; native `store/transport/native-modules-backend.ts` + `.web-stub.ts`.
-- UI: Project Settings > **Modules** tab, `ModuleSwitchSection.tsx`, one switch per manifest entry. A save replaces the project's stored `modules` map (`setProjectModules`); a failed save is shown and the switch keeps the writer's choice.
+- UI: Project Settings > **Modules** tab, `ModuleSwitchSection.tsx`, one switch per manifest entry, labelled `view?.label ?? label ?? id` (so "Enable Citations"). The project type editor (`project-types/ProjectTypeEditorForm.tsx`) labels each module's on, off or not-set control with the same expression plus " module" ("Citations module"); a test in `tests/component/ProjectTypeEditorForm.test.tsx` pins it. A save replaces the project's stored `modules` map (`setProjectModules`); a failed save is shown and the switch keeps the writer's choice.
 - Not limited on a paired device: the write overwrites one config entry and deletes no writer data.
 
 ## Index steps
@@ -71,6 +71,15 @@ Module id `folklore`, view label "Narratives", `defaultEnabled: false`, no index
 - Selection: the last picked narrative and ticked variants are kept per device and project in `localStorage` (`src/lib/folklore-selection-preference.ts`), not in `project.json`.
 - `COMPARISON_COLUMN_LIMIT` (`components/Folklore/comparisonLimit.ts`) is `3`, the owner's pick from the long-text run in `specs/features/folklore-variants/experiments/task-28.md` (that run used the earlier 12rem column floor; the floor is now `minmax(16.125rem, 1fr)`, 258 px column and 240 px text, from Task 37). A selection over the limit is refused with a message that states it; the comparison shows no columns. Ticking variants in the list is not capped. Device run on a Pixel 7 Pro (Android 17, WebView 157, `experiments/task-30.md`): the phone message at 411 CSS px, Compare and two columns at 850 CSS px. Not run: paired device, other Android devices, tablets, audio-only variants, encrypted projects, TalkBack, long texts on a device, three columns on a device.
 - Index: none. Compile, export, goals and `rebuildDerivedIndexes` treat a variant as any other Source (pinned by the Task 21 tests).
+
+## Citations module (Feature 116)
+
+Module id `citations`, label "Citations", `defaultEnabled: false`, no `view`, no index step, no slot in `uiRegistry.ts`. Spec: [specs/features/citations-at-compile.md](../../specs/features/citations-at-compile.md). Measurements: `specs/features/citations-at-compile/experiments/`. Writer page: `docs/user/handbook/write/citations.md`.
+
+- Switchable and off by default, independent of the Sources module (`tests/component/citations-sources-off.test.tsx`). Off hides only the **Citation fields** sidebar section and the compile switch; it reads, rewrites and deletes nothing (`tests/unit/citations-module-off.test.ts`).
+- The module's data is one top-level key, `citationFields`, on a Source's sidecar (`citations-fields-core.ts`); it is not in the metadata schema or `userMetadata`. Citations themselves stay ordinary annotations with a `target`.
+- Because the entry has no `view`, `registry.views()` and `enabledViews` omit it, and the Modules screen reads the manifest `label`.
+- Other pieces and files are in the `frontend/CLAUDE.md` Code Map and in [sources.md](sources.md) (citation fields) and [compile-export-defaults.md](compile-export-defaults.md) (the compile switch).
 
 ## Arrangements hook (Feature 109)
 
