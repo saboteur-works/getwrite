@@ -700,7 +700,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Owner decision (Owner, Gate 5, 2026-11-15), after the Task 43, 47, 49 and 50 run. Measured: the routes map only `InvalidProjectIdCoreError` and `CitationsUnavailableError`; a `CitationsCompileError` is not caught and the handler rejects with no JSON; only the FR-17 unplaced case was measured, as a rejection containing "not in the document". Which other core failures are writer-correctable is for the task to read from `compile-core.ts`; none is assumed here. The native (Android) compile path is not changed. Tasks 51 to 54 (LEAD-RUN) come after this task; they cannot list 63 under Depends on (the validator allows only lower numbers), so the lead runs 63 first.
 **POS:** task_8229a245
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 63
