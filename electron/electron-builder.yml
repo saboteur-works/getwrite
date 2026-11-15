@@ -39,6 +39,14 @@ extraResources:
   # standalone server's public/.
   - from: ../THIRD_PARTY_SPELLCHECK.txt
     to: THIRD_PARTY_SPELLCHECK.txt
+  # Licence texts for the citation engine (Hayagriva: Apache-2.0 and NOTICE),
+  # the bundled Chicago style and the en-US locale (Feature 116), at
+  # Resources/licences/. The same file is under frontend/public/licences/,
+  # which the static export carries.
+  - from: ../frontend/public/licences
+    to: licences
+    filter:
+      - "**/*"
   # Ships the forked Scrivener import worker bundle outside app.asar, since
   # utilityProcess.fork cannot fork a script packed inside an asar archive
   # (the same reason the Next standalone server above ships as extraResources
