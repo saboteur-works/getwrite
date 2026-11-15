@@ -6,8 +6,8 @@
  * Part (a) reads the `glyf` glyph object and the `loca` offsets fontkit
  * computes at the `_addGlyph` site (fontkit/dist/module.mjs:12177), from the
  * `.woff2` and the `.woff` of each face. Part (b) decodes each `.woff2` to
- * TrueType with fontTools (Python, not fontkit), if one is already on the
- * system, and subsets that with fontkit. Outcomes are logged with `PROBE` and
+ * TrueType with fontTools (Python, not fontkit), if a Python is named by
+ * `GETWRITE_FONTTOOLS_PYTHON`, and subsets that with fontkit. Outcomes are logged with `PROBE` and
  * recorded in `specs/features/citations-at-compile/experiments/task-60.md`.
  * No fix here; no dependency is added (fontkit is reached as in Task 58).
  */
@@ -271,25 +271,14 @@ function listDir(dir: string): string[] {
 
 const DECODER_NAME = /woff2|wawoff|fonteditor|ttf2|fontverter|opentype|brotli/i;
 
-/** Python interpreters to try, by path; each is only asked to import fontTools. */
+/**
+ * The one Python interpreter to try, named by the opt-in environment variable
+ * `GETWRITE_FONTTOOLS_PYTHON`. Nothing else is searched.
+ */
 function pythonCandidates(): string[] {
-  const home = os.homedir();
-  const out = new Set<string>();
-  for (const name of ["python3", "python"]) {
-    const found = which(name);
-    if (found !== "not found") out.add(found);
-  }
-  for (const dir of [
-    path.join(home, ".pyenv/versions"),
-    path.join(home, "miniconda3/envs"),
-    path.join(home, "anaconda3/envs"),
-  ]) {
-    for (const v of listDir(dir)) out.add(path.join(dir, v, "bin/python"));
-  }
-  out.add(path.join(home, "miniconda3/bin/python"));
-  out.add("/opt/homebrew/bin/python3");
-  out.add("/usr/bin/python3");
-  return [...out].filter((p) => fsSync.existsSync(p));
+  const named = process.env.GETWRITE_FONTTOOLS_PYTHON;
+  if (named === undefined || named === "") return [];
+  return fsSync.existsSync(named) ? [named] : [];
 }
 
 const CAN_DECODE =
@@ -307,7 +296,7 @@ function findFontTools(): { decoder: Decoder | null; lines: string[] } {
     const r = spawnSync(python, ["-I", "-c", CAN_DECODE], { encoding: "utf8" });
     const isOk = r.status === 0;
     lines.push(
-      `${python}: ${isOk ? `fontTools ${r.stdout.trim()} + brotli` : "no fontTools+brotli"}`,
+      `GETWRITE_FONTTOOLS_PYTHON: ${isOk ? `fontTools ${r.stdout.trim()} + brotli` : "no fontTools+brotli"}`,
     );
     if (isOk && decoder === null)
       decoder = { python, fontToolsVersion: r.stdout.trim() };
@@ -360,8 +349,8 @@ describe("Task 60 (b): woff2 decoded to TrueType by an independent decoder, then
     probe(
       "independent decoder",
       decoder
-        ? `${decoder.python} (fontTools ${decoder.fontToolsVersion})`
-        : "none found; (b) not run",
+        ? `GETWRITE_FONTTOOLS_PYTHON (fontTools ${decoder.fontToolsVersion})`
+        : "NOT RUN: GETWRITE_FONTTOOLS_PYTHON not set or unusable",
     );
     expect(Array.isArray(lines)).toBe(true);
   });
@@ -369,7 +358,7 @@ describe("Task 60 (b): woff2 decoded to TrueType by an independent decoder, then
   it("subsets the fontTools-decoded TrueType of each face for the four glyph sets", async () => {
     const { decoder } = findFontTools();
     if (!decoder) {
-      probe("decode", "NOT RUN: no independent decoder present");
+      probe("decode", "NOT RUN: GETWRITE_FONTTOOLS_PYTHON not set or unusable");
       return;
     }
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-woff2-ttf-"));

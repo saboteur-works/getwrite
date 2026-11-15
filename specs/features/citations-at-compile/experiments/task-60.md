@@ -47,13 +47,13 @@ Whole tables, test `compares whole loca and glyf tables for <face>` (lines `PROB
 
 ## (b) Independent decoder
 
-**Looked for, and where** (test `records what was looked for and where` and `finds a Python with fontTools and brotli`, lines `PROBE search ...`, `which ...`, `python candidate`):
+**Looked for, and where** (test `records what was looked for and where` and `finds a Python with fontTools and brotli`, lines `PROBE search ...`, `which ...`):
 
 - `node_modules/.pnpm` at the repo root, names matching `woff2|wawoff|fonteditor|ttf2|fontverter|opentype|brotli`: only `brotli@1.3.3`, which is a brotli codec, not a WOFF2 decoder (the WOFF2 table transform is what is in question), so it is not independent. `frontend/`, `electron/` and `cli/` `node_modules` top level, same pattern: nothing.
 - `which woff2_decompress woff2_compress fonttools pyftsubset ttx`: all not found.
-- Python interpreters, each asked to import `fontTools.ttLib.woff2` and `brotli`: `python3` and `python` on PATH (pyenv shims), `~/.pyenv/versions/*` (3.10.0, 3.11.14, 3.14.0, url-shortener), `~/miniconda3/bin/python`, `~/miniconda3/envs/*` (kohya, pytorch-learning, repo-analysis, shintai), `/opt/homebrew/bin/python3`, `/usr/bin/python3`. Only `~/miniconda3/envs/shintai/bin/python` has both (fontTools 4.63.0 + brotli). `pytorch-learning` has fontTools 4.61.1 but no brotli. This interpreter belongs to an existing conda environment on the machine; nothing was installed into it and it was run with `-I` against the four `.woff2` files.
+- Python: a local Python with fontTools 4.63.0 and brotli, run with `-I`, was the only one used; nothing was installed for it. The test finds it only through the environment variable `GETWRITE_FONTTOOLS_PYTHON` and searches nowhere else.
 
-**Independent decoder found: fontTools' WOFF2 reader** (`fontTools.ttLib.TTFont(...woff2)` with `flavor = None`, then `save`), which is not fontkit and was not written here. The test runs it through `child_process` and skips the part with a `NOT RUN` probe line if no such Python is present. Test: `subsets the fontTools-decoded TrueType of each face for the four glyph sets`. Results, for each of the four faces:
+**Independent decoder found: fontTools' WOFF2 reader** (`fontTools.ttLib.TTFont(...woff2)` with `flavor = None`, then `save`), which is not fontkit and was not written here. The test runs it through `child_process` and skips the part with a `NOT RUN` probe line if `GETWRITE_FONTTOOLS_PYTHON` is not set. Test: `subsets the fontTools-decoded TrueType of each face for the four glyph sets`. Results, for each of the four faces:
 
 - The decoded TrueType loads in fontkit with 263 glyphs (Serif) or 270 (Sans), as the `.woff` does; its `loca` has no backwards step (`ttf loca backwards steps=0`).
 - `"`, `:` and `;` in the decoded TrueType: composite, same component glyph ids as in (a), `loca` length 24, `readBuffer` length 24, component `pos` 12 and 18, patch in bounds (lines `addGlyph[decoded ttf]`).
@@ -89,4 +89,4 @@ Fix options are not part of this task and go to the lead and the owner.
 
 ## Test
 
-`frontend/tests/unit/citations-pdf-font-root-cause.test.ts` (new, test-only). Green: 11 tests. It asserts the observed values, so a dependency upgrade that changes them makes it fail and the record should be re-measured. The fontTools part depends on a Python with fontTools and brotli being present on the machine (here `~/miniconda3/envs/shintai`) and logs `NOT RUN` and returns if there is none. `pnpm typecheck` passes; `pnpm lint` reports 0 errors (459 warnings repo-wide, none in this file; ESLint on the file alone is clean).
+`frontend/tests/unit/citations-pdf-font-root-cause.test.ts` (new, test-only). Green: 11 tests. It asserts the observed values, so a dependency upgrade that changes them makes it fail and the record should be re-measured. The fontTools part depends on `GETWRITE_FONTTOOLS_PYTHON` naming a local Python with fontTools and brotli, and logs `NOT RUN` and returns if it is unset. `pnpm typecheck` passes; `pnpm lint` reports 0 errors (459 warnings repo-wide, none in this file; ESLint on the file alone is clean).
