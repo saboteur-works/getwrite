@@ -87,7 +87,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Interviewee maps to `author` (INFERRED in the spec); the fixture includes an interview so Task 4 checks it. The script imports candidates dynamically so it runs without installing anything. Nothing here is a fidelity result.
 **POS:** task_225c32db
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: LEAD-RUN: FR-1 (b) and (f) fidelity run for A and B
 **What:** Run the Task 3 harness for candidate A and candidate B in one note style and one author-date style and record every difference and the formatting, locator and repeated-citation behaviour.
@@ -197,7 +197,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** FR-3 requires the inventory (Task 10) before a behaviour change merges, hence the dependency. If Task 10 shows another reader needs a change, stop and return to the owner. Only this task edits these module files.
 **POS:** task_8c108254
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Citation fields validation (pure)
 **What:** Validate a `citationFields` value: reference type, per-type fields, people, dates, text limits, unknown keys.
@@ -207,7 +207,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Pure function, no I/O. Validates before any lock or write; Task 17 calls it first.
 **POS:** task_2e69554c
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: CSL-JSON mapper (pure)
 **What:** Map a validated `citationFields` value to a CSL-JSON item with no engine, React or Redux import.
@@ -217,7 +217,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** The interviewee mapping is INFERRED in the spec; if Task 4 recorded otherwise, stop and return to the owner. The mapper is testable before the engine is chosen.
 **POS:** task_d11c27c9
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Citation fields core (read and write)
 **What:** Add the one core function that validates and writes a Source's `citationFields` through `mutateSidecar` touching only its own key, and a read that writes nothing.
@@ -277,7 +277,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Pure over annotation arrays passed in. Read `frontend/src/lib/models/annotation-validation.ts` and `frontend/src/lib/models/citation-target-state.ts` for the shapes. This task fixes the locator selection; the label passing to the engine is Task 34.
 **POS:** task_a4050a35
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Anchor placement (pure)
 **What:** Compute where each citation's note or in-text reference sits in a TipTap document: at the end of the `annotation` mark range, after trailing punctuation for a note style.
@@ -357,7 +357,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Presentational, data by props. Read the shared `Dialog` source and stories before using any prop.
 **POS:** task_a8e08249
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Warning flow in the compile dialog
 **What:** Run the pre-run check when the switch is on, show the warning when there are gaps, and start the compile only on Proceed.
