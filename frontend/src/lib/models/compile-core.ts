@@ -30,28 +30,57 @@
  * well-formed UUID — the route maps that to `respondInvalidProjectId()`;
  * the native backend lets it propagate.
  */
+import nodeUrl from "node:url";
+import { readFile } from "node:fs/promises";
 import React from "react";
-import type { DocumentProps } from "@react-pdf/renderer";
+import { Page, type DocumentProps } from "@react-pdf/renderer";
 import {
   CompilePDFDocument,
   registerIBMPlexFonts,
+  type CompilePDFDocumentProps,
+  type PdfNote,
+  type PdfNotePlacement,
 } from "../export/CompilePDFDocument";
 import { renderPdfOnServer, type PdfRenderer } from "../export/pdf-render";
 import { CompilePDFFallbackDocument } from "../export/CompilePDFFallbackDocument";
-import { buildDocxDocument, Packer } from "../export/CompileDocxDocument";
+import {
+  buildDocxDocument,
+  Packer,
+  type DocxCitationsInput,
+} from "../export/CompileDocxDocument";
 import { compileToText, type CompileSection } from "../export/compile-text";
 import {
   compileToMarkdown,
   type MarkdownSection,
 } from "../export/compile-markdown";
-import { loadTextSections } from "../export/section-loader";
+import {
+  loadCitationSections,
+  loadTextSections,
+  readCitedSources,
+  type CitationSectionInput,
+} from "../export/section-loader";
 import { slugify } from "../utils";
+import { tiptapToPlainText } from "../tiptap-text";
 import type { CompileBody, MarkdownConstructWarning } from "../export/types";
+import {
+  initCitationEngine,
+  type CitationRun,
+} from "../citations/citation-engine";
+import { loadBundledStyle } from "../citations/style-loader";
+import { buildBibliography } from "./citations-bibliography";
+import { collectCitations } from "./citations-collect";
+import { renderIncompleteCitation } from "./citations-incomplete";
+import {
+  renderCitationPass,
+  type CitationRenderedSection,
+} from "./citations-render";
 import {
   BUNDLED_CITATION_STYLES,
   CITATIONS_FORMAT_UNAVAILABLE_REASON,
+  UNNAMED_SOURCE_NAME,
   type CompileCitationsOption,
 } from "./citations-types";
+import type { TipTapDocument } from "./types";
 import { InvalidProjectIdCoreError } from "./project-crud-core";
 import { resolveProjectRoot } from "./project-root-resolver";
 
@@ -139,6 +168,8 @@ export interface CompileCitationsRequest {
   body: CompileBody;
   option: CompileCitationsOption;
   projectPath: string;
+  /** The PDF renderer the core was called with; unused for DOCX. */
+  render?: PdfRenderer;
 }
 
 /** What the citations pass returns. */
@@ -151,12 +182,14 @@ export type CompileCitationsPass = (
   request: CompileCitationsRequest,
 ) => Promise<CompileCitationsPassResult>;
 
-let registeredCitationsPass: CompileCitationsPass | undefined;
+let registeredCitationsPass: CompileCitationsPass | undefined =
+  compileWithCitations;
 
 /**
- * Registers (or with `undefined`, clears) the citations pass. No pass is
- * registered until the engine task (Task 43) lands, so a present option fails
- * visibly rather than producing output without citations.
+ * Registers (or with `undefined`, clears) the citations pass. The pass that
+ * ships (`compileWithCitations`, Task 43) is registered at load; clearing it
+ * makes a present option fail visibly rather than produce output without
+ * citations, which is how the Task 24 seam tests run.
  */
 export function registerCitationsPass(
   pass: CompileCitationsPass | undefined,
@@ -188,6 +221,551 @@ export function parseCompileCitationsOption(
     throw new InvalidCitationsOptionError();
   }
   return { styleId };
+}
+
+// ---------------------------------------------------------------------------
+// Feature 116, Task 43: the citations pass (FR-10 to FR-13, FR-16, FR-17).
+// ---------------------------------------------------------------------------
+
+/**
+ * A citations compile failed. The message names what failed and carries no
+ * client input; the compile never produces output without the citations.
+ */
+export class CitationsCompileError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "CitationsCompileError";
+  }
+}
+
+/** One rendered citation of a section, anchored by its UTF-16 offset in the section text. */
+interface ManuscriptNote {
+  offset: number;
+  noteNumber: number | null;
+  runs: CitationRun[];
+}
+
+interface ManuscriptSection {
+  name: string;
+  content: string;
+  notes: ManuscriptNote[];
+}
+
+interface Manuscript {
+  sections: ManuscriptSection[];
+  bibliography: DocxCitationsInput["bibliography"];
+}
+
+/** Start offset of each text node in `tiptapToPlainText(document)`, keyed by its child-index path. */
+function textNodeStarts(document: TipTapDocument): Map<string, number> {
+  const starts = new Map<string, number>();
+  let position = 0;
+  const visit = (
+    node: TipTapDocument["content"][number],
+    path: number[],
+  ): void => {
+    if (node.text) {
+      starts.set(path.join("."), position);
+      position += node.text.length;
+    }
+    node.content?.forEach((child, i) => visit(child, [...path, i]));
+    if (node.type === "paragraph" || node.type === "heading") position += 1;
+  };
+  document.content.forEach((node, i) => visit(node, [i]));
+  return starts;
+}
+
+/** The section text the builders place notes in: the TipTap document as plain text. */
+function sectionText(section: CitationSectionInput): string {
+  return section.tiptap === undefined
+    ? (section.plainText ?? "")
+    : tiptapToPlainText(section.tiptap);
+}
+
+/**
+ * Maps each anchor `{path, offset}` (an offset in one TipTap text node) to the
+ * UTF-16 offset in the section's plain text, which is what the PDF and DOCX
+ * builders place by.
+ */
+function toManuscriptNotes(
+  rendered: CitationRenderedSection,
+  document: TipTapDocument | undefined,
+): ManuscriptNote[] {
+  if (rendered.citations.length === 0) return [];
+  const starts = document === undefined ? undefined : textNodeStarts(document);
+  return rendered.citations.map((citation) => {
+    const start = starts?.get(citation.anchor.path.join("."));
+    if (start === undefined) {
+      throw new CitationsCompileError(
+        "A citation is anchored outside the text of its section.",
+      );
+    }
+    return {
+      offset: start + citation.anchor.offset,
+      noteNumber: citation.noteNumber,
+      runs: citation.runs,
+    };
+  });
+}
+
+/** The refusal of FR-17 for citations whose passages are not in the document. */
+function unplacedError(
+  sections: readonly CitationSectionInput[],
+  rendered: readonly CitationRenderedSection[],
+  sourceNames: ReadonlyMap<string, string | undefined>,
+): CitationsCompileError | undefined {
+  const parts: string[] = [];
+  rendered.forEach((section, i) => {
+    const resource = sections[i].storedName || "unnamed resource";
+    for (const citation of section.unplaced) {
+      const source =
+        citation.sourceName ??
+        sourceNames.get(citation.sourceId) ??
+        UNNAMED_SOURCE_NAME;
+      parts.push(`a citation of "${source}" in "${resource}"`);
+    }
+  });
+  if (parts.length === 0) return undefined;
+  return new CitationsCompileError(
+    `Citations could not be placed because their passages are not in the document: ${parts.join("; ")}.`,
+  );
+}
+
+/**
+ * Loads the engine from the app's own files with no network request. On the
+ * Node server and in tests the glue's `.wasm` is a `file:` URL, read here; a
+ * bundler that resolves it to a same-origin path lets the glue fetch it.
+ */
+async function ensureCitationEngine(): Promise<void> {
+  try {
+    const url = new URL(
+      "../citations/engine/hayagriva_wasm_bg.wasm",
+      import.meta.url,
+    );
+    if (url.protocol === "file:") {
+      await initCitationEngine(await readFile(nodeUrl.fileURLToPath(url)));
+    } else {
+      await initCitationEngine();
+    }
+  } catch (err) {
+    throw new CitationsCompileError(
+      "The citation engine could not be loaded.",
+      { cause: err },
+    );
+  }
+}
+
+/** Reads, renders and anchors every citation of the compiled resources. */
+async function prepareManuscript(
+  request: CompileCitationsRequest,
+): Promise<Manuscript> {
+  const { body, option, projectPath } = request;
+  const read = await loadCitationSections(
+    projectPath,
+    body.resourceIds,
+    body.resources,
+  );
+  if (!read.ok) throw new CitationsCompileError(read.what);
+  const sections = read.sections;
+
+  const sourceIds = sections.flatMap((section) =>
+    collectCitations({
+      resourceId: section.meta.id,
+      included: true,
+      annotations: section.annotations,
+      excerptAnnotationsBySource: {},
+    }).map((citation) => citation.sourceId),
+  );
+  const cited = await readCitedSources(projectPath, sourceIds);
+
+  const style = await loadBundledStyle(option.styleId);
+  if (!style.ok) throw new CitationsCompileError(style.message);
+  await ensureCitationEngine();
+
+  const pass = renderCitationPass({
+    resources: sections.map((section) => ({
+      resourceId: section.meta.id,
+      included: true,
+      document: section.tiptap,
+      annotations: section.annotations,
+    })),
+    sources: cited.sources,
+    excerptAnnotationsBySource: cited.excerptAnnotationsBySource,
+    style,
+    renderIncomplete: renderIncompleteCitation,
+  });
+  if (pass.status === "failed") throw new CitationsCompileError(pass.message);
+
+  const sourceNames = new Map(
+    Object.entries(cited.sources).map(([id, source]) => [
+      id,
+      source.status === "present" ? source.name : undefined,
+    ]),
+  );
+  const unplaced = unplacedError(sections, pass.sections, sourceNames);
+  if (unplaced !== undefined) throw unplaced;
+
+  const bibliography = buildBibliography({ items: pass.items, style });
+  if (bibliography.status === "failed") {
+    throw new CitationsCompileError(bibliography.message);
+  }
+  return {
+    sections: sections.map((section, i) => ({
+      name: section.meta.name,
+      content: sectionText(section),
+      notes: toManuscriptNotes(pass.sections[i], section.tiptap),
+    })),
+    bibliography:
+      bibliography.entries.length === 0
+        ? undefined
+        : {
+            heading: bibliography.heading,
+            entries: bibliography.entries.map((entry) => ({
+              runs: entry.runs,
+            })),
+          },
+  };
+}
+
+async function renderDocxWithCitations(
+  manuscript: Manuscript,
+  includeHeaders: boolean,
+): Promise<ArrayBuffer> {
+  const sections: CompileSection[] = manuscript.sections.map(
+    ({ name, content }) => ({ name, content }),
+  );
+  const doc = buildDocxDocument(
+    sections,
+    { includeHeaders },
+    {
+      sections: manuscript.sections.map((section) => ({
+        notes: section.notes,
+      })),
+      bibliography: manuscript.bibliography,
+    },
+  );
+  return bufferToArrayBuffer(await Packer.toBuffer(doc));
+}
+
+/**
+ * Most render passes the PDF notes loop may take, counting the first pass
+ * that has no notes. The loop re-renders while reserving room for the notes
+ * moves a mark to another page; if the notes are not on stable pages within
+ * this many passes the compile fails naming this bound and emits nothing.
+ */
+export const PDF_NOTE_LAYOUT_MAX_PASSES = 8;
+
+/** Points kept clear between the last body line and the top of the notes. */
+const PDF_NOTE_BODY_GAP = 8;
+
+/**
+ * Font size of a reference mark in `CompilePDFDocument` (`styles.noteMark`).
+ * Read back from the layout data to find each mark's page;
+ * `tests/unit/citations-pdf-layout-data-shape.test.ts` pins that a mark is a
+ * run of this size.
+ */
+const PDF_NOTE_MARK_FONT_SIZE = 7;
+
+const PDF_LAYOUT_UNREADABLE =
+  "The PDF layout data is missing or has an unexpected shape, so the notes could not be placed on their pages.";
+
+interface LayoutRunData {
+  start: number;
+  end: number;
+  attributes?: { fontSize?: number };
+}
+
+interface LayoutNodeData {
+  type?: string;
+  box?: { top?: number; height?: number };
+  style?: { paddingBottom?: number };
+  props?: { fixed?: boolean };
+  lines?: { string?: string; runs?: LayoutRunData[] }[];
+  children?: LayoutNodeData[];
+}
+
+/** What one laid-out page tells the notes loop. */
+interface PdfPageFacts {
+  /** Space between the footer's top (less the gap) and the body area's bottom; above 0 means the body must give way. */
+  shortfall: number;
+  /** Note numbers whose reference mark sits on this page, in reading order. */
+  marks: number[];
+}
+
+interface PdfLayoutFacts {
+  pages: PdfPageFacts[];
+}
+
+function numberAt(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new CitationsCompileError(PDF_LAYOUT_UNREADABLE);
+  }
+  return value;
+}
+
+function* layoutNodes(node: LayoutNodeData): Generator<LayoutNodeData> {
+  yield node;
+  for (const child of node.children ?? []) yield* layoutNodes(child);
+}
+
+/** Note numbers of the reference marks under `nodes`, in layout order. */
+function markNumbers(nodes: readonly LayoutNodeData[]): number[] {
+  const found: number[] = [];
+  for (const top of nodes) {
+    for (const node of layoutNodes(top)) {
+      for (const line of node.lines ?? []) {
+        for (const run of line.runs ?? []) {
+          if (run.attributes?.fontSize !== PDF_NOTE_MARK_FONT_SIZE) continue;
+          const shown = (line.string ?? "").slice(run.start, run.end).trim();
+          if (/^\d+$/.test(shown)) found.push(Number(shown));
+        }
+      }
+    }
+  }
+  return found;
+}
+
+function pageFacts(page: LayoutNodeData): PdfPageFacts {
+  const pageHeight = numberAt(page.box?.height);
+  const bodyLimit = pageHeight - numberAt(page.style?.paddingBottom);
+  const kids = page.children ?? [];
+  const footer = kids.find((kid) => kid.props?.fixed === true);
+  const body = kids.filter((kid) => kid.props?.fixed !== true);
+  const footerHeight = footer === undefined ? 0 : numberAt(footer.box?.height);
+  const footerTop =
+    footer === undefined ? pageHeight : numberAt(footer.box?.top);
+  return {
+    shortfall:
+      footerHeight > 0 ? bodyLimit - (footerTop - PDF_NOTE_BODY_GAP) : 0,
+    marks: markNumbers(body),
+  };
+}
+
+/** Reads the pages out of the `onRender` argument; anything else fails loudly. */
+function readPdfLayout(arg: unknown): PdfLayoutFacts {
+  const data = (
+    arg as { _INTERNAL__LAYOUT__DATA_?: LayoutNodeData } | undefined
+  )?._INTERNAL__LAYOUT__DATA_;
+  if (
+    data === undefined ||
+    data === null ||
+    data.type !== "DOCUMENT" ||
+    !Array.isArray(data.children)
+  ) {
+    throw new CitationsCompileError(PDF_LAYOUT_UNREADABLE);
+  }
+  return { pages: data.children.map(pageFacts) };
+}
+
+/** Page number (1-based) to the note numbers marked on it; fails naming a missing mark. */
+function placementOf(
+  layout: PdfLayoutFacts,
+  noteNumbers: readonly number[],
+): Map<number, number[]> {
+  const placement = new Map<number, number[]>();
+  const seen = new Set<number>();
+  layout.pages.forEach((page, i) => {
+    for (const mark of page.marks) {
+      if (seen.has(mark)) {
+        throw new CitationsCompileError(
+          `The reference mark of note ${mark} was found more than once in the rendered pages.`,
+        );
+      }
+      seen.add(mark);
+      placement.set(i + 1, [...(placement.get(i + 1) ?? []), mark]);
+    }
+  });
+  for (const n of noteNumbers) {
+    if (!seen.has(n)) {
+      throw new CitationsCompileError(
+        `The reference mark of note ${n} was not found in the rendered pages.`,
+      );
+    }
+  }
+  return placement;
+}
+
+function samePlacement(
+  a: PdfNotePlacement | undefined,
+  b: PdfNotePlacement,
+): boolean {
+  if (a === undefined || a.size !== b.size) return false;
+  return [...b].every(([page, numbers]) => {
+    const other = a.get(page);
+    return (
+      other !== undefined &&
+      other.length === numbers.length &&
+      other.every((n, i) => n === numbers[i])
+    );
+  });
+}
+
+type ReservedPdfDocumentProps = CompilePDFDocumentProps & {
+  /** Points added to the page's bottom padding so body text stops above the notes. */
+  reserve: number;
+};
+
+/**
+ * `CompilePDFDocument` with extra bottom padding on its page. react-pdf draws
+ * the fixed footer `position: absolute`, so it reserves no room; the body area
+ * of every page is shortened instead, by the same amount on each page.
+ */
+function ReservedPdfDocument({
+  reserve,
+  ...props
+}: ReservedPdfDocumentProps): React.ReactElement {
+  const document = CompilePDFDocument(props);
+  if (reserve === 0) return document;
+  const page = React.Children.only(
+    (document.props as { children?: React.ReactNode }).children,
+  ) as React.ReactElement<{ style?: { paddingBottom?: number } }>;
+  const base = page.props.style?.paddingBottom;
+  if (page.type !== Page || typeof base !== "number") {
+    throw new CitationsCompileError(
+      "The PDF document has an unexpected structure, so room for the notes could not be reserved.",
+    );
+  }
+  return React.cloneElement(
+    document,
+    {},
+    React.cloneElement(page, {
+      style: [page.props.style, { paddingBottom: base + reserve }],
+    } as never),
+  );
+}
+
+interface PdfNotesInput {
+  sections: CompileSection[];
+  notes: PdfNote[];
+  bibliography: Manuscript["bibliography"];
+  includeHeaders: boolean;
+}
+
+/**
+ * Renders the PDF with notes in each page's footer. Pass 1 has no notes and
+ * its layout data gives each mark's page; later passes draw the footers for
+ * the placement last measured, with body room reserved for the tallest
+ * footer, until the marks sit on the pages the footers were drawn for and no
+ * footer reaches into the body. Never returns a PDF that has not settled.
+ */
+async function renderPdfWithNotes(
+  input: PdfNotesInput,
+  render: PdfRenderer,
+): Promise<ArrayBuffer> {
+  const noteNumbers = input.notes.map((n) => n.noteNumber);
+  let placement: PdfNotePlacement | undefined;
+  let reserve = 0;
+  let previous: { pageCount: number; reserve: number } | undefined;
+  for (let pass = 1; pass <= PDF_NOTE_LAYOUT_MAX_PASSES; pass += 1) {
+    let captured: unknown;
+    let didRender = false;
+    const element = React.createElement(ReservedPdfDocument, {
+      sections: input.sections,
+      includeHeaders: input.includeHeaders,
+      citations: { notes: input.notes, bibliography: input.bibliography },
+      notePlacement: placement,
+      reserve,
+      onRender: (arg: unknown) => {
+        didRender = true;
+        captured = arg;
+      },
+    } as ReservedPdfDocumentProps) as React.ReactElement<DocumentProps>;
+    const rendered = await render(element);
+    if (!didRender) throw new CitationsCompileError(PDF_LAYOUT_UNREADABLE);
+    const layout = readPdfLayout(captured);
+    if (
+      previous !== undefined &&
+      previous.reserve === reserve &&
+      previous.pageCount !== layout.pages.length
+    ) {
+      throw new CitationsCompileError(
+        `The PDF has ${previous.pageCount} pages without the notes and ${layout.pages.length} pages with them, so a note could sit on the wrong page.`,
+      );
+    }
+    previous = { pageCount: layout.pages.length, reserve };
+    const measured = placementOf(layout, noteNumbers);
+    const shortfall = Math.max(0, ...layout.pages.map((p) => p.shortfall));
+    if (
+      placement !== undefined &&
+      shortfall <= 0 &&
+      samePlacement(placement, measured)
+    ) {
+      return rendered;
+    }
+    placement = measured;
+    reserve += Math.ceil(shortfall);
+  }
+  throw new CitationsCompileError(
+    `The PDF notes did not settle on stable pages within ${PDF_NOTE_LAYOUT_MAX_PASSES} layout passes (PDF_NOTE_LAYOUT_MAX_PASSES), so no PDF was produced.`,
+  );
+}
+
+async function renderPdfWithCitations(
+  manuscript: Manuscript,
+  includeHeaders: boolean,
+  render: PdfRenderer,
+): Promise<ArrayBuffer> {
+  const notes: PdfNote[] = [];
+  manuscript.sections.forEach((section, sectionIndex) => {
+    for (const note of section.notes) {
+      if (note.noteNumber === null) {
+        throw new CitationsCompileError(
+          "In-text citation styles are not available for PDF.",
+        );
+      }
+      notes.push({
+        sectionIndex,
+        offset: note.offset,
+        noteNumber: note.noteNumber,
+        runs: note.runs,
+      });
+    }
+  });
+  const input: PdfNotesInput = {
+    sections: manuscript.sections.map(({ name, content }) => ({
+      name,
+      content,
+    })),
+    notes,
+    bibliography: manuscript.bibliography,
+    includeHeaders,
+  };
+  registerIBMPlexFonts();
+  try {
+    return await renderPdfWithNotes(input, render);
+  } catch (err) {
+    if (err instanceof CitationsCompileError || !isFontError(err)) throw err;
+    throw new CitationsCompileError(
+      "The PDF fonts could not be loaded, so the citations could not be rendered.",
+      { cause: err },
+    );
+  }
+}
+
+/**
+ * The citations pass: reads the TipTap documents, renders the citations and
+ * the bibliography, and builds the PDF or DOCX. Registered by default.
+ */
+export async function compileWithCitations(
+  request: CompileCitationsRequest,
+): Promise<CompileCitationsPassResult> {
+  const manuscript = await prepareManuscript(request);
+  const shouldIncludeHeaders = request.body.includeHeaders;
+  if (request.format === "docx") {
+    return {
+      arrayBuffer: await renderDocxWithCitations(
+        manuscript,
+        shouldIncludeHeaders,
+      ),
+    };
+  }
+  return {
+    arrayBuffer: await renderPdfWithCitations(
+      manuscript,
+      shouldIncludeHeaders,
+      request.render ?? renderPdfOnServer,
+    ),
+  };
 }
 
 /** Enters the seam; only called when the option is present. */
@@ -232,6 +810,7 @@ export async function compilePdfCore(
       body,
       option,
       projectPath,
+      render,
     });
     return {
       arrayBuffer: result.arrayBuffer,

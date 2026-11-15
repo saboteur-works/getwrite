@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "@react-pdf/renderer";
-import type { Styles } from "@react-pdf/renderer";
+import type { DocumentProps, Styles } from "@react-pdf/renderer";
 import type { CitationRun } from "../citations/citation-engine";
 import type { CompileSection } from "./compile-text";
 
@@ -341,6 +341,13 @@ export interface CompilePDFDocumentProps {
   citations?: PdfCitationsInput;
   /** Pass 2 only: the footer of each page draws these notes. */
   notePlacement?: PdfNotePlacement;
+  /**
+   * Passed to the `Document`. react-pdf calls it after layout with the laid-out
+   * tree in `_INTERNAL__LAYOUT__DATA_` (Feature 116, Task 43 reads it to find
+   * each mark's page; `tests/unit/citations-pdf-layout-data-shape.test.ts`
+   * pins its shape).
+   */
+  onRender?: DocumentProps["onRender"];
 }
 
 function SectionBody({
@@ -396,6 +403,7 @@ export function CompilePDFDocument({
   includeHeaders,
   citations,
   notePlacement,
+  onRender,
 }: CompilePDFDocumentProps) {
   const notes = citations?.notes ?? [];
   validateNotes(sections, notes);
@@ -403,7 +411,7 @@ export function CompilePDFDocument({
   const notesByNumber = new Map(notes.map((n) => [n.noteNumber, n]));
   const bibliography = citations?.bibliography;
   return (
-    <Document>
+    <Document onRender={onRender}>
       <Page size="A4" style={styles.page}>
         {sections.map((section, i) => (
           <View key={i} style={styles.section}>
