@@ -143,6 +143,7 @@ describe("useProjectTypeDraftService module declaration (Feature 108, FR-5)", ()
       sources: "not-set",
       claims: "not-set",
       folklore: "not-set",
+      citations: "not-set",
     });
   });
 
@@ -155,6 +156,7 @@ describe("useProjectTypeDraftService module declaration (Feature 108, FR-5)", ()
       sources: "not-set",
       claims: "on",
       folklore: "not-set",
+      citations: "not-set",
     });
     expect(result.current.canEditModules).toBe(true);
   });

@@ -46,7 +46,7 @@ function ModuleSwitchRow({
   );
   const [result, setResult] = useState<SaveResult | null>(null);
   const latestRequest = useRef(0);
-  const label = module.view?.label ?? module.id;
+  const label = module.view?.label ?? module.label ?? module.id;
   const isChecked = isWriterChoiceOn ?? isStoredEnabled;
   const inputId = `module-switch-${module.id}`;
 
@@ -112,11 +112,15 @@ function ModuleSwitchRow({
  *
  * @param projectId - Server-validated id of the active project, sent with
  *   each save.
+ * @param manifest - Modules to list; the build's manifest unless a test
+ *   passes its own.
  */
 export default function ModuleSwitchSection({
   projectId,
+  manifest = MODULE_MANIFEST,
 }: {
   projectId: string;
+  manifest?: readonly ModuleManifestEntry[];
 }): JSX.Element {
   return (
     <section className="rounded-lg border-[0.5px] border-gw-border bg-gw-chrome p-5">
@@ -127,7 +131,7 @@ export default function ModuleSwitchSection({
         when you turn it back on.
       </p>
       <div className="mt-4 flex flex-col gap-4">
-        {MODULE_MANIFEST.map((module) => (
+        {manifest.map((module) => (
           <ModuleSwitchRow
             key={module.id}
             module={module}

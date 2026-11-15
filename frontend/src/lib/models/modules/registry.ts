@@ -54,6 +54,11 @@ export interface ModuleManifestEntry {
   /** Key used in `config.modules`. */
   id: string;
   view?: ModuleViewSlot;
+  /**
+   * Name the Modules screen shows when the module has no `view` (Feature 116,
+   * FR-3). The screen reads `view.label`, then this, then `id`.
+   */
+  label?: string;
   /** Derived-index steps this module owns; empty when it owns no index. */
   indexSteps: readonly ModuleIndexStep[];
   /**
