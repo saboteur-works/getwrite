@@ -590,7 +590,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** LEAD-RUN with the owner, outside the sandbox, from the main checkout (Electron packaging runs outside it). A unit test or an emulator is not reported as a device run. The owner's run on 2026-11-16 found two defects in the citation-field editor (measured, see Tasks 65 and 66): the editor writes only on the Save button, so values typed and not saved are lost on switching document; and stored dates such as `2005-01-55`, `1000-02-98` and an accessed `2088` passed the pattern-only check. Tasks 65 (real-date rule) and 66 (save as you type) repair them (Owner decision, Task 52, 2026-11-16); steps 2 and 3 of this run (entering fields of each of the four types; the compile with notes) are re-run on a package built after Tasks 65 and 66, and the record names that build. Task 52 cannot list 65 or 66 under Depends on (the validator allows only lower numbers), so the lead runs them first.
 **POS:** task_062fe725
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 53: LEAD-RUN: hosted web run
 **What:** Run the feature on hosted web and record only what was observed.
