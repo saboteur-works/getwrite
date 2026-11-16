@@ -43,7 +43,9 @@ import {
   type CitationFieldsInput,
   type CslItem,
 } from "./citations-csl-mapper";
+import { validateCitationDate } from "./citations-fields-validation";
 import { findMissingDetails } from "./citations-required-details";
+import { CITATION_FIELDS_BY_TYPE } from "./citations-types";
 import type { CitationFailure, CitationGap } from "./citations-types";
 import type { Annotation, TipTapDocument } from "./types";
 
@@ -84,6 +86,8 @@ export interface CitationRenderInput {
   /** The outcome of loading the bundled style. */
   style: StyleLoadOutcome;
   renderIncomplete?: RenderIncompleteFn;
+  /** The clock for the date rule (FR-5); defaults to the current time. */
+  now?: Date;
 }
 
 /** One rendered citation of a resource. */
@@ -138,10 +142,38 @@ function failed(
   return { status: "failed", failure, message };
 }
 
+/**
+ * The Source as the engine may see it: a stored `date` or `accessed` that
+ * fails the date rule is left out (OQ-18). The stored value is not altered.
+ */
+function withoutInvalidDates(
+  source: CitationSourceInput,
+  now: Date,
+): CitationSourceInput {
+  if (source.status !== "present" || source.citationFields === undefined) {
+    return source;
+  }
+  const fields = source.citationFields;
+  const kept: Record<string, unknown> = { ...fields };
+  for (const spec of CITATION_FIELDS_BY_TYPE[fields.referenceType]) {
+    const value = fields[spec.name];
+    if (
+      spec.kind === "date" &&
+      typeof value === "string" &&
+      value.trim() !== "" &&
+      !validateCitationDate(value, now).ok
+    ) {
+      delete kept[spec.name];
+    }
+  }
+  return { ...source, citationFields: kept as typeof fields };
+}
+
 function gapFor(
   styleId: string,
   citation: CollectedCitation,
   source: CitationSourceInput,
+  now: Date,
 ): CitationGap | undefined {
   const base = { resourceId: citation.resourceId, sourceId: citation.sourceId };
   if (source.status === "removed") {
@@ -161,7 +193,7 @@ function gapFor(
   }
   const missing =
     styleId === "chicago-notes-bibliography"
-      ? findMissingDetails(styleId, source.citationFields)
+      ? findMissingDetails(styleId, source.citationFields, now)
       : [];
   return missing.length === 0
     ? undefined
@@ -185,6 +217,7 @@ function collectEntries(
   input: CitationRenderInput,
   styleId: string,
   noteStyle: boolean,
+  now: Date,
 ): { sections: CitationRenderedSection[]; entries: Entry[] } | CitationFailure {
   const sections: CitationRenderedSection[] = [];
   const entries: Entry[] = [];
@@ -219,8 +252,9 @@ function collectEntries(
         (c) => c.annotationId === anchor.annotationId,
       );
       if (citation === undefined) continue;
-      const source = input.sources[citation.sourceId];
-      const gap = gapFor(styleId, citation, source);
+      const stored = input.sources[citation.sourceId];
+      const gap = gapFor(styleId, citation, stored, now);
+      const source = withoutInvalidDates(stored, now);
       const hasItem =
         source.status === "present" && source.citationFields !== undefined;
       entries.push({ sectionIndex, citation, anchor, source, hasItem, gap });
@@ -258,7 +292,12 @@ export function renderCitationPass(
   }
   const styleId = input.style.styleId;
   const placement = PLACEMENT_BY_STYLE_ID[styleId] ?? "note";
-  const collected = collectEntries(input, styleId, placement === "note");
+  const collected = collectEntries(
+    input,
+    styleId,
+    placement === "note",
+    input.now ?? new Date(),
+  );
   if ("status" in collected) return collected;
   const { sections, entries } = collected;
 

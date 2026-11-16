@@ -13,7 +13,12 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Provider } from "react-redux";
 import CitationFieldsEditor from "../../components/Sidebar/CitationFieldsEditor";
+import CitationFieldsSection from "../../components/Sidebar/CitationFieldsSection";
+import { StaticModulesProvider } from "../../components/Modules/ModulesContext";
+import { createSourceResource } from "../../src/lib/models/resource-factory";
+import { makeStore } from "../../src/store/store";
 import {
   CITATION_FIELDS_BY_TYPE,
   CITATION_FIELD_LIMITS,
@@ -309,5 +314,107 @@ describe("CitationFieldsEditor", () => {
     render(<CitationFieldsEditor projectId="p1" resourceId="r1" />);
     await screen.findByRole("alert");
     await runAxe(document.body, ["region"]);
+  });
+});
+
+describe("CitationFieldsEditor: the date rule (Task 65, FR-5)", () => {
+  const NOW = new Date("2026-11-16T12:00:00Z");
+
+  function messageOf(input: HTMLElement): string {
+    const ids = (input.getAttribute("aria-describedby") ?? "").split(" ");
+    return ids
+      .map((id) => document.getElementById(id)?.textContent ?? "")
+      .join(" ");
+  }
+
+  it("marks a typed non-real date invalid with the reason in text", async () => {
+    await renderEditor({ now: NOW });
+    const input = screen.getByLabelText(/^date/i);
+    expect(input.getAttribute("aria-invalid")).not.toBe("true");
+    fireEvent.change(input, { target: { value: "2005-01-55" } });
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(messageOf(input)).toMatch(/not a real date/i);
+    expect(messageOf(input)).not.toMatch(/later than today/i);
+  });
+
+  it("says a date after today at UTC+14 is later than today, and pins the boundary on the injected clock", async () => {
+    await renderEditor({ now: new Date("2026-11-16T09:59:59Z") });
+    const input = screen.getByLabelText(/^date/i);
+    fireEvent.change(input, { target: { value: "2026-11-16" } });
+    expect(input.getAttribute("aria-invalid")).not.toBe("true");
+    fireEvent.change(input, { target: { value: "2026-11-17" } });
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(messageOf(input)).toMatch(/later than today/i);
+    cleanup();
+    await renderEditor({ now: new Date("2026-11-16T10:00:00Z") });
+    const rolled = screen.getByLabelText(/^date/i);
+    fireEvent.change(rolled, { target: { value: "2026-11-17" } });
+    expect(rolled.getAttribute("aria-invalid")).not.toBe("true");
+  });
+
+  it("marks a value stored before this rule, without editing it", async () => {
+    readCitationFields.mockResolvedValue({
+      kind: "fields",
+      fields: {
+        referenceType: "web-page",
+        date: "2005-01-55",
+        accessed: "2088",
+      },
+    });
+    await renderEditor({ now: NOW });
+    const date = screen.getByLabelText(/^date/i);
+    const accessed = screen.getByLabelText(/^accessed/i);
+    expect(date.getAttribute("aria-invalid")).toBe("true");
+    expect(messageOf(date)).toMatch(/not a real date/i);
+    expect(accessed.getAttribute("aria-invalid")).toBe("true");
+    expect(messageOf(accessed)).toMatch(/later than today/i);
+    expect(writeCitationFields).not.toHaveBeenCalled();
+  });
+
+  it("shows no reason for valid dates or an empty field", async () => {
+    readCitationFields.mockResolvedValue({
+      kind: "fields",
+      fields: { referenceType: "web-page", date: "2024-02-29" },
+    });
+    await renderEditor({ now: NOW });
+    const date = screen.getByLabelText(/^date/i);
+    expect(date.getAttribute("aria-invalid")).not.toBe("true");
+    expect(messageOf(date)).not.toMatch(/real date|later than today/i);
+    expect(
+      screen.getByLabelText(/^accessed/i).getAttribute("aria-invalid"),
+    ).not.toBe("true");
+  });
+
+  it("does not call the client for a non-real date, with the date alert", async () => {
+    await renderEditor({ now: NOW });
+    fireEvent.change(screen.getByLabelText(/^date/i), {
+      target: { value: "2023-02-29" },
+    });
+    clickSave();
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(writeCitationFields).not.toHaveBeenCalled();
+  });
+
+  it("the still-needs line of the section names the invalid stored date, as the pre-run check does", async () => {
+    readCitationFields.mockResolvedValue({
+      kind: "fields",
+      fields: {
+        referenceType: "interview",
+        interviewee: [{ family: "Doe", given: "Jo" }],
+        interviewer: [{ family: "Roe", given: "Al" }],
+        date: "2005-01-55",
+      },
+    });
+    render(
+      <Provider store={makeStore()}>
+        <StaticModulesProvider value={{ citations: true }}>
+          <CitationFieldsSection
+            projectId="p1"
+            resource={createSourceResource({ name: "Talk" })}
+          />
+        </StaticModulesProvider>
+      </Provider>,
+    );
+    expect(await screen.findByText("Still needs: Date")).toBeTruthy();
   });
 });

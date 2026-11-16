@@ -17,7 +17,11 @@
  * Pure: no React, JSX, JSON or engine import.
  */
 import type { CitationFieldsInput } from "./citations-csl-mapper";
-import type { CitationReferenceType } from "./citations-types";
+import { validateCitationDate } from "./citations-fields-validation";
+import {
+  CITATION_FIELDS_BY_TYPE,
+  type CitationReferenceType,
+} from "./citations-types";
 
 /** Ids of the styles this table covers (the bundled list, FR-18). */
 export type RequiredDetailsStyleId = "chicago-notes-bibliography";
@@ -68,18 +72,46 @@ function isPresent(value: unknown): boolean {
   return Array.isArray(value) ? value.some(isNamedPerson) : hasText(value);
 }
 
+const DATE_FIELD_LABELS: Readonly<Record<string, string>> = {
+  date: "Date",
+  accessed: "Accessed",
+};
+
+/** Labels of the date fields whose stored text fails the date rule. */
+function invalidDateLabels(fields: CitationFieldsInput, now: Date): string[] {
+  return CITATION_FIELDS_BY_TYPE[fields.referenceType]
+    .filter((spec) => spec.kind === "date")
+    .filter((spec) => {
+      const value = fields[spec.name];
+      return (
+        typeof value === "string" &&
+        value.trim() !== "" &&
+        !validateCitationDate(value, now).ok
+      );
+    })
+    .map((spec) => DATE_FIELD_LABELS[spec.name] ?? spec.name);
+}
+
 /**
- * The labels of the required details a value lacks, in table order. Blank
- * text, an empty list and a list of blank names all count as missing.
+ * The labels of the details a value lacks, in table order, then any stored
+ * `date` or `accessed` that fails the date rule (Task 65, OQ-18), each once.
+ * Blank text, an empty list and a list of blank names all count as missing.
+ * Reads only; the stored value is never altered.
  *
  * @param styleId - A bundled style the table covers.
  * @param fields - A `citationFields` value.
+ * @param now - The instant for the "not later than today" rule.
  */
 export function findMissingDetails(
   styleId: RequiredDetailsStyleId,
   fields: CitationFieldsInput,
+  now: Date = new Date(),
 ): readonly string[] {
-  return REQUIRED_DETAILS_BY_STYLE[styleId][fields.referenceType]
+  const missing = REQUIRED_DETAILS_BY_STYLE[styleId][fields.referenceType]
     .filter((detail) => !isPresent(fields[detail.field]))
     .map((detail) => detail.label);
+  const invalid = invalidDateLabels(fields, now).filter(
+    (label) => !missing.includes(label),
+  );
+  return [...missing, ...invalid];
 }

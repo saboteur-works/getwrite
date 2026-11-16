@@ -9,7 +9,9 @@ import {
 } from "../../src/lib/models/citations-types";
 import {
   CITATION_FIELDS_REFUSAL,
+  validateCitationDate,
   validateCitationFields,
+  validateCitationFieldsForWrite,
 } from "../../src/lib/models/citations-fields-validation";
 
 function sampleFor(kind: string): unknown {
@@ -161,5 +163,179 @@ describe("validateCitationFields", () => {
       expect(r).toEqual({ ok: false, message: CITATION_FIELDS_REFUSAL });
       expect(JSON.stringify(r)).not.toContain(secret);
     }
+  });
+});
+
+/** Fixed instants; no test reads the system time. */
+const AT = (iso: string): Date => new Date(iso);
+/** 2026-11-16 12:00 UTC; UTC+14 is 2026-11-17 02:00. */
+const NOON = AT("2026-11-16T12:00:00Z");
+
+describe("validateCitationDate: real calendar dates (FR-5)", () => {
+  it.each([
+    "2005-01-55",
+    "1000-02-98",
+    "2000-04-31",
+    "2023-02-29",
+    "2024-02-30",
+  ])("refuses day overflow %s", (v) => {
+    expect(validateCitationDate(v, NOON)).toEqual({
+      ok: false,
+      reason: "not-a-real-date",
+    });
+  });
+
+  it.each(["2026-13", "2020-00", "2020-00-10", "2020-01-00"])(
+    "refuses month or day out of range %s",
+    (v) => {
+      expect(validateCitationDate(v, NOON)).toEqual({
+        ok: false,
+        reason: "not-a-real-date",
+      });
+    },
+  );
+
+  it("handles leap years", () => {
+    expect(validateCitationDate("2024-02-29", NOON).ok).toBe(true);
+    expect(validateCitationDate("2000-02-29", NOON).ok).toBe(true);
+    expect(validateCitationDate("1900-02-29", NOON).ok).toBe(false);
+    expect(validateCitationDate("2023-02-29", NOON).ok).toBe(false);
+  });
+
+  it("accepts the YYYY, YYYY-MM and YYYY-MM-DD shapes", () => {
+    expect(validateCitationDate("2005", NOON)).toEqual({ ok: true });
+    expect(validateCitationDate("2005-01", NOON)).toEqual({ ok: true });
+    expect(validateCitationDate("2005-01-31", NOON)).toEqual({ ok: true });
+  });
+
+  it("refuses other shapes with a format reason", () => {
+    for (const v of [
+      "",
+      "05",
+      "2005-1-1",
+      "2005/01/01",
+      "2005-01-01T00",
+      " 2005",
+    ]) {
+      expect(validateCitationDate(v, NOON)).toEqual({
+        ok: false,
+        reason: "bad-format",
+      });
+    }
+  });
+
+  it("applies no lower bound on the year (OQ-17)", () => {
+    expect(validateCitationDate("1000-02-08", NOON).ok).toBe(true);
+    expect(validateCitationDate("0001", NOON).ok).toBe(true);
+  });
+});
+
+describe("validateCitationDate: not later than the current date at UTC+14", () => {
+  const LATER = { ok: false, reason: "later-than-today" };
+
+  it("refuses a year, year-month and full date after now", () => {
+    expect(validateCitationDate("2027", NOON)).toEqual(LATER);
+    expect(validateCitationDate("2026-12", NOON)).toEqual(LATER);
+    expect(validateCitationDate("2026-11-18", NOON)).toEqual(LATER);
+    expect(validateCitationDate("2088", NOON)).toEqual(LATER);
+  });
+
+  it("pins the day boundary when UTC+14 is already the next calendar day", () => {
+    // 2026-11-16 10:00 UTC is 2026-11-17 00:00 at UTC+14; the UTC date is 16.
+    const rolled = AT("2026-11-16T10:00:00Z");
+    expect(validateCitationDate("2026-11-17", rolled).ok).toBe(true);
+    expect(validateCitationDate("2026-11-18", rolled)).toEqual(LATER);
+    expect(validateCitationDate("2026-11-16", rolled).ok).toBe(true);
+  });
+
+  it("pins the day boundary just before UTC+14 rolls over", () => {
+    // 09:59:59 UTC is 23:59:59 on the 16th at UTC+14.
+    const before = AT("2026-11-16T09:59:59Z");
+    expect(validateCitationDate("2026-11-16", before).ok).toBe(true);
+    expect(validateCitationDate("2026-11-17", before)).toEqual(LATER);
+  });
+
+  it("pins the month boundary at a month end", () => {
+    const rolled = AT("2026-11-30T10:00:00Z"); // 2026-12-01 at UTC+14
+    expect(validateCitationDate("2026-12", rolled).ok).toBe(true);
+    expect(validateCitationDate("2026-12-01", rolled).ok).toBe(true);
+    expect(validateCitationDate("2026-12-02", rolled)).toEqual(LATER);
+    expect(validateCitationDate("2027-01", rolled)).toEqual(LATER);
+    const before = AT("2026-11-30T09:59:59Z"); // 2026-11-30 at UTC+14
+    expect(validateCitationDate("2026-11", before).ok).toBe(true);
+    expect(validateCitationDate("2026-12", before)).toEqual(LATER);
+    expect(validateCitationDate("2026-12-01", before)).toEqual(LATER);
+  });
+
+  it("pins the year boundary at a year end", () => {
+    const rolled = AT("2026-12-31T10:00:00Z"); // 2027-01-01 at UTC+14
+    expect(validateCitationDate("2027", rolled).ok).toBe(true);
+    expect(validateCitationDate("2027-01", rolled).ok).toBe(true);
+    expect(validateCitationDate("2027-01-01", rolled).ok).toBe(true);
+    expect(validateCitationDate("2027-01-02", rolled)).toEqual(LATER);
+    expect(validateCitationDate("2028", rolled)).toEqual(LATER);
+    const before = AT("2026-12-31T09:59:59Z"); // 2026-12-31 at UTC+14
+    expect(validateCitationDate("2026", before).ok).toBe(true);
+    expect(validateCitationDate("2026-12-31", before).ok).toBe(true);
+    expect(validateCitationDate("2027", before)).toEqual(LATER);
+    expect(validateCitationDate("2027-01", before)).toEqual(LATER);
+  });
+
+  it("reports a non-real date before a later one", () => {
+    expect(validateCitationDate("2088-02-31", NOON)).toEqual({
+      ok: false,
+      reason: "not-a-real-date",
+    });
+  });
+});
+
+describe("validateCitationFieldsForWrite", () => {
+  const BOOK = { referenceType: "book", title: "T" };
+
+  it("accepts what validateCitationFields accepts when the dates pass", () => {
+    const value = { ...BOOK, date: "2024-02-29", accessed: "2026-11-17" };
+    const at = AT("2026-11-16T10:00:00Z");
+    expect(validateCitationFieldsForWrite(value, at)).toEqual({
+      ok: true,
+      value,
+    });
+  });
+
+  it.each(["date", "accessed"])(
+    "refuses a failing %s with the one text, not echoing it",
+    (name) => {
+      for (const bad of ["2005-01-55", "2026-13", "2088", "2026-11-18"]) {
+        const result = validateCitationFieldsForWrite(
+          { ...BOOK, [name]: bad },
+          NOON,
+        );
+        expect(result).toEqual({ ok: false, message: CITATION_FIELDS_REFUSAL });
+        expect(JSON.stringify(result)).not.toContain(bad);
+      }
+    },
+  );
+
+  it("the accessed date follows the same rule as date", () => {
+    const at = AT("2026-11-16T09:59:59Z");
+    expect(
+      validateCitationFieldsForWrite({ ...BOOK, accessed: "2026-11-16" }, at)
+        .ok,
+    ).toBe(true);
+    expect(
+      validateCitationFieldsForWrite({ ...BOOK, accessed: "2026-11-17" }, at)
+        .ok,
+    ).toBe(false);
+  });
+
+  it("still refuses what validateCitationFields refuses", () => {
+    expect(
+      validateCitationFieldsForWrite({ referenceType: "film" }, NOON).ok,
+    ).toBe(false);
+  });
+
+  it("validateCitationFields (the read check) stays shape-only", () => {
+    expect(validateCitationFields({ ...BOOK, date: "2005-01-55" }).ok).toBe(
+      true,
+    );
   });
 });

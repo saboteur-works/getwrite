@@ -577,3 +577,91 @@ describe("required-details table in the check (Task 44, FR-15)", () => {
     );
   });
 });
+
+describe("an invalid stored date in the check (Task 65, OQ-18)", () => {
+  const STYLE = "chicago-notes-bibliography" as const;
+  const NOW = new Date("2026-11-16T12:00:00Z");
+  const full = {
+    referenceType: "interview",
+    interviewee: [{ family: "Doe", given: "Jo" }],
+    interviewer: [{ family: "Roe", given: "Al" }],
+    date: "2005-01-55",
+  };
+
+  async function gapsFor(fields: unknown): Promise<unknown> {
+    const src = await makeSource(projectRoot, "Interview", fields);
+    const doc = await makeText(projectRoot, "Doc", [
+      citingAnnotation(src, "Interview"),
+    ]);
+    const result = await checkCitationsCore(projectId, [doc], {
+      missingDetails: requiredDetailsCheck(STYLE),
+      now: NOW,
+    });
+    if (result.status !== "ok") throw new Error("expected ok");
+    return { gaps: result.gaps, src, doc, result };
+  }
+
+  it("lists the invalid date in that Source's missing-detail group, naming the field", async () => {
+    const out = (await gapsFor(full)) as {
+      gaps: unknown;
+      src: string;
+      doc: string;
+    };
+    expect(out.gaps).toEqual([
+      {
+        kind: "missing-detail",
+        resourceId: out.doc,
+        sourceId: out.src,
+        sourceName: "Interview",
+        missingDetails: ["Date"],
+      },
+    ]);
+  });
+
+  it("lists an invalid stored accessed although the style does not require it", async () => {
+    const out = (await gapsFor({
+      referenceType: "web-page",
+      title: "T",
+      website: "W",
+      date: "2005",
+      url: "http://x.example",
+      accessed: "2088",
+    })) as { gaps: { missingDetails: string[] }[] };
+    expect(out.gaps).toHaveLength(1);
+    expect(out.gaps[0].missingDetails).toEqual(["Accessed"]);
+  });
+
+  it("gives no entry for a Source whose stored dates are valid", async () => {
+    const out = (await gapsFor({ ...full, date: "2005-01-31" })) as {
+      gaps: unknown[];
+    };
+    expect(out.gaps).toEqual([]);
+  });
+
+  it("writes nothing: the sidecar is unchanged after the check", async () => {
+    const src = await makeSource(projectRoot, "Interview", full);
+    const doc = await makeText(projectRoot, "Doc", [citingAnnotation(src)]);
+    const file = path.join(projectRoot, "meta", `resource-${src}.meta.json`);
+    const before = await fs.readFile(file, "utf8");
+    await checkCitationsCore(projectId, [doc], {
+      missingDetails: requiredDetailsCheck(STYLE),
+      now: NOW,
+    });
+    expect(await fs.readFile(file, "utf8")).toBe(before);
+    expect(before).toContain("2005-01-55");
+  });
+
+  it("passes the clock through to the injected function", async () => {
+    const seen: (Date | undefined)[] = [];
+    const src = await makeSource(projectRoot, "Interview", full);
+    const doc = await makeText(projectRoot, "Doc", [citingAnnotation(src)]);
+    await checkCitationsCore(projectId, [doc], {
+      missingDetails: (_f, _c, now) => {
+        seen.push(now);
+        return [];
+      },
+      now: NOW,
+    });
+    expect(seen).toEqual([NOW]);
+  });
+});

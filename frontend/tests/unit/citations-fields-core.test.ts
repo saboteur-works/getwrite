@@ -218,6 +218,97 @@ describe("writeCitationFieldsCore", () => {
   });
 });
 
+describe("writeCitationFieldsCore: the date rule (Task 65)", () => {
+  const NOW = new Date("2026-11-16T12:00:00Z");
+
+  it.each([
+    ["date", "2005-01-55"],
+    ["date", "2026-13"],
+    ["date", "2023-02-29"],
+    ["date", "2088"],
+    ["accessed", "1000-02-98"],
+    ["accessed", "2026-11-18"],
+  ])(
+    "refuses %s %s with the one text, before any lock or write, sidecar unchanged",
+    async (name, bad) => {
+      const id = await makeResource(projectRoot, "source", {
+        citationFields: BOOK,
+      });
+      const before = await fs.readFile(
+        path.join(projectRoot, "meta", `resource-${id}.meta.json`),
+        "utf8",
+      );
+      const writes: string[] = [];
+      const base = io.getStorageAdapter();
+      io.setStorageAdapter(spyOnWrites(writes));
+      try {
+        await expect(
+          writeCitationFieldsCore(
+            projectId,
+            id,
+            { referenceType: "book", [name]: bad },
+            NOW,
+          ),
+        ).rejects.toSatisfy(
+          (err: unknown) =>
+            err instanceof CitationFieldsInvalidError &&
+            err.message === CITATION_FIELDS_REFUSAL &&
+            !err.message.includes(bad),
+        );
+      } finally {
+        io.setStorageAdapter(base);
+      }
+      expect(writes).toEqual([]);
+      expect(
+        await fs.readFile(
+          path.join(projectRoot, "meta", `resource-${id}.meta.json`),
+          "utf8",
+        ),
+      ).toBe(before);
+    },
+  );
+
+  it("accepts a leap day, a year long ago and today at UTC+14", async () => {
+    const id = await makeResource(projectRoot, "source");
+    const fields = {
+      referenceType: "web-page",
+      date: "1000-02-08",
+      accessed: "2026-11-17",
+    };
+    expect(await writeCitationFieldsCore(projectId, id, fields, NOW)).toEqual(
+      fields,
+    );
+    const leap = { referenceType: "book", date: "2024-02-29" };
+    expect(await writeCitationFieldsCore(projectId, id, leap, NOW)).toEqual(
+      leap,
+    );
+  });
+});
+
+describe("readCitationFieldsCore: a stored value failing the date rule", () => {
+  it("is returned as stored and a read writes nothing", async () => {
+    const stored = { referenceType: "interview", date: "2005-01-55" };
+    const id = await makeResource(projectRoot, "source", {
+      citationFields: stored,
+    });
+    const file = path.join(projectRoot, "meta", `resource-${id}.meta.json`);
+    const before = await fs.readFile(file, "utf8");
+    const writes: string[] = [];
+    const base = io.getStorageAdapter();
+    io.setStorageAdapter(spyOnWrites(writes));
+    try {
+      expect(await readCitationFieldsCore(projectId, id)).toEqual({
+        kind: "fields",
+        fields: stored,
+      });
+    } finally {
+      io.setStorageAdapter(base);
+    }
+    expect(writes).toEqual([]);
+    expect(await fs.readFile(file, "utf8")).toBe(before);
+  });
+});
+
 describe("readCitationFieldsCore", () => {
   it("returns the stored fields and writes nothing (write spy)", async () => {
     const id = await makeResource(projectRoot, "source", {

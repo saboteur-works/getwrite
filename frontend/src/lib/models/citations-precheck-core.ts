@@ -79,11 +79,14 @@ export class InvalidCitationCheckResourceIdError extends Error {
 export type MissingDetailFn = (
   fields: CitationFields | null,
   citation: CollectedCitation,
+  now?: Date,
 ) => readonly string[];
 
 export interface CitationCheckOptions {
   /** Defaults to reporting no missing detail. */
   missingDetails?: MissingDetailFn;
+  /** The clock for the date rule; defaults to the current time. */
+  now?: Date;
 }
 
 /**
@@ -95,8 +98,8 @@ export interface CitationCheckOptions {
 export function requiredDetailsCheck(
   styleId: RequiredDetailsStyleId,
 ): MissingDetailFn {
-  return (fields) => {
-    if (fields !== null) return findMissingDetails(styleId, fields);
+  return (fields, _citation, now) => {
+    if (fields !== null) return findMissingDetails(styleId, fields, now);
     const labels = Object.values(REQUIRED_DETAILS_BY_STYLE[styleId])
       .flat()
       .map((detail) => detail.label);
@@ -188,6 +191,7 @@ function gapFor(
   citation: CollectedCitation,
   facts: SourceFacts,
   missingDetails: MissingDetailFn,
+  now: Date,
 ): CitationGap | null {
   const base = { resourceId: citation.resourceId, sourceId: citation.sourceId };
   if (facts.kind === "unreadable") {
@@ -210,7 +214,7 @@ function gapFor(
   if (facts.kind === "removed") {
     return { kind: "source-removed", ...base, ...named };
   }
-  const details = missingDetails(facts.fields, citation);
+  const details = missingDetails(facts.fields, citation, now);
   if (details.length === 0) return null;
   return {
     kind: "missing-detail",
@@ -250,6 +254,7 @@ export async function checkCitationsCore(
   const ids = [...new Set(resourceIds.map(toResourceId))];
   await assertProjectExists(projectRoot);
   const missingDetails = options.missingDetails ?? NO_MISSING_DETAIL;
+  const now = options.now ?? new Date();
 
   const citations: CollectedCitation[] = [];
   for (const id of ids) {
@@ -272,7 +277,7 @@ export async function checkCitationsCore(
       known = await readSourceFacts(projectRoot, citation.sourceId);
       facts.set(citation.sourceId, known);
     }
-    const gap = gapFor(citation, known, missingDetails);
+    const gap = gapFor(citation, known, missingDetails, now);
     if (gap !== null) gaps.push(gap);
   }
   const grouped = groupBySource(gaps);

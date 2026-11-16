@@ -8,12 +8,14 @@ import {
 } from "../../src/lib/api/citation-fields";
 import type { CitationFieldsInput } from "../../src/lib/models/citations-csl-mapper";
 import {
+  CITATION_DATE_REASON_TEXT,
   CITATION_FIELDS_REFUSAL,
-  validateCitationFields,
+  validateCitationDate,
+  validateCitationFieldsForWrite,
+  type CitationDateReason,
   type CitationFields,
 } from "../../src/lib/models/citations-fields-validation";
 import {
-  CITATION_DATE_PATTERN,
   CITATION_FIELDS_BY_TYPE,
   CITATION_FIELD_LIMITS,
   CITATION_REFERENCE_TYPES,
@@ -134,12 +136,23 @@ function fieldsFromDraft(draft: Draft): CitationFieldsInput {
   return out;
 }
 
-function hasBadDate(draft: Draft): boolean {
-  return CITATION_FIELDS_BY_TYPE[draft.referenceType].some((spec) => {
-    if (spec.kind !== "date") return false;
-    const value = (draft.texts[spec.name] ?? "").trim();
-    return value !== "" && !CITATION_DATE_PATTERN.test(value);
-  });
+/** Why a date field's text fails the shared date rule; null when it passes or is empty. */
+function dateReason(
+  draft: Draft,
+  name: string,
+  now: Date,
+): CitationDateReason | null {
+  const value = (draft.texts[name] ?? "").trim();
+  if (value === "") return null;
+  const checked = validateCitationDate(value, now);
+  return checked.ok ? null : checked.reason;
+}
+
+function hasBadDate(draft: Draft, now: Date): boolean {
+  return CITATION_FIELDS_BY_TYPE[draft.referenceType].some(
+    (spec) =>
+      spec.kind === "date" && dateReason(draft, spec.name, now) !== null,
+  );
 }
 
 interface PeopleFieldProps {
@@ -249,6 +262,8 @@ export interface CitationFieldsEditorProps {
    * called while loading or after a failed read.
    */
   onDraftChange?: (fields: CitationFieldsInput) => void;
+  /** The clock for the date rule (FR-5); defaults to the current time. */
+  now?: Date;
 }
 
 /**
@@ -266,6 +281,7 @@ export default function CitationFieldsEditor({
   stillNeeds,
   onSaved,
   onDraftChange,
+  now,
 }: CitationFieldsEditorProps): JSX.Element {
   const [load, setLoad] = React.useState<LoadState>({ status: "loading" });
   const [draft, setDraft] = React.useState<Draft>(EMPTY_DRAFT);
@@ -340,11 +356,14 @@ export default function CitationFieldsEditor({
 
   const save = async (): Promise<void> => {
     setNotice(null);
-    if (hasBadDate(draft)) {
+    if (hasBadDate(draft, now ?? new Date())) {
       setNotice({ kind: "failed", text: DATE_ERROR });
       return;
     }
-    const checked = validateCitationFields(fieldsFromDraft(draft));
+    const checked = validateCitationFieldsForWrite(
+      fieldsFromDraft(draft),
+      now ?? new Date(),
+    );
     if (!checked.ok) {
       setNotice({ kind: "failed", text: CITATION_FIELDS_REFUSAL });
       return;
@@ -422,6 +441,9 @@ export default function CitationFieldsEditor({
         }
         const id = `citation-${resourceId}-${spec.name}`;
         const isDate = spec.kind === "date";
+        const reason = isDate
+          ? dateReason(draft, spec.name, now ?? new Date())
+          : null;
         return (
           <div key={spec.name} className="mb-3">
             <label
@@ -434,7 +456,14 @@ export default function CitationFieldsEditor({
               id={id}
               className="w-full"
               maxLength={CITATION_FIELD_LIMITS.maxTextLength}
-              aria-describedby={isDate ? `${id}-hint` : undefined}
+              aria-invalid={reason !== null ? true : undefined}
+              aria-describedby={
+                isDate
+                  ? reason !== null
+                    ? `${id}-hint ${id}-reason`
+                    : `${id}-hint`
+                  : undefined
+              }
               value={draft.texts[spec.name] ?? ""}
               onChange={(e) => setText(spec.name, e.target.value)}
             />
@@ -444,6 +473,14 @@ export default function CitationFieldsEditor({
                 className="mt-1 text-gw-label text-gw-secondary"
               >
                 {`Format: ${DATE_HINT}`}
+              </p>
+            )}
+            {reason !== null && (
+              <p
+                id={`${id}-reason`}
+                className="mt-1 text-gw-label text-gw-primary"
+              >
+                {CITATION_DATE_REASON_TEXT[reason]}
               </p>
             )}
           </div>

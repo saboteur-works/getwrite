@@ -382,3 +382,106 @@ describe("renderCitationPass", () => {
     ]);
   });
 });
+
+describe("renderCitationPass with an invalid stored date (Task 65, OQ-18)", () => {
+  const NOW = new Date("2026-11-16T12:00:00Z");
+  const interview = (extra: Record<string, unknown>): CitationSourceInput => ({
+    status: "present",
+    name: "Talk",
+    citationFields: {
+      referenceType: "interview",
+      interviewee: [{ family: "Doe", given: "Jo" }],
+      interviewer: [{ family: "Roe", given: "Al" }],
+      date: "2005-01-31",
+      ...extra,
+    },
+  });
+
+  function run(source: CitationSourceInput) {
+    return expectOk(
+      renderCitationPass(
+        input(
+          [resource("r1", doc(["p", "a1"]), [annotation("a1", "src-t")])],
+          { "src-t": source },
+          { now: NOW },
+        ),
+      ),
+    );
+  }
+
+  it("gives a missing-detail gap for a stored invalid date and keeps the value out of the items", () => {
+    const result = run(interview({ date: "2005-01-55" }));
+    expect(result.sections[0].citations[0].incomplete).toEqual({
+      kind: "missing-detail",
+      resourceId: "r1",
+      sourceId: "src-t",
+      sourceName: "Talk",
+      missingDetails: ["Date"],
+    });
+    expect(JSON.stringify(result.items)).not.toContain("2005-01-55");
+    expect(JSON.stringify(result.items)).not.toContain("2005,1,55");
+    expect(result.items[0].issued).toBeUndefined();
+    expect(JSON.stringify(result.sections)).not.toContain("2005-01-55");
+  });
+
+  it("gives a gap for a stored invalid accessed and keeps it out of the items", () => {
+    const result = run({
+      status: "present",
+      name: "Page",
+      citationFields: {
+        referenceType: "web-page",
+        title: "T",
+        website: "W",
+        date: "2005",
+        url: "http://x.example",
+        accessed: "2088",
+      },
+    });
+    expect(result.sections[0].citations[0].incomplete).toMatchObject({
+      kind: "missing-detail",
+      missingDetails: ["Accessed"],
+    });
+    expect(JSON.stringify(result.items)).not.toContain("2088");
+    expect(result.items[0].accessed).toBeUndefined();
+    expect(result.items[0].issued).toBeDefined();
+  });
+
+  it("applies the injected clock to the later-than-today rule", () => {
+    const source = interview({ date: "2026-11-17" });
+    const rolled = renderCitationPass(
+      input(
+        [resource("r1", doc(["p", "a1"]), [annotation("a1", "src-t")])],
+        { "src-t": source },
+        { now: new Date("2026-11-16T10:00:00Z") },
+      ),
+    );
+    const before = renderCitationPass(
+      input(
+        [resource("r1", doc(["p", "a1"]), [annotation("a1", "src-t")])],
+        { "src-t": source },
+        { now: new Date("2026-11-16T09:59:59Z") },
+      ),
+    );
+    expect(
+      expectOk(rolled).sections[0].citations[0].incomplete,
+    ).toBeUndefined();
+    expect(expectOk(before).sections[0].citations[0].incomplete).toMatchObject({
+      kind: "missing-detail",
+      missingDetails: ["Date"],
+    });
+  });
+
+  it("gives no gap for a Source whose dates are valid, and does not alter the input", () => {
+    const source = interview({});
+    const copy = structuredClone(source);
+    expect(run(source).sections[0].citations[0].incomplete).toBeUndefined();
+    expect(source).toEqual(copy);
+  });
+
+  it("does not alter the stored value it was given", () => {
+    const source = interview({ date: "2005-01-55" });
+    const copy = structuredClone(source);
+    run(source);
+    expect(source).toEqual(copy);
+  });
+});

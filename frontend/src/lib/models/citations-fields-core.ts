@@ -4,7 +4,7 @@
  * Feature 116 (citations at compile), FR-6, FR-21, FR-22: the one writer of a
  * Source sidecar's `citationFields` key, and a read that writes nothing.
  *
- * - The write validates (`citations-fields-validation.ts`) before any lock or
+ * - The write validates (`citations-fields-validation.ts`, dates included) before any lock or
  *   write, then goes through `mutateSidecar` so the read happens inside the
  *   per-file lock; it replaces only the `citationFields` key. It must not be
  *   replaced by `writeResourceToFile`, which overwrites a sidecar whole and
@@ -33,6 +33,7 @@ import { CITATION_FIELDS_KEY } from "./citations-types";
 import {
   CITATION_FIELDS_REFUSAL,
   validateCitationFields,
+  validateCitationFieldsForWrite,
   type CitationFields,
 } from "./citations-fields-validation";
 import type { MetadataValue } from "./types";
@@ -126,7 +127,8 @@ export async function readCitationFieldsCore(
 
 /**
  * Validate and store a Source's citation fields, replacing the stored value.
- * Returns the stored value.
+ * Returns the stored value. `date` and `accessed` must be real calendar dates
+ * not later than the current date at UTC+14 (FR-5); `now` is that clock.
  *
  * @throws CitationFieldsInvalidError (before any lock or write),
  *   CitationFieldsResourceIdError, InvalidProjectIdCoreError,
@@ -137,8 +139,9 @@ export async function writeCitationFieldsCore(
   projectId: string,
   resourceId: string,
   input: unknown,
+  now: Date = new Date(),
 ): Promise<CitationFields> {
-  const checked = validateCitationFields(input);
+  const checked = validateCitationFieldsForWrite(input, now);
   if (!checked.ok) throw new CitationFieldsInvalidError();
   const validId = requireResourceId(resourceId);
   const projectRoot = requireProjectRoot(projectId);

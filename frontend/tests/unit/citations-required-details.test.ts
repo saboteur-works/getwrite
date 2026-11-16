@@ -175,6 +175,84 @@ describe("findMissingDetails", () => {
   });
 });
 
+describe("findMissingDetails: a stored date that fails the date rule (Task 65)", () => {
+  const NOW = new Date("2026-11-16T12:00:00Z");
+
+  it("reports an invalid stored date under its field name, once", () => {
+    expect(
+      findMissingDetails(
+        STYLE_ID,
+        { ...FULL.interview, date: "2005-01-55" },
+        NOW,
+      ),
+    ).toEqual(["Date"]);
+    expect(
+      findMissingDetails(STYLE_ID, { ...FULL.book, date: "2088" }, NOW),
+    ).toEqual(["Date"]);
+  });
+
+  it("does not repeat Date when the date is also missing", () => {
+    expect(
+      findMissingDetails(
+        STYLE_ID,
+        { ...FULL.book, date: undefined, title: "" },
+        NOW,
+      ),
+    ).toEqual(["Title", "Date"]);
+  });
+
+  it("reports an invalid stored accessed whether or not the style requires it", () => {
+    expect(
+      findMissingDetails(
+        STYLE_ID,
+        { ...FULL["web-page"], accessed: "1000-02-98" },
+        NOW,
+      ),
+    ).toEqual(["Accessed"]);
+    expect(
+      findMissingDetails(STYLE_ID, { ...FULL.book, accessed: "2026-13" }, NOW),
+    ).toEqual(["Accessed"]);
+  });
+
+  it("reports both invalid dates, date first", () => {
+    expect(
+      findMissingDetails(
+        STYLE_ID,
+        { ...FULL.article, date: "2023-02-29", accessed: "2088" },
+        NOW,
+      ),
+    ).toEqual(["Date", "Accessed"]);
+  });
+
+  it("gives no new entry for valid stored dates, including a date equal to the UTC+14 date", () => {
+    const rolled = new Date("2026-11-16T10:00:00Z");
+    for (const type of CITATION_REFERENCE_TYPES) {
+      expect(findMissingDetails(STYLE_ID, FULL[type], NOW)).toEqual([]);
+    }
+    expect(
+      findMissingDetails(
+        STYLE_ID,
+        { ...FULL["web-page"], date: "2026-11-17", accessed: "2026-11-17" },
+        rolled,
+      ),
+    ).toEqual([]);
+    expect(
+      findMissingDetails(
+        STYLE_ID,
+        { ...FULL["web-page"], date: "2026-11-18" },
+        rolled,
+      ),
+    ).toEqual(["Date"]);
+  });
+
+  it("does not alter the value it reads", () => {
+    const value = { ...FULL.book, date: "2005-01-55" };
+    const copy = structuredClone(value);
+    findMissingDetails(STYLE_ID, value, NOW);
+    expect(value).toEqual(copy);
+  });
+});
+
 describe("table checked against the engine (bundled Chicago style)", () => {
   let styleXml = "";
   let localeXml = "";

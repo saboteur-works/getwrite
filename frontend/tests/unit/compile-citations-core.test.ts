@@ -41,6 +41,10 @@ import {
   type PdfRenderer,
 } from "../../src/lib/export/pdf-render";
 import type { CompileBody } from "../../src/lib/export/types";
+import {
+  checkCitationsCore,
+  requiredDetailsCheck,
+} from "../../src/lib/models/citations-precheck-core";
 import { renderCitations } from "../../src/lib/citations/citation-engine";
 import { loadBundledStyle } from "../../src/lib/citations/style-loader";
 import { createProject } from "../../src/lib/models/project";
@@ -369,6 +373,49 @@ describe("compileDocxCore with the citations option", () => {
     expect(out.footnotes).toContain("[citation incomplete: Empty Source]");
     expect(out.footnotes).toContain("[citation incomplete: unnamed Source]");
     expect(out.doc.match(/<w:footnoteReference /g)).toHaveLength(4);
+  });
+
+  it("marks a Source with a stored invalid date as incomplete, never passes the value to the engine and leaves the sidecar unchanged (Task 65, OQ-18)", async () => {
+    const stored = {
+      referenceType: "interview",
+      interviewee: [{ family: "Doe", given: "Jo" }],
+      interviewer: [{ family: "Roe", given: "Al" }],
+      date: "2005-01-55",
+      accessed: undefined,
+    };
+    const bad = await addSource("Interview Source", stored);
+    const good = await addSource("Good Source", bookFields("A", "Author", "T"));
+    const [a, b] = [1, 2].map(() => generateUUID());
+    const chapter = await addText(
+      "Chapter",
+      doc([text("one", a), text(" "), text("two", b)]),
+      [citing(a, bad), citing(b, good)],
+    );
+    const badFile = `${projectRoot}/meta/resource-${bad}.meta.json`;
+    const before = await fs.readFile(badFile, "utf8");
+    const mocked = renderCitations as unknown as MockInstance;
+    mocked.mockClear();
+    const check = await checkCitationsCore(projectId, [chapter], {
+      missingDetails: requiredDetailsCheck(STYLE_ID),
+    });
+    const out = await unzip(
+      (await compileDocxCore(bodyFor([chapter]))).arrayBuffer,
+    );
+    expect(check).toMatchObject({
+      status: "ok",
+      gaps: [
+        { kind: "missing-detail", sourceId: bad, missingDetails: ["Date"] },
+      ],
+    });
+    expect(out.footnotes).toContain("[citation incomplete: Interview Source]");
+    expect(out.footnotes).not.toContain("[citation incomplete: Good Source]");
+    expect(mocked.mock.calls.length).toBeGreaterThan(0);
+    const passed = JSON.stringify(mocked.mock.calls);
+    expect(passed).not.toContain("2005-01-55");
+    expect(passed).not.toContain("2005,1,55");
+    expect(passed).not.toContain("2005");
+    expect(out.doc + (out.footnotes ?? "")).not.toContain("2005-01-55");
+    expect(await fs.readFile(badFile, "utf8")).toBe(before);
   });
 
   it("adds no bibliography and no footnotes when no citation is placed", async () => {
