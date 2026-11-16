@@ -7,6 +7,7 @@ import { useModuleEnabled } from "../Modules/useModuleEnabled";
 import { findMissingDetails } from "../../src/lib/models/citations-required-details";
 import type { CitationFieldsInput } from "../../src/lib/models/citations-csl-mapper";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
+import Button from "../common/UI/Button/Button";
 import CitationFieldsEditor from "./CitationFieldsEditor";
 
 /** Shown instead of the editor on the native (Android) runtime. */
@@ -51,6 +52,9 @@ export default function CitationFieldsSection({
     resourceId: string;
     fields: CitationFieldsInput;
   } | null>(null);
+  // Set when the writer left a Source with changes that were not written. The
+  // editor is gone by then (it is keyed by Source), so the message lives here.
+  const [notSaved, setNotSaved] = React.useState<string | null>(null);
   if (!isEnabled || resource.type !== "source") return null;
   const isNative = process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native";
   return (
@@ -60,19 +64,36 @@ export default function CitationFieldsSection({
           {CITATION_FIELDS_NATIVE_MESSAGE}
         </p>
       ) : (
-        <CitationFieldsEditor
-          key={resource.id}
-          projectId={projectId}
-          resourceId={resource.id}
-          stillNeeds={stillNeedsLine(
-            draft !== null && draft.resourceId === resource.id
-              ? draft.fields
-              : null,
+        <>
+          {notSaved !== null && (
+            <div role="alert" className="mb-3 text-gw-label text-gw-primary">
+              <p>{notSaved}</p>
+              <Button
+                variant="secondary"
+                size="xs"
+                onClick={() => setNotSaved(null)}
+              >
+                Dismiss
+              </Button>
+            </div>
           )}
-          onDraftChange={(fields) =>
-            setDraft({ resourceId: resource.id, fields })
-          }
-        />
+          <CitationFieldsEditor
+            key={resource.id}
+            projectId={projectId}
+            resourceId={resource.id}
+            stillNeeds={stillNeedsLine(
+              draft !== null && draft.resourceId === resource.id
+                ? draft.fields
+                : null,
+            )}
+            onDraftChange={(fields) =>
+              setDraft({ resourceId: resource.id, fields })
+            }
+            onUnsavedOnLeave={(message) =>
+              setNotSaved(`${resource.name}: ${message}`)
+            }
+          />
+        </>
       )}
     </CollapsibleSection>
   );

@@ -5,16 +5,18 @@
  */
 import React from "react";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
-  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Provider } from "react-redux";
-import CitationFieldsEditor from "../../components/Sidebar/CitationFieldsEditor";
+import CitationFieldsEditor, {
+  CITATION_FIELDS_SAVE_DEBOUNCE_MS,
+} from "../../components/Sidebar/CitationFieldsEditor";
 import CitationFieldsSection from "../../components/Sidebar/CitationFieldsSection";
 import { StaticModulesProvider } from "../../components/Modules/ModulesContext";
 import { createSourceResource } from "../../src/lib/models/resource-factory";
@@ -51,7 +53,10 @@ beforeEach(() => {
   );
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  vi.useRealTimers();
+  cleanup();
+});
 
 async function renderEditor(
   extra: Partial<React.ComponentProps<typeof CitationFieldsEditor>> = {},
@@ -60,8 +65,21 @@ async function renderEditor(
   await screen.findByLabelText("Reference type");
 }
 
-function clickSave(): void {
-  fireEvent.click(screen.getByRole("button", { name: "Save citation fields" }));
+/** Switches to fake timers once the editor is loaded; the debounce is never waited for. */
+function useFakeClock(): void {
+  vi.useFakeTimers();
+}
+
+/** Advances the fake clock and lets the awaited write settle. */
+async function advance(ms: number): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+}
+
+/** Waits out the debounce so a pending change is written. */
+async function settleSave(): Promise<void> {
+  await advance(CITATION_FIELDS_SAVE_DEBOUNCE_MS);
 }
 
 describe("CitationFieldsEditor", () => {
@@ -139,6 +157,7 @@ describe("CitationFieldsEditor", () => {
 
   it("saves a person as family and given and an organisation as a literal", async () => {
     await renderEditor();
+    useFakeClock();
     fireEvent.click(screen.getByRole("button", { name: /add authors/i }));
     fireEvent.change(screen.getByLabelText(/authors 1 family name/i), {
       target: { value: "Hale" },
@@ -156,33 +175,45 @@ describe("CitationFieldsEditor", () => {
     fireEvent.change(screen.getByLabelText(/^title/i), {
       target: { value: "Tides" },
     });
-    clickSave();
-    await waitFor(() => expect(writeCitationFields).toHaveBeenCalledTimes(1));
+    await settleSave();
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
     expect(writeCitationFields).toHaveBeenCalledWith("p1", "r1", {
       referenceType: "book",
       authors: [{ family: "Hale", given: "Ada" }, { literal: "Tide Board" }],
       title: "Tides",
     });
-    expect((await screen.findByRole("status")).textContent).toMatch(/saved/i);
+    expect(screen.getByRole("status").textContent).toMatch(/saved/i);
   });
 
   it("omits empty fields so an incomplete Source is savable", async () => {
     await renderEditor();
-    clickSave();
-    await waitFor(() => expect(writeCitationFields).toHaveBeenCalled());
+    useFakeClock();
+    fireEvent.change(screen.getByLabelText(/^title/i), {
+      target: { value: "x" },
+    });
+    fireEvent.change(screen.getByLabelText(/^title/i), {
+      target: { value: "" },
+    });
+    await settleSave();
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
     expect(writeCitationFields).toHaveBeenCalledWith("p1", "r1", {
       referenceType: "book",
     });
   });
 
-  it("does not call the client for a malformed date and says so in an alert", async () => {
+  it("does not call the client for a malformed date and states the reason in text", async () => {
     await renderEditor();
-    fireEvent.change(screen.getByLabelText(/^date/i), {
-      target: { value: "next week" },
-    });
-    clickSave();
-    expect((await screen.findByRole("alert")).textContent).toMatch(/YYYY/);
+    useFakeClock();
+    const date = screen.getByLabelText(/^date/i);
+    fireEvent.change(date, { target: { value: "next week" } });
+    await settleSave();
     expect(writeCitationFields).not.toHaveBeenCalled();
+    expect(date.getAttribute("aria-invalid")).toBe("true");
+    const described = (date.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id: string) => document.getElementById(id)?.textContent ?? "")
+      .join(" ");
+    expect(described).toMatch(/YYYY/);
   });
 
   it("shows a failed read in role=alert, not as empty fields", async () => {
@@ -196,7 +227,7 @@ describe("CitationFieldsEditor", () => {
     );
     expect(screen.queryByLabelText("Reference type")).toBeNull();
     expect(
-      screen.queryByRole("button", { name: "Save citation fields" }),
+      screen.queryByRole("button", { name: /save citation fields/i }),
     ).toBeNull();
   });
 
@@ -222,11 +253,12 @@ describe("CitationFieldsEditor", () => {
       message: "The citation fields could not be saved.",
     });
     await renderEditor();
+    useFakeClock();
     fireEvent.change(screen.getByLabelText(/^title/i), {
       target: { value: "Tides" },
     });
-    clickSave();
-    expect((await screen.findByRole("alert")).textContent).toContain(
+    await settleSave();
+    expect(screen.getByRole("alert").textContent).toContain(
       "could not be saved",
     );
     expect((screen.getByLabelText(/^title/i) as HTMLInputElement).value).toBe(
@@ -300,9 +332,12 @@ describe("CitationFieldsEditor", () => {
       expect(control.getAttribute("tabindex")).not.toBe("-1");
       expect(control.hasAttribute("disabled")).toBe(false);
     }
-    const save = screen.getByRole("button", { name: "Save citation fields" });
-    save.focus();
-    expect(document.activeElement).toBe(save);
+    expect(
+      screen.queryByRole("button", { name: /save citation fields/i }),
+    ).toBeNull();
+    const title = screen.getByLabelText(/^title/i);
+    title.focus();
+    expect(document.activeElement).toBe(title);
   });
 
   it("passes axe in the loaded and failed-read states", async () => {
@@ -323,7 +358,7 @@ describe("CitationFieldsEditor: the date rule (Task 65, FR-5)", () => {
   function messageOf(input: HTMLElement): string {
     const ids = (input.getAttribute("aria-describedby") ?? "").split(" ");
     return ids
-      .map((id) => document.getElementById(id)?.textContent ?? "")
+      .map((id: string) => document.getElementById(id)?.textContent ?? "")
       .join(" ");
   }
 
@@ -385,13 +420,13 @@ describe("CitationFieldsEditor: the date rule (Task 65, FR-5)", () => {
     ).not.toBe("true");
   });
 
-  it("does not call the client for a non-real date, with the date alert", async () => {
+  it("does not call the client for a non-real date", async () => {
     await renderEditor({ now: NOW });
+    useFakeClock();
     fireEvent.change(screen.getByLabelText(/^date/i), {
       target: { value: "2023-02-29" },
     });
-    clickSave();
-    expect(await screen.findByRole("alert")).toBeTruthy();
+    await settleSave();
     expect(writeCitationFields).not.toHaveBeenCalled();
   });
 
@@ -416,5 +451,290 @@ describe("CitationFieldsEditor: the date rule (Task 65, FR-5)", () => {
       </Provider>,
     );
     expect(await screen.findByText("Still needs: Date")).toBeTruthy();
+  });
+});
+
+describe("CitationFieldsEditor: saves as you type (Task 66, FR-7)", () => {
+  const NOW = new Date("2026-11-16T12:00:00Z");
+  const DEBOUNCE = CITATION_FIELDS_SAVE_DEBOUNCE_MS;
+
+  function type(label: RegExp, value: string): void {
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  }
+
+  function sectionFor(
+    resource: ReturnType<typeof createSourceResource>,
+  ): JSX.Element {
+    return (
+      <Provider store={makeStore()}>
+        <StaticModulesProvider value={{ citations: true }}>
+          <CitationFieldsSection projectId="p1" resource={resource} />
+        </StaticModulesProvider>
+      </Provider>
+    );
+  }
+
+  it("renders no Save button", async () => {
+    await renderEditor();
+    expect(
+      screen.queryByRole("button", { name: /save citation fields/i }),
+    ).toBeNull();
+    expect(screen.queryByText(/save citation fields/i)).toBeNull();
+  });
+
+  it("makes no write request on open, however long it waits", async () => {
+    readCitationFields.mockResolvedValue({
+      kind: "fields",
+      fields: { referenceType: "book", title: "Stored" },
+    });
+    await renderEditor({ now: NOW });
+    useFakeClock();
+    await advance(DEBOUNCE * 10);
+    expect(writeCitationFields).not.toHaveBeenCalled();
+  });
+
+  it("writes once with the validated fields after the debounce, not before", async () => {
+    await renderEditor({ now: NOW });
+    useFakeClock();
+    type(/^title/i, "Tides");
+    await advance(DEBOUNCE - 1);
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    await advance(1);
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
+    expect(writeCitationFields).toHaveBeenCalledWith("p1", "r1", {
+      referenceType: "book",
+      title: "Tides",
+    });
+    await advance(DEBOUNCE * 5);
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
+  });
+
+  it("makes one write carrying the last values for several changes within the debounce", async () => {
+    await renderEditor({ now: NOW });
+    useFakeClock();
+    type(/^title/i, "T");
+    await advance(DEBOUNCE - 1);
+    type(/^title/i, "Ti");
+    await advance(DEBOUNCE - 1);
+    type(/^publisher/i, "Press");
+    type(/^title/i, "Tides");
+    await advance(DEBOUNCE);
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
+    expect(writeCitationFields).toHaveBeenCalledWith("p1", "r1", {
+      referenceType: "book",
+      title: "Tides",
+      publisher: "Press",
+    });
+  });
+
+  it("shows a status after a successful save", async () => {
+    await renderEditor({ now: NOW });
+    useFakeClock();
+    type(/^title/i, "Tides");
+    await settleSave();
+    const saved = screen
+      .getAllByRole("status")
+      .some((s: HTMLElement) =>
+        /citation fields saved/i.test(s.textContent ?? ""),
+      );
+    expect(saved).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("flushes a pending valid change when the editor unmounts", async () => {
+    const view = render(
+      <CitationFieldsEditor projectId="p1" resourceId="r1" now={NOW} />,
+    );
+    await screen.findByLabelText("Reference type");
+    useFakeClock();
+    type(/^title/i, "Tides");
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    view.unmount();
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
+    expect(writeCitationFields).toHaveBeenCalledWith("p1", "r1", {
+      referenceType: "book",
+      title: "Tides",
+    });
+    await advance(DEBOUNCE * 3);
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes nothing on unmount when nothing was changed", async () => {
+    const view = render(
+      <CitationFieldsEditor projectId="p1" resourceId="r1" now={NOW} />,
+    );
+    await screen.findByLabelText("Reference type");
+    view.unmount();
+    expect(writeCitationFields).not.toHaveBeenCalled();
+  });
+
+  it("switching Source writes the pending change for the first Source before the second is read", async () => {
+    const first = createSourceResource({ name: "First" });
+    const second = createSourceResource({ name: "Second" });
+    const view = render(sectionFor(first));
+    await screen.findByLabelText("Reference type");
+    useFakeClock();
+    type(/^title/i, "Tides");
+    readCitationFields.mockClear();
+    view.rerender(sectionFor(second));
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
+    expect(writeCitationFields).toHaveBeenCalledWith("p1", first.id, {
+      referenceType: "book",
+      title: "Tides",
+    });
+    expect(readCitationFields).toHaveBeenCalledWith("p1", second.id);
+    expect(writeCitationFields.mock.invocationCallOrder[0]).toBeLessThan(
+      readCitationFields.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("blocks the save while a field is invalid, marks it in text, and writes nothing", async () => {
+    await renderEditor({ now: NOW });
+    useFakeClock();
+    type(/^title/i, "Tides");
+    type(/^date/i, "2005-01-55");
+    await advance(DEBOUNCE * 3);
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    const date = screen.getByLabelText(/^date/i);
+    expect(date.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByText(/not a real date/i)).toBeTruthy();
+    expect(
+      screen
+        .getAllByRole("status")
+        .some((s: HTMLElement) => /not saved/i.test(s.textContent ?? "")),
+    ).toBe(true);
+  });
+
+  it("blocks the save for a stored invalid value left unedited, while another field changes", async () => {
+    readCitationFields.mockResolvedValue({
+      kind: "fields",
+      fields: { referenceType: "web-page", date: "2005-01-55" },
+    });
+    await renderEditor({ now: NOW });
+    useFakeClock();
+    type(/^title/i, "Tide Tables");
+    await advance(DEBOUNCE * 3);
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/^date/i).getAttribute("aria-invalid")).toBe(
+      "true",
+    );
+  });
+
+  it("resumes the save with everything typed once the field is corrected", async () => {
+    await renderEditor({ now: NOW });
+    useFakeClock();
+    type(/^title/i, "Tides");
+    type(/^date/i, "2005-01-55");
+    await advance(DEBOUNCE * 2);
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    type(/^date/i, "2005-01-05");
+    await advance(DEBOUNCE - 1);
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    await advance(1);
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
+    expect(writeCitationFields).toHaveBeenCalledWith("p1", "r1", {
+      referenceType: "book",
+      title: "Tides",
+      date: "2005-01-05",
+    });
+  });
+
+  it("on unmount with a field still invalid writes nothing and reports the changes as not saved", async () => {
+    const onUnsavedOnLeave = vi.fn();
+    const view = render(
+      <CitationFieldsEditor
+        projectId="p1"
+        resourceId="r1"
+        now={NOW}
+        onUnsavedOnLeave={onUnsavedOnLeave}
+      />,
+    );
+    await screen.findByLabelText("Reference type");
+    useFakeClock();
+    type(/^title/i, "Tides");
+    type(/^date/i, "2005-01-55");
+    view.unmount();
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    expect(onUnsavedOnLeave).toHaveBeenCalledTimes(1);
+    expect(String(onUnsavedOnLeave.mock.calls[0][0])).toMatch(/not saved/i);
+  });
+
+  it("does not report a not-saved message when an invalid stored value was left unedited", async () => {
+    readCitationFields.mockResolvedValue({
+      kind: "fields",
+      fields: { referenceType: "web-page", date: "2005-01-55" },
+    });
+    const onUnsavedOnLeave = vi.fn();
+    const view = render(
+      <CitationFieldsEditor
+        projectId="p1"
+        resourceId="r1"
+        now={NOW}
+        onUnsavedOnLeave={onUnsavedOnLeave}
+      />,
+    );
+    await screen.findByLabelText("Reference type");
+    view.unmount();
+    expect(onUnsavedOnLeave).not.toHaveBeenCalled();
+    expect(writeCitationFields).not.toHaveBeenCalled();
+  });
+
+  it("switching Source with a field still invalid shows a visible not-saved message and writes nothing", async () => {
+    const first = createSourceResource({ name: "First" });
+    const second = createSourceResource({ name: "Second" });
+    const view = render(sectionFor(first));
+    await screen.findByLabelText("Reference type");
+    useFakeClock();
+    type(/^title/i, "Tides");
+    type(/^date/i, "2005-01-55");
+    view.rerender(sectionFor(second));
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toMatch(/not saved/i);
+    expect(alert.textContent).toContain("First");
+  });
+
+  it("a flush that fails on leaving reports the failure through the callback", async () => {
+    writeCitationFields.mockResolvedValue({
+      kind: "failed",
+      message: "The citation fields could not be saved.",
+    });
+    const onUnsavedOnLeave = vi.fn();
+    const view = render(
+      <CitationFieldsEditor
+        projectId="p1"
+        resourceId="r1"
+        now={NOW}
+        onUnsavedOnLeave={onUnsavedOnLeave}
+      />,
+    );
+    await screen.findByLabelText("Reference type");
+    useFakeClock();
+    type(/^title/i, "Tides");
+    view.unmount();
+    await advance(0);
+    expect(onUnsavedOnLeave).toHaveBeenCalledTimes(1);
+    expect(String(onUnsavedOnLeave.mock.calls[0][0])).toMatch(/not saved/i);
+  });
+
+  it("keeps every typed value after a failed save and shows role=alert", async () => {
+    writeCitationFields.mockResolvedValue({
+      kind: "failed",
+      message: "The citation fields could not be saved.",
+    });
+    await renderEditor({ now: NOW });
+    useFakeClock();
+    type(/^title/i, "Tides");
+    type(/^publisher/i, "Press");
+    await settleSave();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "could not be saved",
+    );
+    expect((screen.getByLabelText(/^title/i) as HTMLInputElement).value).toBe(
+      "Tides",
+    );
+    expect(
+      (screen.getByLabelText(/^publisher/i) as HTMLInputElement).value,
+    ).toBe("Press");
   });
 });

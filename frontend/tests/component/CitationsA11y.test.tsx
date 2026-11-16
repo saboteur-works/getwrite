@@ -10,14 +10,18 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  act,
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import CitationFieldsEditor from "../../components/Sidebar/CitationFieldsEditor";
+import CitationFieldsEditor, {
+  CITATION_FIELDS_SAVE_DEBOUNCE_MS,
+} from "../../components/Sidebar/CitationFieldsEditor";
 import CompilePreviewModal from "../../components/common/CompilePreviewModal";
 import CitationCheckDialog from "../../components/common/CitationCheckDialog";
 import type { AnyResource } from "../../src/lib/models/types";
@@ -56,7 +60,17 @@ beforeEach(() => {
   );
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  vi.useRealTimers();
+  cleanup();
+});
+
+/** Advances the fake clock past the save debounce and lets the write settle. */
+async function settleSave(): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(CITATION_FIELDS_SAVE_DEBOUNCE_MS);
+  });
+}
 
 // ---------------------------------------------------------------- editor
 
@@ -135,28 +149,56 @@ describe("citation fields editor: axe", () => {
     await runAxe(container);
   });
 
-  it("passes axe with a failed save (alert) and with a saved notice (status)", async () => {
-    const user = userEvent.setup();
+  it("passes axe with an invalid field (not-saved status), a failed save (alert) and a saved notice (status)", async () => {
     const container = await renderEditor();
-    await user.type(screen.getByLabelText(/^date/i), "not a date");
-    await user.click(
-      screen.getByRole("button", { name: "Save citation fields" }),
-    );
-    expect(await screen.findByRole("alert")).toBeTruthy();
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText(/^date/i), {
+      target: { value: "not a date" },
+    });
+    await settleSave();
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    expect(
+      screen
+        .getAllByRole("status")
+        .some((s: HTMLElement) => /not saved/i.test(s.textContent ?? "")),
+    ).toBe(true);
+    vi.useRealTimers();
     await runAxe(container);
-    await user.clear(screen.getByLabelText(/^date/i));
-    await user.click(
-      screen.getByRole("button", { name: "Save citation fields" }),
+
+    writeCitationFields.mockResolvedValueOnce({
+      kind: "failed",
+      message: "The citation fields could not be saved.",
+    });
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText(/^date/i), {
+      target: { value: "" },
+    });
+    await settleSave();
+    expect(screen.getByRole("alert").textContent).toContain(
+      "could not be saved",
     );
-    await waitFor(() =>
-      expect(screen.getByRole("status").textContent).toContain("saved"),
-    );
+    vi.useRealTimers();
+    await runAxe(container);
+
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText(/^title/i), {
+      target: { value: "Tides" },
+    });
+    await settleSave();
+    expect(
+      screen
+        .getAllByRole("status")
+        .some((s: HTMLElement) =>
+          /citation fields saved/i.test(s.textContent ?? ""),
+        ),
+    ).toBe(true);
+    vi.useRealTimers();
     await runAxe(container);
   });
 });
 
 describe("citation fields editor: keyboard", () => {
-  it("reaches every control by Tab and runs Add and Save by keyboard alone", async () => {
+  it("reaches every control by Tab and runs Add and the save-as-you-type by keyboard alone", async () => {
     const user = userEvent.setup();
     await renderEditor();
     const reached = new Set<string>();
@@ -172,7 +214,7 @@ describe("citation fields editor: keyboard", () => {
       );
     }
     // Book form: type, add authors, add editors, title, edition, publisher,
-    // place, date, url, accessed, save.
+    // place, date, url, accessed. There is no Save button.
     const expectedNames: RegExp[] = [/add authors/i, /add editors/i];
     for (const re of expectedNames) {
       expect([...reached].some((n) => re.test(n))).toBe(true);
@@ -188,17 +230,19 @@ describe("citation fields editor: keyboard", () => {
     const family = await screen.findByLabelText(/authors 1 family name/i);
     await user.click(family);
     await user.keyboard("Hale");
-    const save = screen.getByRole("button", { name: "Save citation fields" });
-    save.focus();
-    await user.keyboard(" ");
-    await waitFor(() => expect(writeCitationFields).toHaveBeenCalledTimes(1));
+    expect(
+      screen.queryByRole("button", { name: /save citation fields/i }),
+    ).toBeNull();
+    // user-event cannot run under fake timers here, so the keyboard-typed
+    // change is written by the flush on leaving instead of the debounce
+    // (the debounce itself is tested with fake timers in CitationFieldsEditor.test.tsx).
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    cleanup();
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
     expect(writeCitationFields.mock.calls[0][2]).toMatchObject({
       referenceType: "book",
       authors: [{ family: "Hale", given: "" }],
     });
-    await waitFor(() =>
-      expect(screen.getByRole("status").textContent).toContain("saved"),
-    );
   });
 
   it("every text field can be focused by Tab in document order and typed into", async () => {
@@ -220,14 +264,30 @@ describe("citation fields editor: keyboard", () => {
 
 describe("citation fields editor: text, not colour, and live regions", () => {
   it("states a failed save in a role=alert starting with 'Error:'", async () => {
-    const user = userEvent.setup();
+    writeCitationFields.mockResolvedValue({
+      kind: "failed",
+      message: "The citation fields could not be saved.",
+    });
     await renderEditor();
-    await user.type(screen.getByLabelText(/^date/i), "nope");
-    await user.click(
-      screen.getByRole("button", { name: "Save citation fields" }),
-    );
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toMatch(/^Error: .*YYYY/);
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText(/^title/i), {
+      target: { value: "Tides" },
+    });
+    await settleSave();
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toMatch(/^Error: .*could not be saved/);
+  });
+
+  it("states an invalid date in text beside the field, not by colour", async () => {
+    await renderEditor();
+    const date = screen.getByLabelText(/^date/i);
+    fireEvent.change(date, { target: { value: "nope" } });
+    expect(date.getAttribute("aria-invalid")).toBe("true");
+    const described = (date.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id: string) => document.getElementById(id)?.textContent ?? "")
+      .join(" ");
+    expect(described).toMatch(/YYYY|real date/i);
   });
 
   it("states a failed read in a role=alert and offers Retry", async () => {

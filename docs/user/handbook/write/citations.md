@@ -28,7 +28,7 @@ Citations work without the **Sources** module being on. A [project type](../orga
 1. Open the Source and find **Citation fields** in the sidebar.
 2. Under **Reference type**, choose **Book**, **Article (journal)**, **Web page** or **Interview**.
 3. Fill in the fields. Every field is optional, so you can save a Source before it is complete.
-4. Choose **Save citation fields**. A message below the button says **Citation fields saved.**
+4. Stop typing. The fields save by themselves a moment after your last change, and a message below the fields says **Citation fields saved.** There is no Save button. If a date is not a real date or is later than today, the field says why and nothing is saved until you correct it. If you open another Source while a field is still wrong, that change is not saved and a message tells you so.
 
 Each type has its own fields.
 

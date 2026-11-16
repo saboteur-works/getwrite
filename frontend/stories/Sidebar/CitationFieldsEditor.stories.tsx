@@ -1,12 +1,15 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent, within } from "storybook/test";
-import CitationFieldsEditor from "../../components/Sidebar/CitationFieldsEditor";
+import { expect, userEvent, waitFor, within } from "storybook/test";
+import CitationFieldsEditor, {
+  CITATION_FIELDS_SAVE_DEBOUNCE_MS,
+} from "../../components/Sidebar/CitationFieldsEditor";
 
 type FetchMode =
   | "empty"
   | "stored"
   | "stored-organisation"
+  | "stored-invalid-date"
   | "read-fails"
   | "save-fails";
 
@@ -21,6 +24,13 @@ const STORED = {
   journal: "Coastal Review",
   date: "2019-04",
   authors: [{ family: "Hale", given: "Ada" }],
+};
+
+const STORED_INVALID_DATE = {
+  referenceType: "web-page",
+  title: "Tide tables",
+  website: "Tide Board",
+  date: "2005-01-55",
 };
 
 const STORED_ORGANISATION = {
@@ -56,7 +66,9 @@ function useCitationFieldsFetch(mode: FetchMode): void {
             ? STORED
             : mode === "stored-organisation"
               ? STORED_ORGANISATION
-              : null;
+              : mode === "stored-invalid-date"
+                ? STORED_INVALID_DATE
+                : null;
         return json({ kind: "fields", fields: stored });
       }
       if (mode === "save-fails") {
@@ -78,16 +90,27 @@ function useCitationFieldsFetch(mode: FetchMode): void {
 
 function Harness({ fetchMode, stillNeeds }: StoryArgs): JSX.Element {
   useCitationFieldsFetch(fetchMode);
+  const [sourceId, setSourceId] = React.useState("story-source");
+  const [notSaved, setNotSaved] = React.useState<string | null>(null);
   return (
     <div style={{ width: 320 }}>
+      {notSaved !== null && <p role="alert">{notSaved}</p>}
       <CitationFieldsEditor
+        key={sourceId}
         projectId="story-project"
-        resourceId="story-source"
+        resourceId={sourceId}
         stillNeeds={stillNeeds}
+        onUnsavedOnLeave={setNotSaved}
       />
+      <button type="button" onClick={() => setSourceId((id) => `${id}-next`)}>
+        Switch Source
+      </button>
     </div>
   );
 }
+
+/** Longer than the editor's debounce, so the play function waits for the save. */
+const SAVE_WAIT = { timeout: CITATION_FIELDS_SAVE_DEBOUNCE_MS + 2000 };
 
 const meta: Meta<StoryArgs> = {
   title: "Sidebar/CitationFieldsEditor",
@@ -138,18 +161,18 @@ export const WithStillNeeds: Story = {
   },
 };
 
-/** Saving shows a confirmation in a status region. */
+/** A change is saved after a pause, and a confirmation shows in a status region. */
 export const Saved: Story = {
   args: { fetchMode: "stored" },
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByRole("button", { name: "Save citation fields" }),
-    );
-    const statuses = await canvas.findAllByRole("status");
-    expect(
-      statuses.some((s) => s.textContent === "Citation fields saved."),
-    ).toBe(true);
+    await userEvent.type(await canvas.findByLabelText("Title"), " II");
+    await waitFor(() => {
+      const statuses = canvas.getAllByRole("status");
+      expect(
+        statuses.some((s) => s.textContent === "Citation fields saved."),
+      ).toBe(true);
+    }, SAVE_WAIT);
   },
 };
 
@@ -158,12 +181,39 @@ export const SaveFails: Story = {
   args: { fetchMode: "save-fails" },
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByRole("button", { name: "Save citation fields" }),
-    );
-    expect(await canvas.findByRole("alert")).toHaveTextContent(
+    await userEvent.type(await canvas.findByLabelText("Title"), "Tides");
+    expect(await canvas.findByRole("alert", {}, SAVE_WAIT)).toHaveTextContent(
       "could not be saved",
     );
+    expect(canvas.getByLabelText("Title")).toHaveValue("Tides");
+  },
+};
+
+/** A stored date that is not a real date is marked in text and blocks the save. */
+export const InvalidField: Story = {
+  args: { fetchMode: "stored-invalid-date" },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    const date = await canvas.findByLabelText("Date");
+    expect(date).toHaveAttribute("aria-invalid", "true");
+    expect(canvas.getByText(/not a real date/i)).toBeInTheDocument();
+    await userEvent.type(canvas.getByLabelText("Title"), " II");
+    expect(
+      await canvas.findByText(/Not saved yet/i, {}, SAVE_WAIT),
+    ).toBeInTheDocument();
+  },
+};
+
+/** Leaving with a field still invalid shows a message that the changes were not saved. */
+export const NotSavedOnLeaving: Story = {
+  args: { fetchMode: "empty" },
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.type(await canvas.findByLabelText("Date"), "2005-01-55");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Switch Source" }),
+    );
+    expect(await canvas.findByRole("alert")).toHaveTextContent(/not saved/i);
   },
 };
 

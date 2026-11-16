@@ -1,6 +1,7 @@
 import React from "react";
 import { afterEach, describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { CITATION_FIELDS_SAVE_DEBOUNCE_MS } from "../components/Sidebar/CitationFieldsEditor";
 import { Provider } from "react-redux";
 import MetadataSidebar from "../components/Sidebar/MetadataSidebar";
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
@@ -244,11 +245,14 @@ describe("MetadataSidebar Citation fields ids (Feature 116, Task 64)", () => {
   it("saves the fields with the directory id", async () => {
     mount();
     const title = await screen.findByDisplayValue("Stored Title");
+    vi.useFakeTimers();
     fireEvent.change(title, { target: { value: "New Title" } });
-    fireEvent.click(screen.getByText("Save citation fields"));
-    await waitFor(() =>
-      expect(calls.some((c) => c.method === "PUT")).toBe(true),
-    );
+    expect(calls.some((c) => c.method === "PUT")).toBe(false);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CITATION_FIELDS_SAVE_DEBOUNCE_MS);
+    });
+    vi.useRealTimers();
+    expect(calls.some((c) => c.method === "PUT")).toBe(true);
     expect(calls.filter((c) => c.method === "PUT")).toEqual([
       { method: "PUT", projectId: DIRECTORY_ID },
     ]);

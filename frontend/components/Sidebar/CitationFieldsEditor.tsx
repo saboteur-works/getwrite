@@ -3,13 +3,13 @@
 import React from "react";
 import {
   CITATION_FIELDS_LOAD_FAILED_MESSAGE,
+  CITATION_FIELDS_SAVE_FAILED_MESSAGE,
   readCitationFields,
   writeCitationFields,
 } from "../../src/lib/api/citation-fields";
 import type { CitationFieldsInput } from "../../src/lib/models/citations-csl-mapper";
 import {
   CITATION_DATE_REASON_TEXT,
-  CITATION_FIELDS_REFUSAL,
   validateCitationDate,
   validateCitationFieldsForWrite,
   type CitationDateReason,
@@ -55,7 +55,20 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
 };
 
 const DATE_HINT = "YYYY, YYYY-MM or YYYY-MM-DD";
-const DATE_ERROR = `Check the dates: use ${DATE_HINT}.`;
+
+/** How long after the last change a valid draft is written (Task 66). */
+export const CITATION_FIELDS_SAVE_DEBOUNCE_MS = 800;
+
+/** Shown when the writer leaves with a field still invalid. */
+export const CITATION_FIELDS_NOT_SAVED_INVALID_MESSAGE =
+  "Your changes to the citation fields were not saved because a field is not valid.";
+
+/** Shown when the write made on leaving fails. */
+export const CITATION_FIELDS_NOT_SAVED_FAILED_MESSAGE =
+  "Your changes to the citation fields were not saved because the save failed.";
+
+/** Shown while a change waits because a field is invalid. */
+const BLOCKED_STATUS = "Not saved yet: fix the field marked above.";
 
 /** One person row as typed; kept as strings until saved. */
 interface PersonDraft {
@@ -148,11 +161,15 @@ function dateReason(
   return checked.ok ? null : checked.reason;
 }
 
-function hasBadDate(draft: Draft, now: Date): boolean {
-  return CITATION_FIELDS_BY_TYPE[draft.referenceType].some(
+/** The fields to write, or null while any field is invalid (no partial save). */
+function validatedFields(draft: Draft, now: Date): CitationFields | null {
+  const hasBadDate = CITATION_FIELDS_BY_TYPE[draft.referenceType].some(
     (spec) =>
       spec.kind === "date" && dateReason(draft, spec.name, now) !== null,
   );
+  if (hasBadDate) return null;
+  const checked = validateCitationFieldsForWrite(fieldsFromDraft(draft), now);
+  return checked.ok ? checked.value : null;
 }
 
 interface PeopleFieldProps {
@@ -264,16 +281,29 @@ export interface CitationFieldsEditorProps {
   onDraftChange?: (fields: CitationFieldsInput) => void;
   /** The clock for the date rule (FR-5); defaults to the current time. */
   now?: Date;
+  /**
+   * Called when the writer leaves (the editor unmounts, as it does on a
+   * Source change) and the pending changes were not written: a field was
+   * still invalid, or the write made on leaving failed. The editor is gone
+   * by then, so the caller shows the message. Not called when nothing was
+   * changed, even if a stored value is invalid.
+   */
+  onUnsavedOnLeave?: (message: string) => void;
 }
 
 /**
  * Editor for a Source's citation fields (Feature 116, FR-5, FR-7, FR-23):
  * the reference type choice and the fixed fields of the chosen type. Reads
- * once on mount and writes only when Save is pressed, through the Task 19
- * client. A failed read shows an alert with Retry and no fields, never an
- * empty form; a failed save shows an alert and keeps what was typed; a
- * success is announced in a status region. Every field is optional, so an
- * incomplete Source can be saved. Mount with `key={resourceId}`.
+ * once on mount; there is no Save button (Task 66). A change is written after
+ * `CITATION_FIELDS_SAVE_DEBOUNCE_MS` without a further change, a pending
+ * change is written when the editor unmounts, and nothing is written while
+ * any field is invalid (the field is marked with its reason in text). Leaving
+ * with a field invalid writes nothing and `onUnsavedOnLeave` is called.
+ * Writes go through the Task 19 client only. A failed read shows an alert
+ * with Retry and no fields, never an empty form; a failed save shows an alert
+ * and keeps what was typed; a success is announced in a status region. Every
+ * field is optional, so an incomplete Source can be saved. Mount with
+ * `key={resourceId}`.
  */
 export default function CitationFieldsEditor({
   projectId,
@@ -282,12 +312,30 @@ export default function CitationFieldsEditor({
   onSaved,
   onDraftChange,
   now,
+  onUnsavedOnLeave,
 }: CitationFieldsEditorProps): JSX.Element {
   const [load, setLoad] = React.useState<LoadState>({ status: "loading" });
   const [draft, setDraft] = React.useState<Draft>(EMPTY_DRAFT);
   const [notice, setNotice] = React.useState<Notice>(null);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [hasUnsaved, setHasUnsaved] = React.useState(false);
   const [attempt, setAttempt] = React.useState(0);
+
+  // The draft and save state live in refs as well, so the debounce timer and
+  // the unmount flush read the latest values without a re-render.
+  const draftRef = React.useRef<Draft>(EMPTY_DRAFT);
+  const versionRef = React.useRef(0);
+  const savedVersionRef = React.useRef(0);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = React.useRef(false);
+  const isLoadedRef = React.useRef(false);
+  const latest = React.useRef({
+    projectId,
+    resourceId,
+    now,
+    onSaved,
+    onUnsavedOnLeave,
+  });
+  latest.current = { projectId, resourceId, now, onSaved, onUnsavedOnLeave };
 
   React.useEffect(() => {
     let isStale = false;
@@ -299,9 +347,11 @@ export default function CitationFieldsEditor({
           setLoad({ status: "failed", message: result.message });
           return;
         }
-        setDraft(
-          result.fields === null ? EMPTY_DRAFT : draftFromFields(result.fields),
-        );
+        const loaded =
+          result.fields === null ? EMPTY_DRAFT : draftFromFields(result.fields);
+        draftRef.current = loaded;
+        isLoadedRef.current = true;
+        setDraft(loaded);
         setLoad({ status: "ready" });
       },
       () => {
@@ -319,6 +369,92 @@ export default function CitationFieldsEditor({
       isStale = true;
     };
   }, [projectId, resourceId, attempt]);
+
+  const runSave = React.useCallback(async (): Promise<void> => {
+    timerRef.current = null;
+    const { projectId: pid, resourceId: rid, now: clock } = latest.current;
+    const version = versionRef.current;
+    if (version === savedVersionRef.current) return;
+    if (inFlightRef.current) {
+      timerRef.current = setTimeout(
+        () => void runSave(),
+        CITATION_FIELDS_SAVE_DEBOUNCE_MS,
+      );
+      return;
+    }
+    const value = validatedFields(draftRef.current, clock ?? new Date());
+    if (value === null) return;
+    inFlightRef.current = true;
+    setNotice(null);
+    try {
+      const result = await writeCitationFields(pid, rid, value);
+      if (result.kind === "saved") {
+        if (version === versionRef.current) {
+          savedVersionRef.current = version;
+          setHasUnsaved(false);
+          setNotice({ kind: "saved", text: "Citation fields saved." });
+        }
+        latest.current.onSaved?.(result.fields);
+      } else {
+        setNotice({ kind: "failed", text: result.message });
+      }
+    } catch {
+      setNotice({ kind: "failed", text: CITATION_FIELDS_SAVE_FAILED_MESSAGE });
+    } finally {
+      inFlightRef.current = false;
+    }
+  }, []);
+
+  /** Applies a writer's change to the draft and (re)starts the debounce. */
+  const edit = (change: (d: Draft) => Draft): void => {
+    const next = change(draftRef.current);
+    draftRef.current = next;
+    versionRef.current += 1;
+    setDraft(next);
+    setNotice(null);
+    setHasUnsaved(true);
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(
+      () => void runSave(),
+      CITATION_FIELDS_SAVE_DEBOUNCE_MS,
+    );
+  };
+
+  // On leaving (unmount, which a Source change is): write a pending valid
+  // change now, or report that an invalid one was not saved.
+  React.useEffect(
+    () => () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+      timerRef.current = null;
+      if (
+        !isLoadedRef.current ||
+        versionRef.current === savedVersionRef.current
+      ) {
+        return;
+      }
+      const { projectId: pid, resourceId: rid, now: clock } = latest.current;
+      const report = (message: string): void =>
+        latest.current.onUnsavedOnLeave?.(message);
+      const value = validatedFields(draftRef.current, clock ?? new Date());
+      if (value === null) {
+        report(CITATION_FIELDS_NOT_SAVED_INVALID_MESSAGE);
+        return;
+      }
+      // The write call is made synchronously (before a new Source is read);
+      // any failure of it, thrown or returned, is reported, never dropped.
+      void (async (): Promise<void> => {
+        try {
+          const result = await writeCitationFields(pid, rid, value);
+          if (result.kind === "failed") {
+            report(CITATION_FIELDS_NOT_SAVED_FAILED_MESSAGE);
+          }
+        } catch {
+          report(CITATION_FIELDS_NOT_SAVED_FAILED_MESSAGE);
+        }
+      })();
+    },
+    [],
+  );
 
   const draftChangeRef = React.useRef(onDraftChange);
   draftChangeRef.current = onDraftChange;
@@ -352,46 +488,11 @@ export default function CitationFieldsEditor({
   }
 
   const setText = (name: string, value: string): void =>
-    setDraft((d) => ({ ...d, texts: { ...d.texts, [name]: value } }));
-
-  const save = async (): Promise<void> => {
-    setNotice(null);
-    if (hasBadDate(draft, now ?? new Date())) {
-      setNotice({ kind: "failed", text: DATE_ERROR });
-      return;
-    }
-    const checked = validateCitationFieldsForWrite(
-      fieldsFromDraft(draft),
-      now ?? new Date(),
-    );
-    if (!checked.ok) {
-      setNotice({ kind: "failed", text: CITATION_FIELDS_REFUSAL });
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const result = await writeCitationFields(
-        projectId,
-        resourceId,
-        checked.value,
-      );
-      if (result.kind === "saved") {
-        setNotice({ kind: "saved", text: "Citation fields saved." });
-        onSaved?.(result.fields);
-      } else {
-        setNotice({ kind: "failed", text: result.message });
-      }
-    } catch {
-      setNotice({
-        kind: "failed",
-        text: "The citation fields could not be saved.",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    edit((d) => ({ ...d, texts: { ...d.texts, [name]: value } }));
 
   const specs = CITATION_FIELDS_BY_TYPE[draft.referenceType];
+  const isBlocked =
+    hasUnsaved && validatedFields(draft, now ?? new Date()) === null;
   return (
     <div>
       <div className="mb-3">
@@ -408,7 +509,7 @@ export default function CitationFieldsEditor({
             const next = CITATION_REFERENCE_TYPES.find(
               (t) => t === e.target.value,
             );
-            if (next) setDraft((d) => ({ ...d, referenceType: next }));
+            if (next) edit((d) => ({ ...d, referenceType: next }));
           }}
         >
           {CITATION_REFERENCE_TYPES.map((type) => (
@@ -431,7 +532,7 @@ export default function CitationFieldsEditor({
               spec={spec}
               rows={draft.people[spec.name] ?? []}
               onChange={(rows) =>
-                setDraft((d) => ({
+                edit((d) => ({
                   ...d,
                   people: { ...d.people, [spec.name]: rows },
                 }))
@@ -491,18 +592,12 @@ export default function CitationFieldsEditor({
           {`Error: ${notice.text}`}
         </p>
       )}
-      <Button
-        variant="secondary"
-        size="sm"
-        aria-disabled={isSaving}
-        onClick={() => {
-          if (!isSaving) void save();
-        }}
-      >
-        Save citation fields
-      </Button>
       <p role="status" className="mt-2 text-gw-label text-gw-secondary">
-        {notice?.kind === "saved" ? notice.text : ""}
+        {notice?.kind === "saved"
+          ? notice.text
+          : isBlocked
+            ? BLOCKED_STATUS
+            : ""}
       </p>
     </div>
   );

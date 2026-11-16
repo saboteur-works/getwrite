@@ -8,10 +8,11 @@
  */
 import React from "react";
 import {
+  act,
   cleanup,
+  fireEvent,
   render,
   screen,
-  waitFor,
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -42,6 +43,7 @@ vi.mock("../../src/lib/api/citations-check", () => ({
 }));
 
 import CitationFieldsSection from "../../components/Sidebar/CitationFieldsSection";
+import { CITATION_FIELDS_SAVE_DEBOUNCE_MS } from "../../components/Sidebar/CitationFieldsEditor";
 import ShellModalCoordinator from "../../components/Layout/ShellModalCoordinator";
 import type { ShellModalCoordinatorProps } from "../../components/Layout/ShellModalCoordinator";
 import { StaticModulesProvider } from "../../components/Modules/ModulesContext";
@@ -58,6 +60,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   vi.unstubAllEnvs();
 });
@@ -140,16 +143,17 @@ describe("Sources off, Citations on", () => {
     expect(writeCitationFields).not.toHaveBeenCalled();
   });
 
-  it("saves an edit through the editor", async () => {
+  it("saves an edit through the editor, after the debounce", async () => {
     writeCitationFields.mockResolvedValue({ kind: "saved", fields: STORED });
     render(sidebar(source(), modules));
     const title = await screen.findByDisplayValue("A Stored Title");
-    const user = userEvent.setup();
-    await user.type(title, " II");
-    await user.click(
-      screen.getByRole("button", { name: "Save citation fields" }),
-    );
-    await waitFor(() => expect(writeCitationFields).toHaveBeenCalledTimes(1));
+    vi.useFakeTimers();
+    fireEvent.change(title, { target: { value: "A Stored Title II" } });
+    expect(writeCitationFields).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CITATION_FIELDS_SAVE_DEBOUNCE_MS);
+    });
+    expect(writeCitationFields).toHaveBeenCalledTimes(1);
   });
 
   it("shows the compile switch, usable for PDF", async () => {
