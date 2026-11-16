@@ -720,7 +720,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Owner decision, Task 52, 2026-11-16 (FR-5). Measured: stored values the old check accepted, read from the owner's throwaway project, were an interview `date` of `2005-01-55`, a web page `date` of `1000-02-98` and an article `accessed` of `2088`; FR-5 specified a pattern only. The limit is the current date at UTC+14 (the furthest-ahead time zone) so a writer in any zone can enter today. Owner decisions, Task 52, 2026-11-16: no lower bound on the year, any real calendar year accepted (OQ-17); a stored value that fails the rule counts as a missing detail of its Source, listed in the pre-run check naming the field, compiled with the existing incomplete marker on Proceed, never passed to the engine and never rewritten (OQ-18). The files for the check and the compile were found by reading: `findMissingDetails` is the one function the editor line, `requiredDetailsCheck` and `gapFor` all call. Ordering: this task is numbered before Task 66 because Task 66's editor shows this task's reasons and blocks its save on them; Task 66 lists 65 under Depends on.
 **POS:** task_1aebe92b
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 66: Citation fields editor saves as you type
 **What:** Replace the Save button of the citation fields editor with a debounced save after each change, a flush of a pending change when the writer leaves, no save while any field is invalid, and a visible not-saved message when the writer leaves with a field still invalid.
