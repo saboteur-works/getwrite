@@ -730,7 +730,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Owner decision, Task 52, 2026-11-16 (FR-7). Measured: `CitationFieldsEditor.tsx` reads once on mount and writes only when "Save citation fields" is pressed (its doc comment: "writes only when Save is pressed"), so a change to another document without pressing Save loses the typed values; every other metadata-sidebar field persists on each change (`AppShell.tsx:1180`, `onChangeField` to the per-field handlers); FR-7 stated no save model. No partial-save path: while any field is invalid nothing is saved. The debounce interval and the wording of the not-saved message are the task's to choose and record in `experiments/task-66.md`. Ordering: Task 65 comes first (this task shows its reasons and blocks on its rule); the lead runs 65, then 66, before Task 52.
 **POS:** task_f7b8ee07
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 66
