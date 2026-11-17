@@ -1,12 +1,22 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { PenLine, Scissors, Search } from "lucide-react";
+import { PenLine, Scissors, Search, Undo2 } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
 import Input from "./UI/Input/Input";
 import Listbox from "./UI/Listbox/Listbox";
 import { openSplitDialog } from "../Split/splitOpenRequest";
+import {
+  requestSplitUndo,
+  requestSplitUndoRefresh,
+  useSplitUndoAvailability,
+} from "../Split/splitUndoRequest";
+import { resolveSplitOffName } from "../Split/splitUndoName";
+import {
+  describeUndoSplitAction,
+  UNDO_SPLIT_LABEL,
+} from "../Split/splitUndoMessages";
 import { splitEligibility } from "../../src/lib/models/split-eligibility";
 import { SPLIT_REFUSAL_REASONS } from "../../src/lib/models/split-types";
 import { SPLIT_REFUSAL_MESSAGES } from "../../src/lib/models/split-messages";
@@ -41,16 +51,23 @@ interface ResourceCommandPaletteProps {
 type PaletteRow =
   | { kind: "capture" }
   | { kind: "split"; refusal: string | null }
+  | { kind: "undo-split"; description: string; isDisabled: boolean }
   | { kind: "resource"; resource: AnyResource };
 
 const CAPTURE_ROW_LABEL = "Capture...";
 const CAPTURE_ROW_VALUE = "palette-action:capture";
 const SPLIT_ROW_LABEL = "Split at cursor";
 const SPLIT_ROW_VALUE = "palette-action:split";
+const UNDO_SPLIT_ROW_VALUE = "palette-action:undo-split";
 
 /** True for an empty query or a case-insensitive prefix of the Split label. */
 function matchesSplitRow(normalizedQuery: string): boolean {
   return SPLIT_ROW_LABEL.toLowerCase().startsWith(normalizedQuery);
+}
+
+/** True for an empty query or a case-insensitive prefix of the Undo split label. */
+function matchesUndoSplitRow(normalizedQuery: string): boolean {
+  return UNDO_SPLIT_LABEL.toLowerCase().startsWith(normalizedQuery);
 }
 
 /**
@@ -111,6 +128,7 @@ export default function ResourceCommandPalette({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState<string>("");
   const [highlightedIndex, setHighlightedIndex] = useState<number>(0);
+  const undoAvailability = useSplitUndoAvailability();
 
   const openableResources = useMemo(() => {
     return resources.filter((resource) => resource.type !== "folder");
@@ -142,8 +160,37 @@ export default function ResourceCommandPalette({
         refusal: splitRefusalByType(openResource),
       });
     }
+    // Undo split is offered in any open document (Feature 120, FR-18), while
+    // the latest-operation read shows a split; a failed read is its own row.
+    if (
+      process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native" &&
+      matchesUndoSplitRow(normalizedQuery)
+    ) {
+      if (undoAvailability.kind === "split") {
+        actionRows.push({
+          kind: "undo-split",
+          isDisabled: false,
+          description: describeUndoSplitAction(
+            resolveSplitOffName(resources, undoAvailability.splitOffDocumentId),
+          ),
+        });
+      } else if (undoAvailability.kind === "read-failed") {
+        actionRows.push({
+          kind: "undo-split",
+          isDisabled: true,
+          description: undoAvailability.message,
+        });
+      }
+    }
     return [...actionRows, ...resourceRows];
-  }, [openableResources, resources, query, onCapture, openResourceId]);
+  }, [
+    openableResources,
+    resources,
+    query,
+    onCapture,
+    openResourceId,
+    undoAvailability,
+  ]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -152,6 +199,9 @@ export default function ResourceCommandPalette({
 
     setQuery("");
     setHighlightedIndex(0);
+    // The latest operation is read from the stored record each time the
+    // palette opens, so the row survives a reload (Feature 120, FR-18).
+    requestSplitUndoRefresh();
   }, [isOpen]);
 
   useEffect(() => {
@@ -172,6 +222,12 @@ export default function ResourceCommandPalette({
       openSplitDialog();
       return;
     }
+    if (row.kind === "undo-split") {
+      if (row.isDisabled) return;
+      onClose();
+      requestSplitUndo();
+      return;
+    }
     if (row.kind === "capture") {
       onCapture?.();
     } else {
@@ -185,6 +241,7 @@ export default function ResourceCommandPalette({
       rows.find((row) => {
         if (row.kind === "capture") return value === CAPTURE_ROW_VALUE;
         if (row.kind === "split") return value === SPLIT_ROW_VALUE;
+        if (row.kind === "undo-split") return value === UNDO_SPLIT_ROW_VALUE;
         return row.resource.id === value;
       }),
     );
@@ -240,7 +297,9 @@ export default function ResourceCommandPalette({
               ? "Enter to open Capture box"
               : rows[highlightedIndex]?.kind === "split"
                 ? "Enter to split at the cursor"
-                : "Enter to open"}
+                : rows[highlightedIndex]?.kind === "undo-split"
+                  ? "Enter to undo the split"
+                  : "Enter to open"}
           </span>
         </div>
 
@@ -279,6 +338,16 @@ export default function ResourceCommandPalette({
                   meta: row.refusal === null ? "Action" : "Unavailable",
                   description: row.refusal ?? undefined,
                   disabled: row.refusal !== null,
+                };
+              }
+              if (row.kind === "undo-split") {
+                return {
+                  value: UNDO_SPLIT_ROW_VALUE,
+                  label: UNDO_SPLIT_LABEL,
+                  icon: <Undo2 size={16} aria-hidden="true" />,
+                  meta: row.isDisabled ? "Unavailable" : "Action",
+                  description: row.description,
+                  disabled: row.isDisabled,
                 };
               }
               return {

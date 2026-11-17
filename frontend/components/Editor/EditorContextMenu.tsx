@@ -130,6 +130,8 @@ import { useUserListAvailable } from "../../src/hooks/useUserListAvailable";
 import type { AppDispatch, RootState } from "../../src/store/store";
 import { selectResource } from "../../src/store/resourcesSlice";
 import { openSplitDialog } from "../Split/splitOpenRequest";
+import { requestSplitUndoRefresh } from "../Split/splitUndoRequest";
+import SplitUndoMenuItem from "../Split/SplitUndoMenuItem";
 import { splitEligibility } from "../../src/lib/models/split-eligibility";
 import { SPLIT_REFUSAL_MESSAGES } from "../../src/lib/models/split-messages";
 import {
@@ -403,6 +405,8 @@ export default function EditorContextMenu({
             )
           : null,
       );
+      // Undo split reads the stored latest-operation record at each open.
+      requestSplitUndoRefresh();
       setFlaggedRange(range);
       onFlaggedWordFrozen?.(range);
       if (range) {
@@ -681,6 +685,7 @@ export default function EditorContextMenu({
             <SplitMenuItem reason={splitItem.reason} />
           </>
         )}
+        <SplitUndoMenuItem />
       </ContextMenuContent>
     </ContextMenu>
   );

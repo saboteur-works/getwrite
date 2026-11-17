@@ -61,6 +61,7 @@ import ShellModalCoordinator from "./ShellModalCoordinator";
 import CaptureBoxHost from "../Capture/CaptureBoxHost";
 import ShareCaptureHost from "../Capture/ShareCaptureHost";
 import SplitHost from "../Split/SplitHost";
+import SplitUndoHost from "../Split/SplitUndoHost";
 import { openSplitDialog } from "../Split/splitOpenRequest";
 import type { ProjectGoalSavedHandler } from "./ProjectSettingsDialog";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
@@ -1266,6 +1267,11 @@ export default function AppShell({
           native build, so it is not mounted there. */}
       {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native" ? (
         <SplitHost />
+      ) : null}
+      {/* Feature 120, Task 32: Undo split's host (palette row, editor menu
+          item, status and alert regions); not mounted on native. */}
+      {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native" ? (
+        <SplitUndoHost />
       ) : null}
       <ShellLayoutProvider>
         <UpdateNotice />
