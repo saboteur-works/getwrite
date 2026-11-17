@@ -342,7 +342,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 1
 **Notes:** LEAD/OWNER, never run by the orchestrator. The spec places this review in the UI task; it is made its own step after the UI tasks so the owner sees the texts in place. Only this task and Task 10 edit the two files.
 **POS:** task_492bf42a
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Undo split core (FR-15 read side, FR-17)
 **What:** Undo the latest split as one operation that saves both documents' current text as preserved revisions, restores the original from the snapshot, moves carried annotations back, trashes the split-off document and clears the record.
