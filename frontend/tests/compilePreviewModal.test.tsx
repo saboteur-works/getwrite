@@ -668,3 +668,155 @@ describe("CompilePreviewModal — parent re-render while open", () => {
     expect(onConfirmCompile.mock.calls[0][0]).toEqual(["r1"]);
   });
 });
+
+/**
+ * Feature 116, Task 26 (FR-9, FR-18, FR-19, FR-23): the citations switch and
+ * style choice. Props-driven; the host wiring is Task 27.
+ */
+describe("CompilePreviewModal — citations controls", () => {
+  const REASON_FORMAT = "Citations are available for PDF and DOCX";
+  const REASON_OPEN = "Open the project to turn on citations";
+
+  function renderCitations(
+    extra: Partial<React.ComponentProps<typeof CompilePreviewModal>> = {},
+    onConfirmCompile: React.ComponentProps<
+      typeof CompilePreviewModal
+    >["onConfirmCompile"] = vi.fn(),
+  ): void {
+    render(
+      <CompilePreviewModal
+        isOpen={true}
+        resources={sampleResources}
+        onConfirmCompile={onConfirmCompile}
+        onClose={vi.fn()}
+        {...extra}
+      />,
+    );
+  }
+
+  const getSwitch = (): HTMLElement =>
+    screen.getByRole("checkbox", { name: /citations/i });
+  const chooseFormat = (value: string): void => {
+    fireEvent.change(screen.getByLabelText(/compile as/i), {
+      target: { value },
+    });
+  };
+
+  it("shows no controls without the module-on prop", () => {
+    renderCitations();
+    expect(
+      screen.queryByRole("checkbox", { name: /citations/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/citation style/i)).not.toBeInTheDocument();
+  });
+
+  it("shows neither control in entity mode", () => {
+    renderCitations({
+      citationsModuleEnabled: true,
+      entityMode: {
+        entries: [{ resourceId: "r1", name: "Scene 1", resourceType: "text" }],
+        orderedResourceIds: ["r1"],
+      },
+    });
+    expect(
+      screen.queryByRole("checkbox", { name: /citations/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/citation style/i)).not.toBeInTheDocument();
+  });
+
+  it("lists the one bundled style with no project default shown", () => {
+    renderCitations({ citationsModuleEnabled: true });
+    const select = screen.getByLabelText(/citation style/i);
+    const options = within(select).getAllByRole("option");
+    expect(options).toHaveLength(1);
+    expect(options[0]).toHaveTextContent(
+      "Chicago notes and bibliography, en-US",
+    );
+    expect(options[0]).toHaveValue("chicago-notes-bibliography");
+    expect(screen.queryByText(/default/i)).not.toBeInTheDocument();
+  });
+
+  it("is off by default and the options carry no citations key", () => {
+    const onConfirmCompile = vi.fn();
+    renderCitations({ citationsModuleEnabled: true }, onConfirmCompile);
+    chooseFormat("pdf");
+    expect(getSwitch()).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: /^compile \(/i }));
+    expect("citations" in onConfirmCompile.mock.calls[0][1]).toBe(false);
+  });
+
+  it("carries { styleId } when on with DOCX", () => {
+    const onConfirmCompile = vi.fn();
+    renderCitations({ citationsModuleEnabled: true }, onConfirmCompile);
+    chooseFormat("docx");
+    fireEvent.click(getSwitch());
+    fireEvent.click(screen.getByRole("button", { name: /^compile \(/i }));
+    expect(onConfirmCompile.mock.calls[0][1].citations).toEqual({
+      styleId: "chicago-notes-bibliography",
+    });
+  });
+
+  it("disables the switch for txt and md with the stated reason in a status", () => {
+    renderCitations({ citationsModuleEnabled: true });
+    for (const format of ["txt", "md"]) {
+      chooseFormat(format);
+      expect(getSwitch()).toBeDisabled();
+      expect(screen.getByRole("status")).toHaveTextContent(REASON_FORMAT);
+    }
+    chooseFormat("pdf");
+    expect(getSwitch()).toBeEnabled();
+    expect(screen.getByRole("status")).not.toHaveTextContent(REASON_FORMAT);
+  });
+
+  it("drops a turned-on option when the format changes to md", () => {
+    const onConfirmCompile = vi.fn();
+    renderCitations({ citationsModuleEnabled: true }, onConfirmCompile);
+    chooseFormat("pdf");
+    fireEvent.click(getSwitch());
+    chooseFormat("md");
+    expect(getSwitch()).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: /^compile \(/i }));
+    expect("citations" in onConfirmCompile.mock.calls[0][1]).toBe(false);
+  });
+
+  it("disables the switch on the Android runtime with the format reason", () => {
+    renderCitations({ citationsModuleEnabled: true, isAndroidRuntime: true });
+    chooseFormat("pdf");
+    expect(getSwitch()).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent(REASON_FORMAT);
+  });
+
+  it.each(["unavailable", "unknown"] as const)(
+    "disables the switch with the open-project reason when availability is %s",
+    (availability) => {
+      const onConfirmCompile = vi.fn();
+      renderCitations(
+        { citationsAvailability: availability },
+        onConfirmCompile,
+      );
+      chooseFormat("pdf");
+      expect(getSwitch()).toBeDisabled();
+      expect(screen.getByRole("status")).toHaveTextContent(REASON_OPEN);
+      fireEvent.click(screen.getByRole("button", { name: /^compile \(/i }));
+      expect("citations" in onConfirmCompile.mock.calls[0][1]).toBe(false);
+    },
+  );
+
+  it("starts off again on every open", () => {
+    const props = {
+      resources: sampleResources,
+      citationsModuleEnabled: true,
+      onClose: vi.fn(),
+    };
+    const { rerender } = render(
+      <CompilePreviewModal isOpen={true} {...props} />,
+    );
+    chooseFormat("pdf");
+    fireEvent.click(getSwitch());
+    expect(getSwitch()).toBeChecked();
+    rerender(<CompilePreviewModal isOpen={false} {...props} />);
+    rerender(<CompilePreviewModal isOpen={true} {...props} />);
+    chooseFormat("pdf");
+    expect(getSwitch()).not.toBeChecked();
+  });
+});

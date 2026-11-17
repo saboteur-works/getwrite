@@ -45,6 +45,10 @@ const eslintConfig = [
       "dist/**",
       "storybook-static/**",
       "playwright-report/**",
+      // Feature 116: vendored, generated wasm-bindgen glue for the citation
+      // engine (Tasks 55 and 56). Not hand-written source and never edited,
+      // so it is not a lint target.
+      "src/lib/citations/engine/**",
       // ADR-021 Phase 2: build-native-static.mjs's generated shadow build
       // root and its static export output — neither is source, both are
       // gitignored, and the shadow root's own `.next/**` build artifacts

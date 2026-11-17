@@ -208,6 +208,41 @@ export const SaveRefused: Story = {
   },
 };
 
+/** Citations module on: switch off by default; choose PDF or DOCX to turn it on. */
+export const CitationsAvailable: Story = {
+  args: {
+    isOpen: true,
+    projectId: "proj-1",
+    resources: sampleResources,
+    citationsModuleEnabled: true,
+  },
+};
+
+/** Plain text (the default format) disables the switch and says why. */
+export const CitationsDisabledForFormat: Story = {
+  args: { ...CitationsAvailable.args },
+};
+
+/** Android runtime: the switch is disabled with the format reason. */
+export const CitationsDisabledOnAndroid: Story = {
+  args: { ...CitationsAvailable.args, isAndroidRuntime: true },
+};
+
+/** Start Page entry with no config: disabled, "Open the project" reason. */
+export const CitationsUnavailable: Story = {
+  args: {
+    isOpen: true,
+    projectId: "proj-1",
+    resources: sampleResources,
+    citationsAvailability: "unavailable",
+  },
+};
+
+/** Module state not known yet: treated as unavailable, never as off. */
+export const CitationsUnknown: Story = {
+  args: { ...CitationsUnavailable.args, citationsAvailability: "unknown" },
+};
+
 /** Entity-scoped compile: no saved exclusions, no saved-defaults controls. */
 export const EntityMode: Story = {
   args: {

@@ -148,6 +148,73 @@ describe("ModuleSwitchSection", () => {
     });
   });
 
+  it("shows an Enable Citations switch that reads off with no entry and writes only its own entry (Feature 116, FR-3)", async () => {
+    setModuleEnabled.mockResolvedValue({ modules: { citations: true } });
+    const store = mount(undefined);
+    expect(
+      screen.getByRole("checkbox", { name: "Enable Citations" }),
+    ).not.toBeChecked();
+    expect(selectActiveProjectModules(store.getState())).toBeUndefined();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Enable Citations" }),
+    );
+    expect(setModuleEnabled).toHaveBeenCalledTimes(1);
+    expect(setModuleEnabled).toHaveBeenCalledWith({
+      projectId: "proj-dir",
+      moduleId: "citations",
+      enabled: true,
+    });
+    expect(selectActiveProjectModules(store.getState())).toEqual({
+      citations: true,
+    });
+    const row = screen
+      .getByRole("checkbox", { name: "Enable Citations" })
+      .closest("div") as HTMLElement;
+    expect(await within(row).findByRole("status")).toHaveTextContent(
+      "Citations is now on.",
+    );
+  });
+
+  it.each([
+    [
+      "a view label",
+      { id: "x-mod", view: { id: "x", label: "From view" }, label: "Ignored" },
+      "From view",
+    ],
+    ["only a label", { id: "x-mod", label: "From label" }, "From label"],
+    ["neither", { id: "x-mod" }, "x-mod"],
+  ] as const)(
+    "names the switch and its messages from %s",
+    async (_name, partial, expected) => {
+      // A module absent from the manifest reads on, so the click turns it off.
+      setModuleEnabled.mockResolvedValue({ modules: { "x-mod": false } });
+      render(
+        <Provider store={makeLoadedStore(undefined)}>
+          <ModuleSwitchSection
+            projectId="proj-dir"
+            manifest={[{ ...partial, indexSteps: [] }]}
+          />
+        </Provider>,
+      );
+      const box = screen.getByRole("checkbox", { name: `Enable ${expected}` });
+      await userEvent.click(box);
+      const row = box.closest("div") as HTMLElement;
+      expect(await within(row).findByRole("status")).toHaveTextContent(
+        `${expected} is now off.`,
+      );
+    },
+  );
+
+  it("with Sources off and Citations on, the Citations switch reads on", () => {
+    mount({ sources: false, citations: true });
+    expect(
+      screen.getByRole("checkbox", { name: "Enable Citations" }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole("checkbox", { name: "Enable Sources" }),
+    ).not.toBeChecked();
+  });
+
   it("is not disabled: the module write is not limited on a paired device", () => {
     mount(undefined);
     expect(screen.getByRole("checkbox", { name: /Sources/ })).toBeEnabled();

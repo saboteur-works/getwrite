@@ -12,6 +12,7 @@ import {
 import SharingSettings from "../Sharing/SharingSettings";
 import KeepRunningSetting from "./KeepRunningSetting";
 import SpellcheckSetting from "./SpellcheckSetting";
+import LicencesSetting from "./LicencesSetting";
 import MyDictionarySettingsTab from "../Layout/MyDictionarySettingsTab";
 import { toastService } from "../../src/lib/toast-service";
 
@@ -192,6 +193,8 @@ export default function AppSettingsDialog({
           <KeepRunningSetting />
 
           <SharingSettings />
+
+          <LicencesSetting />
         </div>
 
         <div className="project-modal-actions mx-6 mb-6 mt-0 shrink-0">

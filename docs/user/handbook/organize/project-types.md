@@ -40,11 +40,11 @@ Your saved types appear with "(Saved)" in the list of types when you create a pr
 
 _Coming in the next release._
 
-Some features, such as [Claims](../write/claims.md) and [Narratives](../views/narratives.md), are switched on per project in **Project Settings**, **Modules**. A type can set whether a new project starts with each of them on or off.
+Some features, such as [Claims](../write/claims.md), [Narratives](../views/narratives.md) and [Citations](../write/citations.md), are switched on per project in **Project Settings**, **Modules**. A type can set whether a new project starts with each of them on or off.
 
-In the **Project Type Manager**, the **Modules** section has one choice for each module: **On**, **Off** or **Not set**. **Not set** declares nothing for that module, so the module follows its usual setting for a new project. Claims and Narratives are off unless a type turns them on. Sources is on.
+In the **Project Type Manager**, the **Modules** section has one choice for each module: **On**, **Off** or **Not set**. **Not set** declares nothing for that module, so the module follows its usual setting for a new project. Claims, Narratives and Citations are off unless a type turns them on. Sources is on.
 
-- A built-in type's modules are shown for reading only. No built-in type turns Claims or Narratives on.
+- A built-in type's modules are shown for reading only. No built-in type turns Claims, Narratives or Citations on.
 - Where saving types isn't available, the modules of every type are shown for reading only, with a message saying so.
 - A type sets modules only for projects created from it afterward. Changing or deleting a type never changes a project that already exists.
 - A type that lists a module with anything other than on or off is refused with a message and not saved.

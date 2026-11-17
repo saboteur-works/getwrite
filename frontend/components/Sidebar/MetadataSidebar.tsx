@@ -35,6 +35,7 @@ import SubtypeSection from "./SubtypeSection";
 import CapturedSection from "./CapturedSection";
 import FolderMetadataSection from "./FolderMetadataSection";
 import SourceAttachmentsSection from "./SourceAttachmentsSection";
+import CitationFieldsSection from "./CitationFieldsSection";
 import { isFieldVisibleForSubtype } from "../../src/lib/models/field-subtype-scope";
 import { isFieldDeprecated } from "../../src/lib/models/field-deprecation";
 import CollapsibleSection from "../common/UI/CollapsibleSection/CollapsibleSection";
@@ -46,6 +47,7 @@ import {
   selectActiveProjectStatuses,
   selectActiveProjectMetadataSchema,
   selectSelectedProjectId,
+  selectActiveProjectDirectoryId,
   selectSynopsisEnabled,
   selectNotesEnabled,
   selectPovEnabled,
@@ -233,6 +235,9 @@ export default function MetadataSidebar({
 }: MetadataSidebarProps): JSX.Element {
   const schema = useAppSelector(selectActiveProjectMetadataSchema);
   const selectedProjectId = useAppSelector(selectSelectedProjectId);
+  // Directory basename, not the project.json id: the citations routes resolve
+  // the root from it (see `selectActiveProjectDirectoryId` in projectsSlice).
+  const projectDirectoryId = useAppSelector(selectActiveProjectDirectoryId);
   const isSynopsisEnabled = useAppSelector(selectSynopsisEnabled);
   const isNotesEnabled = useAppSelector(selectNotesEnabled);
   const isPovEnabled = useAppSelector(selectPovEnabled);
@@ -525,6 +530,12 @@ export default function MetadataSidebar({
                   resource={editableResource}
                 />
               </CollapsibleSection>
+            )}
+            {editableResource.type === "source" && projectDirectoryId && (
+              <CitationFieldsSection
+                projectId={projectDirectoryId}
+                resource={editableResource}
+              />
             )}
             <CapturedSection resource={editableResource} />
             <CollapsibleSection title="Subtype" variant="sidebar">

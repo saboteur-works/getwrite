@@ -24,6 +24,9 @@ import ManageProjectMenu from "./ManageProjectMenu";
 import UnusableProjectCard from "./UnusableProjectCard";
 import type { UnusableProjectReason } from "../../src/lib/models/unusable-project-reason";
 import CompilePreviewModal from "../common/CompilePreviewModal";
+import { isModuleEnabled } from "../../src/lib/models/modules/registry";
+import { CITATIONS_MODULE_ID } from "../../src/lib/models/citations-types";
+import { resolveRuntime } from "../../src/store/transport/runtime";
 import ImportScrivenerDialog from "./ImportScrivenerDialog";
 import ImportDocxDialog from "./ImportDocxDialog";
 import { toastService } from "../../src/lib/toast-service";
@@ -385,6 +388,14 @@ export default function StartPage({
     compileTargetEntry?.project.config && compileTargetEntry.project.rootPath
       ? getProjectDirectoryId(compileTargetEntry.project.rootPath)
       : undefined;
+  // An entry with no `config` (encrypted, locked, unusable) cannot say whether
+  // the module is on, so citations are unavailable for it; no fetch is made.
+  const isCitationsModuleOnForEntry = compileTargetEntry?.project.config
+    ? isModuleEnabled(
+        { modules: compileTargetEntry.project.config.modules },
+        CITATIONS_MODULE_ID,
+      )
+    : false;
   const readEntryCompileDefaults = useCallback(
     async () => savedCompileExcludedIds,
     [savedCompileExcludedIds],
@@ -632,6 +643,11 @@ export default function StartPage({
           )?.isEncrypted,
         )}
         resources={compileResources}
+        citationsModuleEnabled={isCitationsModuleOnForEntry}
+        citationsAvailability={
+          compileTargetEntry?.project.config ? "available" : "unavailable"
+        }
+        isAndroidRuntime={resolveRuntime() === "native"}
         onClose={() => setCompileTargetProjectId(null)}
         onConfirmCompile={(selectedIds, options) => {
           const entry = localProjects.find(
@@ -657,6 +673,8 @@ export default function StartPage({
             })),
             includeHeaders: options.includeHeaders,
             projectName: entry.project.name ?? "project",
+            // Feature 116 (FR-9): present only when the dialog confirmed it.
+            ...(options.citations ? { citations: options.citations } : {}),
           };
           const rawName = options.compilationName.trim();
 

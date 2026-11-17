@@ -221,6 +221,47 @@ describe("module arrangements hook (Feature 109, FR-17, OQ-11)", () => {
   });
 });
 
+describe("citations manifest entry (Feature 116, FR-3, FR-4)", () => {
+  const entry = MODULE_MANIFEST.find((m) => m.id === "citations");
+
+  it("declares id citations, off by default, no index step, no view and the label Citations", () => {
+    expect(entry?.id).toBe("citations");
+    expect(entry?.defaultEnabled).toBe(false);
+    expect(entry?.indexSteps).toEqual([]);
+    expect(entry?.view).toBeUndefined();
+    expect(entry?.label).toBe("Citations");
+  });
+
+  it("changes no existing entry: only citations carries a label", () => {
+    for (const m of MODULE_MANIFEST) {
+      if (m.id !== "citations") expect(m.label).toBeUndefined();
+    }
+  });
+
+  it("reads off with no entry, on with an own true, and independent of Sources", () => {
+    expect(isModuleEnabled({}, "citations")).toBe(false);
+    expect(isModuleEnabled({ modules: { citations: true } }, "citations")).toBe(
+      true,
+    );
+    expect(
+      isModuleEnabled(
+        { modules: { sources: false, citations: true } },
+        "citations",
+      ),
+    ).toBe(true);
+  });
+
+  it("adds no view and no index step", () => {
+    const registry = createModuleRegistry(MODULE_MANIFEST);
+    const on = { modules: { citations: true } };
+    expect(registry.views().map((v) => v.id)).not.toContain("citations");
+    expect(registry.enabledViews(on).map((v) => v.id)).not.toContain(
+      "citations",
+    );
+    expect(registry.indexSteps(on)).toEqual([]);
+  });
+});
+
 describe("folklore manifest entry (Feature 110, FR-2)", () => {
   const entry = MODULE_MANIFEST.find((m) => m.id === "folklore");
 
@@ -265,6 +306,7 @@ describe("createModuleRegistry", () => {
       "sources",
       "claims",
       "folklore",
+      "citations",
       "test-indexed",
     ]);
     expect(registry.getModule("test-indexed")).toBe(testModule);

@@ -237,3 +237,61 @@ describe("runCompileAndDownload", () => {
     expect(typeof triggerDownload).toBe("function");
   });
 });
+
+describe("runCompileAndDownload citations option (Feature 116, FR-9)", () => {
+  beforeEach(() => {
+    compilePdfMock.mockReset();
+    compileDocxMock.mockReset();
+    (URL as unknown as { createObjectURL: () => string }).createObjectURL =
+      () => "blob:mock-url";
+    (URL as unknown as { revokeObjectURL: () => void }).revokeObjectURL =
+      () => {};
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sends the citations option only when the confirmed options carry it", async () => {
+    compilePdfMock.mockResolvedValue({
+      arrayBuffer: new ArrayBuffer(4),
+      filename: "p.pdf",
+    });
+    await runCompileAndDownload(compileBody, {
+      format: "pdf",
+      compilationName: "",
+      citations: { styleId: "chicago-notes-bibliography" },
+    });
+    expect(compilePdfMock).toHaveBeenCalledWith({
+      ...compileBody,
+      citations: { styleId: "chicago-notes-bibliography" },
+    });
+  });
+
+  it("leaves the request body byte-identical when the option is absent", async () => {
+    compileDocxMock.mockResolvedValue({
+      arrayBuffer: new ArrayBuffer(4),
+      filename: "p.docx",
+    });
+    await runCompileAndDownload(compileBody, {
+      format: "docx",
+      compilationName: "",
+    });
+    const sent = compileDocxMock.mock.calls[0][0];
+    expect(JSON.stringify(sent)).toBe(JSON.stringify(compileBody));
+    expect("citations" in sent).toBe(false);
+  });
+
+  it("lets a rejection's message reach the caller's toast unchanged (Task 63)", async () => {
+    compilePdfMock.mockRejectedValue(
+      new Error("A citation is not in the document."),
+    );
+    await expect(
+      runCompileAndDownload(compileBody, {
+        format: "pdf",
+        compilationName: "",
+      }),
+    ).rejects.toThrow("A citation is not in the document.");
+  });
+});

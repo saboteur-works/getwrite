@@ -1,6 +1,7 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { CITATION_FIELDS_SAVE_DEBOUNCE_MS } from "../components/Sidebar/CitationFieldsEditor";
 import { Provider } from "react-redux";
 import MetadataSidebar from "../components/Sidebar/MetadataSidebar";
 import TrashRefreshProvider from "../components/Layout/TrashRefreshContext";
@@ -143,5 +144,118 @@ describe("MetadataSidebar for a selected Source (Task 33)", () => {
     expect(
       screen.getByRole("button", { name: "Remove Entity" }),
     ).toBeInTheDocument();
+  });
+});
+
+// Feature 116, Task 64: the Citation fields section calls /api/citations/fields
+// with the project DIRECTORY id (trailing segment of rootPath), not with the
+// Redux selectedProjectId, which holds project.json's `id`.
+describe("MetadataSidebar Citation fields ids (Feature 116, Task 64)", () => {
+  const PROJECT_JSON_ID = "eab25dde-0000-4000-8000-000000000001";
+  const DIRECTORY_ID = "d278b38b-0000-4000-8000-000000000002";
+  const STORED = { referenceType: "book", title: "Stored Title" };
+
+  type Call = { method: string; projectId: string | null };
+  const calls: Call[] = [];
+
+  function stubFetch(): void {
+    calls.length = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = new URL(String(input), "http://localhost");
+        if (url.pathname !== "/api/citations/fields") {
+          return new Response("{}", { status: 200 });
+        }
+        const method = init?.method ?? "GET";
+        const projectId =
+          method === "GET"
+            ? url.searchParams.get("projectId")
+            : (JSON.parse(String(init?.body)) as { projectId: string })
+                .projectId;
+        calls.push({ method, projectId });
+        // Same behaviour as the measured packaged server: only the directory
+        // id resolves a project root.
+        if (projectId !== DIRECTORY_ID) {
+          return new Response(
+            JSON.stringify({ error: "The resource was not found." }),
+            { status: 404 },
+          );
+        }
+        const body =
+          method === "GET"
+            ? { kind: "fields", fields: STORED }
+            : {
+                fields: (JSON.parse(String(init?.body)) as { fields: unknown })
+                  .fields,
+              };
+        return new Response(JSON.stringify(body), { status: 200 });
+      }),
+    );
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function mount(): ReturnType<typeof makeStore> {
+    stubFetch();
+    const source = createSourceResource({ name: "Book" }) as AnyResource;
+    const store = makeStore();
+    store.dispatch(
+      setProject({
+        id: PROJECT_JSON_ID,
+        rootPath: `/projects/${DIRECTORY_ID}`,
+        modules: { citations: true },
+        metadataSchema: { groups: [] },
+      } as unknown as Parameters<typeof setProject>[0]),
+    );
+    store.dispatch(setSelectedProjectId(PROJECT_JSON_ID));
+    store.dispatch(setResources([source]));
+    store.dispatch(setSelectedResourceId(source.id));
+    render(
+      <Provider store={store}>
+        <TrashRefreshProvider>
+          <MetadataSidebar />
+        </TrashRefreshProvider>
+      </Provider>,
+    );
+    return store;
+  }
+
+  it("records what the Redux selectedProjectId holds", () => {
+    const store = mount();
+    const state = store.getState() as {
+      projects: { selectedProjectId: string | null };
+    };
+    // Measured: the value set from project.json's id, not the directory id.
+    expect(state.projects.selectedProjectId).toBe(PROJECT_JSON_ID);
+    expect(state.projects.selectedProjectId).not.toBe(DIRECTORY_ID);
+  });
+
+  it("reads the fields with the directory id", async () => {
+    mount();
+    expect(await screen.findByDisplayValue("Stored Title")).toBeVisible();
+    expect(
+      screen.queryByText(/The citation fields could not be loaded/),
+    ).toBeNull();
+    expect(calls[0]).toEqual({ method: "GET", projectId: DIRECTORY_ID });
+  });
+
+  it("saves the fields with the directory id", async () => {
+    mount();
+    const title = await screen.findByDisplayValue("Stored Title");
+    vi.useFakeTimers();
+    fireEvent.change(title, { target: { value: "New Title" } });
+    expect(calls.some((c) => c.method === "PUT")).toBe(false);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CITATION_FIELDS_SAVE_DEBOUNCE_MS);
+    });
+    vi.useRealTimers();
+    expect(calls.some((c) => c.method === "PUT")).toBe(true);
+    expect(calls.filter((c) => c.method === "PUT")).toEqual([
+      { method: "PUT", projectId: DIRECTORY_ID },
+    ]);
+    expect(screen.queryByText(/could not be saved/)).toBeNull();
   });
 });

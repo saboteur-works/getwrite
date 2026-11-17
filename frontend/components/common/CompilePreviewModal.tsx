@@ -24,8 +24,18 @@ import {
   useSaveDefaultsAction,
   type SavedDefaultsSetter,
 } from "./useSaveDefaultsAction";
+import CitationCheckDialog from "./CitationCheckDialog";
+import { checkCitations } from "../../src/lib/api/citations-check";
+import { isLockedAccessError } from "../../src/lib/models/locked-access";
 import { readCompileDefaults } from "../../src/lib/api/saved-defaults-read";
 import { setCompileDefaults } from "../../src/lib/api/compile-defaults";
+import {
+  BUNDLED_CITATION_STYLES,
+  CITATIONS_FORMAT_UNAVAILABLE_REASON,
+  CITATIONS_OPEN_PROJECT_REASON,
+  type CitationCheckResult,
+  type CompileCitationsOption,
+} from "../../src/lib/models/citations-types";
 
 export type { EntityCompileEntry };
 
@@ -48,7 +58,15 @@ export interface CompileOptions {
   includeHeaders: boolean;
   format: CompileFormat;
   compilationName: string;
+  /** Feature 116 (FR-9): present only when the writer turned citations on. */
+  citations?: CompileCitationsOption;
 }
+
+/**
+ * Whether citations can be turned on at all (FR-23). `unknown` is never
+ * treated as off: it disables the switch with the open-the-project reason.
+ */
+export type CitationsAvailability = "available" | "unavailable" | "unknown";
 
 export interface CompilePreviewModalProps {
   isOpen: boolean;
@@ -80,6 +98,37 @@ export interface CompilePreviewModalProps {
    * See `EntityCompileMode`.
    */
   entityMode?: EntityCompileMode;
+  /**
+   * Feature 116: the Citations module is on. The controls show when this is
+   * true, or when `citationsAvailability` is not "available" (a disabled
+   * switch with its reason). Never shown in entity mode.
+   */
+  citationsModuleEnabled?: boolean;
+  /** Defaults to "available". See `CitationsAvailability`. */
+  citationsAvailability?: CitationsAvailability;
+  /** Native Android runtime: the switch is disabled (FR-19). */
+  isAndroidRuntime?: boolean;
+  /**
+   * Runs the pre-run citation check (FR-15). Defaults to `checkCitations`. It
+   * may throw the locked-access error, which reaches the existing locked path.
+   */
+  runCitationCheck?: (
+    projectId: string,
+    resourceIds: readonly string[],
+  ) => Promise<CitationCheckResult>;
+}
+
+/** Why the citations switch is disabled, or undefined when it is usable. */
+function citationsDisabledReason(
+  availability: CitationsAvailability,
+  format: CompileFormat,
+  isAndroidRuntime: boolean,
+): string | undefined {
+  if (availability !== "available") return CITATIONS_OPEN_PROJECT_REASON;
+  if (isAndroidRuntime || format === "txt" || format === "md") {
+    return CITATIONS_FORMAT_UNAVAILABLE_REASON;
+  }
+  return undefined;
 }
 
 export default function CompilePreviewModal(
@@ -128,6 +177,10 @@ function CompileModalBody(
     resource,
     onConfirm,
     entityMode,
+    citationsModuleEnabled: isCitationsModuleOn = false,
+    citationsAvailability = "available",
+    isAndroidRuntime = false,
+    runCitationCheck = checkCitations,
     readSavedDefaults = readCompileDefaults,
     saveDefaults = setCompileDefaults,
     shouldIncludeHeaders,
@@ -140,6 +193,40 @@ function CompileModalBody(
   );
   const [format, setFormat] = useState<CompileFormat>("txt");
   const [compilationName, setCompilationName] = useState("");
+  // Off on every open: the body mounts only while open, and the reset below
+  // covers a reopen without unmount.
+  const [isCitationsOn, setIsCitationsOn] = useState(false);
+  const [citationStyleId, setCitationStyleId] = useState(
+    BUNDLED_CITATION_STYLES[0].id,
+  );
+  const shouldShowCitations =
+    !entityMode &&
+    (isCitationsModuleOn || citationsAvailability !== "available");
+  const citationsReason = citationsDisabledReason(
+    citationsAvailability,
+    format,
+    isAndroidRuntime,
+  );
+  const isCitationsActive =
+    shouldShowCitations && isCitationsOn && !citationsReason;
+
+  // Pre-run check (FR-15): `checking` while it runs, `warning` while the
+  // writer decides. A locked project is rethrown during render, as
+  // `useSavedDefaults` does, so it reaches the existing locked path.
+  const [precheck, setPrecheck] = useState<
+    | { phase: "idle" }
+    | { phase: "checking" }
+    | { phase: "warning"; result: CitationCheckResult; orderedIds: string[] }
+  >({ phase: "idle" });
+  const [lockedError, setLockedError] = useState<unknown>(null);
+  if (lockedError !== null) throw lockedError;
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Reset the choices each time the modal opens. A parent re-render while it
   // is open passes `resources` as a new array; that must not discard the
@@ -150,6 +237,8 @@ function CompileModalBody(
       setCheckedIds(initAllChecked(buildCompileTree(resources)));
       setFormat("txt");
       setCompilationName("");
+      setIsCitationsOn(false);
+      setCitationStyleId(BUNDLED_CITATION_STYLES[0].id);
     }
     wasOpen.current = isOpen;
   }, [isOpen, resources]);
@@ -196,162 +285,264 @@ function CompileModalBody(
     }
   }, [isOpen, resource]);
 
+  function confirmCompile(orderedIds: string[]): void {
+    onConfirmCompile?.(orderedIds, {
+      includeHeaders: shouldIncludeHeaders,
+      format,
+      compilationName,
+      ...(isCitationsActive ? { citations: { styleId: citationStyleId } } : {}),
+    });
+    onConfirm?.();
+    onClose?.();
+  }
+
   return (
-    <DialogContent
-      maxWidth="max-w-[560px]"
-      className="p-6"
-      data-testid="compile-preview-modal"
-      aria-describedby={undefined}
-    >
-      <DialogTitle asChild>
-        <h3 className="compile-modal-title">
-          {entityMode ? "Compile Entity Resources" : "Compile Project"}
-        </h3>
-      </DialogTitle>
-      <p className="compile-modal-description">
-        {entityMode
-          ? // The entity-mode list is read-only (FR-11), so the whole-project
-            // copy inviting a selection describes a control that isn't there.
-            "Every resource associated with this entity, in resource-tree order."
-          : "Select which resources to include in the compiled output."}
-      </p>
-
-      {props.isSourceEncrypted ? (
-        <p className="mt-2 text-[12px] leading-relaxed text-gw-primary">
-          This project is encrypted. The compiled file will not be — it is
-          readable by anyone who can open it.
+    <>
+      <DialogContent
+        maxWidth="max-w-[560px]"
+        className="p-6"
+        data-testid="compile-preview-modal"
+        aria-describedby={undefined}
+      >
+        <DialogTitle asChild>
+          <h3 className="compile-modal-title">
+            {entityMode ? "Compile Entity Resources" : "Compile Project"}
+          </h3>
+        </DialogTitle>
+        <p className="compile-modal-description">
+          {entityMode
+            ? // The entity-mode list is read-only (FR-11), so the whole-project
+              // copy inviting a selection describes a control that isn't there.
+              "Every resource associated with this entity, in resource-tree order."
+            : "Select which resources to include in the compiled output."}
         </p>
-      ) : null}
 
-      {entityMode ? (
-        <EntityCompileResourceList entries={entityMode.entries} />
-      ) : (
-        <>
-          <div className="flex gap-2 mb-2">
-            <Button
-              variant="secondary"
-              size="xs"
-              onClick={() => setCheckedIds(initAllChecked(tree))}
-            >
-              Select All
-            </Button>
-            <Button
-              variant="secondary"
-              size="xs"
-              onClick={() => setCheckedIds(new Set())}
-            >
-              Select None
-            </Button>
-          </div>
+        {props.isSourceEncrypted ? (
+          <p className="mt-2 text-[12px] leading-relaxed text-gw-primary">
+            This project is encrypted. The compiled file will not be — it is
+            readable by anyone who can open it.
+          </p>
+        ) : null}
 
-          <CompileResourceTree
-            resources={resources}
-            checkedIds={checkedIds}
-            onChange={setCheckedIds}
-          />
+        {entityMode ? (
+          <EntityCompileResourceList entries={entityMode.entries} />
+        ) : (
+          <>
+            <div className="flex gap-2 mb-2">
+              <Button
+                variant="secondary"
+                size="xs"
+                onClick={() => setCheckedIds(initAllChecked(tree))}
+              >
+                Select All
+              </Button>
+              <Button
+                variant="secondary"
+                size="xs"
+                onClick={() => setCheckedIds(new Set())}
+              >
+                Select None
+              </Button>
+            </div>
 
-          <div className="compile-modal-meta-text mt-2 text-right">
-            {checkedIds.size} resource(s) selected
-          </div>
-
-          {projectId !== undefined ? (
-            <SavedDefaultsPanel
-              noun="compile"
-              readStatus={savedRead.state.status}
-              onRetry={savedRead.retry}
-              savedCount={leftOutIds.length}
-              leftOut={leftOutIds.map((id) => ({
-                id,
-                name: names.get(id) ?? id,
-                isIncludedThisRun: checkedIds.has(id),
-              }))}
-              result={saveAction.result}
-              isBusy={saveAction.isBusy}
-              onSave={() =>
-                saveAction.save(leafIds.filter((id) => !checkedIds.has(id)))
-              }
-              onClear={saveAction.clear}
+            <CompileResourceTree
+              resources={resources}
+              checkedIds={checkedIds}
+              onChange={setCheckedIds}
             />
-          ) : null}
-        </>
-      )}
 
-      <div className="mt-3 flex items-center gap-2">
-        <Checkbox
-          id="compile-include-headers"
-          checked={shouldIncludeHeaders}
-          onChange={(e) => setShouldIncludeHeaders(e.target.checked)}
-          aria-label="Include section headers"
-        />
-        <label
-          htmlFor="compile-include-headers"
-          className="compile-modal-meta-text cursor-pointer select-none"
-        >
-          Include section headers
-        </label>
-      </div>
+            <div className="compile-modal-meta-text mt-2 text-right">
+              {checkedIds.size} resource(s) selected
+            </div>
 
-      <div className="mt-3 flex items-center gap-2">
-        <label htmlFor="compile-as" className="compile-modal-label mb-0">
-          Compile as
-        </label>
-        <Select
-          id="compile-as"
-          value={format}
-          onChange={(e) => setFormat(e.target.value as CompileFormat)}
-          className="w-auto"
-        >
-          <option value="txt">txt</option>
-          <option value="md">md</option>
-          <option value="pdf">pdf</option>
-          <option value="docx">docx</option>
-        </Select>
-      </div>
+            {projectId !== undefined ? (
+              <SavedDefaultsPanel
+                noun="compile"
+                readStatus={savedRead.state.status}
+                onRetry={savedRead.retry}
+                savedCount={leftOutIds.length}
+                leftOut={leftOutIds.map((id) => ({
+                  id,
+                  name: names.get(id) ?? id,
+                  isIncludedThisRun: checkedIds.has(id),
+                }))}
+                result={saveAction.result}
+                isBusy={saveAction.isBusy}
+                onSave={() =>
+                  saveAction.save(leafIds.filter((id) => !checkedIds.has(id)))
+                }
+                onClear={saveAction.clear}
+              />
+            ) : null}
+          </>
+        )}
 
-      <div className="mt-3">
-        <input
-          spellCheck={false}
-          id="compile-name"
-          type="text"
-          value={compilationName}
-          onChange={(e) => setCompilationName(e.target.value)}
-          placeholder="Enter a name for your compiled output..."
-          className="compile-modal-textarea"
-          style={{ height: "auto", padding: "8px 12px" }}
-        />
-      </div>
+        <div className="mt-3 flex items-center gap-2">
+          <Checkbox
+            id="compile-include-headers"
+            checked={shouldIncludeHeaders}
+            onChange={(e) => setShouldIncludeHeaders(e.target.checked)}
+            aria-label="Include section headers"
+          />
+          <label
+            htmlFor="compile-include-headers"
+            className="compile-modal-meta-text cursor-pointer select-none"
+          >
+            Include section headers
+          </label>
+        </div>
 
-      <div className="mt-4 flex justify-end gap-3">
-        <Button variant="secondary" onClick={onClose}>
-          Close
-        </Button>
-        <Button
-          variant="default"
-          onClick={() => {
-            const orderedIds = entityMode
-              ? entityMode.orderedResourceIds
-              : getDescendantLeafIds(ROOT_ITEM_ID, tree).filter((id) =>
-                  checkedIds.has(id),
-                );
-            onConfirmCompile?.(orderedIds, {
-              includeHeaders: shouldIncludeHeaders,
-              format,
-              compilationName,
-            });
-            onConfirm?.();
-            onClose?.();
+        <div className="mt-3 flex items-center gap-2">
+          <label htmlFor="compile-as" className="compile-modal-label mb-0">
+            Compile as
+          </label>
+          <Select
+            id="compile-as"
+            value={format}
+            onChange={(e) => setFormat(e.target.value as CompileFormat)}
+            className="w-auto"
+          >
+            <option value="txt">txt</option>
+            <option value="md">md</option>
+            <option value="pdf">pdf</option>
+            <option value="docx">docx</option>
+          </Select>
+        </div>
+
+        {shouldShowCitations ? (
+          <div className="mt-3" data-testid="compile-citations-controls">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="compile-citations"
+                checked={isCitationsActive}
+                disabled={citationsReason !== undefined}
+                onChange={(e) => setIsCitationsOn(e.target.checked)}
+                aria-describedby="compile-citations-status"
+              />
+              <label
+                htmlFor="compile-citations"
+                className="compile-modal-meta-text cursor-pointer select-none"
+              >
+                Citations
+              </label>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <label
+                htmlFor="compile-citation-style"
+                className="compile-modal-label mb-0"
+              >
+                Citation style
+              </label>
+              <Select
+                id="compile-citation-style"
+                value={citationStyleId}
+                onChange={(e) => setCitationStyleId(e.target.value)}
+                disabled={!isCitationsActive}
+                className="w-auto"
+              >
+                {BUNDLED_CITATION_STYLES.map((style) => (
+                  <option key={style.id} value={style.id}>
+                    {style.label}, {style.locale}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <p
+              id="compile-citations-status"
+              role="status"
+              className="compile-modal-meta-text mt-1"
+            >
+              {citationsReason ?? ""}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="mt-3">
+          <input
+            spellCheck={false}
+            id="compile-name"
+            type="text"
+            value={compilationName}
+            onChange={(e) => setCompilationName(e.target.value)}
+            placeholder="Enter a name for your compiled output..."
+            className="compile-modal-textarea"
+            style={{ height: "auto", padding: "8px 12px" }}
+          />
+        </div>
+
+        <div className="mt-4 flex justify-end gap-3">
+          <Button variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+          <Button
+            variant="default"
+            onClick={() => {
+              const orderedIds = entityMode
+                ? entityMode.orderedResourceIds
+                : getDescendantLeafIds(ROOT_ITEM_ID, tree).filter((id) =>
+                    checkedIds.has(id),
+                  );
+              if (!isCitationsActive || projectId === undefined) {
+                confirmCompile(orderedIds);
+                return;
+              }
+              setPrecheck({ phase: "checking" });
+              runCitationCheck(projectId, orderedIds).then(
+                (result) => {
+                  if (!isMounted.current) return;
+                  if (result.status === "ok" && result.gaps.length === 0) {
+                    setPrecheck({ phase: "idle" });
+                    confirmCompile(orderedIds);
+                  } else {
+                    setPrecheck({ phase: "warning", result, orderedIds });
+                  }
+                },
+                (error: unknown) => {
+                  if (!isMounted.current) return;
+                  setPrecheck({ phase: "idle" });
+                  if (isLockedAccessError(error)) setLockedError(error);
+                  else
+                    setPrecheck({
+                      phase: "warning",
+                      orderedIds,
+                      result: {
+                        status: "failed",
+                        failure: "read-failed",
+                        message: "The citation check could not be run.",
+                      },
+                    });
+                },
+              );
+            }}
+            disabled={
+              entityMode
+                ? entityMode.orderedResourceIds.length === 0
+                : checkedIds.size === 0 ||
+                  savedRead.state.status === "loading" ||
+                  precheck.phase === "checking"
+            }
+          >
+            <PackageCheck size={14} aria-hidden="true" />
+            Compile (
+            {entityMode
+              ? entityMode.orderedResourceIds.length
+              : checkedIds.size}
+            )
+          </Button>
+        </div>
+      </DialogContent>
+      {precheck.phase === "warning" ? (
+        <CitationCheckDialog
+          isOpen
+          result={precheck.result}
+          onProceed={() => {
+            const { orderedIds } = precheck;
+            setPrecheck({ phase: "idle" });
+            confirmCompile(orderedIds);
           }}
-          disabled={
-            entityMode
-              ? entityMode.orderedResourceIds.length === 0
-              : checkedIds.size === 0 || savedRead.state.status === "loading"
-          }
-        >
-          <PackageCheck size={14} aria-hidden="true" />
-          Compile (
-          {entityMode ? entityMode.orderedResourceIds.length : checkedIds.size})
-        </Button>
-      </div>
-    </DialogContent>
+          onCancel={() => setPrecheck({ phase: "idle" })}
+        />
+      ) : null}
+    </>
   );
 }

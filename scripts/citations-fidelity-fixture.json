@@ -1,0 +1,188 @@
+{
+  "description": "FR-1 (b) fidelity fixture: CSL-JSON items plus an ordered list of citations. A timestamp locator is literal text carried in the citation suffix, never a CSL label. An interviewee is carried as author.",
+  "items": [
+    {
+      "id": "book-1",
+      "type": "book",
+      "title": "The Rise of the Written Word",
+      "author": [{ "family": "Alder", "given": "Maren" }],
+      "publisher": "Harbor Press",
+      "publisher-place": "Boston",
+      "issued": { "date-parts": [[2011]] }
+    },
+    {
+      "id": "book-2",
+      "type": "book",
+      "title": "Notes on Quiet Rooms",
+      "author": [
+        { "family": "Brandt", "given": "Oskar" },
+        { "family": "Nakamura", "given": "Hana" }
+      ],
+      "publisher": "Lantern Books",
+      "publisher-place": "London",
+      "issued": { "date-parts": [[2004]] },
+      "edition": "2"
+    },
+    {
+      "id": "book-3",
+      "type": "book",
+      "title": "A Field Guide to Revision",
+      "author": [{ "family": "Castellan", "given": "Ilse" }],
+      "editor": [{ "family": "Duval", "given": "Remy" }],
+      "publisher": "Tern & Co.",
+      "publisher-place": "Chicago",
+      "issued": { "date-parts": [[1998]] }
+    },
+    {
+      "id": "article-1",
+      "type": "article-journal",
+      "title": "Drafting Under Constraint",
+      "author": [{ "family": "Eriksen", "given": "Tove" }],
+      "container-title": "Journal of Composition Studies",
+      "volume": "14",
+      "issue": "3",
+      "page": "201-224",
+      "issued": { "date-parts": [[2017, 9]] },
+      "DOI": "10.0000/example.1"
+    },
+    {
+      "id": "article-2",
+      "type": "article-journal",
+      "title": "Memory and the Marginal Note",
+      "author": [
+        { "family": "Fontaine", "given": "Lucie" },
+        { "family": "Garza", "given": "Mateo" },
+        { "family": "Haugen", "given": "Siri" }
+      ],
+      "container-title": "Annals of Reading",
+      "volume": "7",
+      "page": "55-71",
+      "issued": { "date-parts": [[2020]] }
+    },
+    {
+      "id": "article-3",
+      "type": "article-journal",
+      "title": "On the Ordering of Sources",
+      "author": [{ "family": "Ilves", "given": "Karl" }],
+      "container-title": "Archival Review",
+      "volume": "31",
+      "issue": "1",
+      "page": "9-30",
+      "issued": { "date-parts": [[2009, 3]] }
+    },
+    {
+      "id": "web-1",
+      "type": "webpage",
+      "title": "A Short History of the Footnote",
+      "author": [{ "family": "Jansen", "given": "Petra" }],
+      "container-title": "The Margin Journal",
+      "URL": "https://example.invalid/footnote-history",
+      "issued": { "date-parts": [[2022, 5, 17]] },
+      "accessed": { "date-parts": [[2026, 11, 14]] }
+    },
+    {
+      "id": "web-2",
+      "type": "webpage",
+      "title": "Style Guides Compared",
+      "container-title": "Writers Reference Desk",
+      "URL": "https://example.invalid/style-guides",
+      "issued": { "date-parts": [[2019, 1, 8]] },
+      "accessed": { "date-parts": [[2026, 11, 14]] }
+    },
+    {
+      "id": "web-3",
+      "type": "webpage",
+      "title": "Keeping a Source Log",
+      "author": [{ "family": "Kowalski", "given": "Anna" }],
+      "container-title": "Notebook Weekly",
+      "URL": "https://example.invalid/source-log",
+      "issued": { "date-parts": [[2024, 11, 2]] },
+      "accessed": { "date-parts": [[2026, 11, 14]] }
+    },
+    {
+      "id": "interview-1",
+      "type": "interview",
+      "title": "Interview with a Local Archivist",
+      "author": [{ "family": "Lindqvist", "given": "Greta" }],
+      "interviewer": [{ "family": "Moreau", "given": "Paul" }],
+      "medium": "Recorded interview",
+      "issued": { "date-parts": [[2023, 6, 21]] }
+    },
+    {
+      "id": "interview-2",
+      "type": "interview",
+      "title": "Conversation on Oral Histories",
+      "author": [{ "family": "Novak", "given": "Dana" }],
+      "interviewer": [{ "family": "Moreau", "given": "Paul" }],
+      "medium": "Telephone interview",
+      "issued": { "date-parts": [[2021, 2, 4]] }
+    },
+    {
+      "id": "interview-3",
+      "type": "interview",
+      "title": "Interview with the Press Editor",
+      "author": [{ "family": "Okafor", "given": "Emeka" }],
+      "interviewer": [{ "family": "Pettersen", "given": "Ruth" }],
+      "medium": "Recorded interview",
+      "issued": { "date-parts": [[2018, 10, 30]] }
+    }
+  ],
+  "citations": [
+    {
+      "id": "c01",
+      "itemId": "book-1",
+      "locator": { "label": "page", "value": "42" }
+    },
+    {
+      "id": "c02",
+      "itemId": "article-1",
+      "locator": { "label": "page", "value": "210" }
+    },
+    {
+      "id": "c03",
+      "itemId": "book-1",
+      "locator": { "label": "page", "value": "57" }
+    },
+    {
+      "id": "c04",
+      "itemId": "web-1",
+      "locator": { "label": "paragraph", "value": "3" }
+    },
+    {
+      "id": "c05",
+      "itemId": "book-2",
+      "locator": { "label": "line", "value": "118" }
+    },
+    { "id": "c06", "itemId": "interview-1", "suffix": ", at 12:30" },
+    {
+      "id": "c07",
+      "itemId": "article-2",
+      "locator": { "label": "page", "value": "60" }
+    },
+    { "id": "c08", "itemId": "interview-2", "suffix": ", at 1:04:15" },
+    { "id": "c09", "itemId": "book-3" },
+    {
+      "id": "c10",
+      "itemId": "web-2",
+      "locator": { "label": "paragraph", "value": "7" }
+    },
+    {
+      "id": "c11",
+      "itemId": "article-3",
+      "locator": { "label": "page", "value": "12" }
+    },
+    {
+      "id": "c12",
+      "itemId": "web-3",
+      "locator": { "label": "line", "value": "4" }
+    },
+    { "id": "c13", "itemId": "interview-3", "suffix": ", at 22:05" },
+    { "id": "c14", "itemId": "book-1" },
+    { "id": "c15", "itemId": "interview-1", "suffix": ", at 31:10" },
+    {
+      "id": "c16",
+      "itemId": "book-2",
+      "locator": { "label": "paragraph", "value": "2" }
+    }
+  ]
+}

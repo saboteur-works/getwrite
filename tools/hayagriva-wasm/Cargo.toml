@@ -1,0 +1,25 @@
+[package]
+name = "hayagriva-wasm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Wrapper around Hayagriva that renders CSL citations and a bibliography as structured text runs, built to WebAssembly for GetWrite."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+hayagriva = { git = "https://github.com/typst/hayagriva", rev = "2dbaa50518f4d93b5cfc7f9f65f0a3a8dd66bd04", default-features = false, features = ["csl-json"] }
+wasm-bindgen = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+
+# build.sh runs wasm-opt itself, with the feature flags recorded in
+# specs/features/citations-at-compile/experiments/task-6.md; wasm-pack's own
+# download of wasm-opt is turned off.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

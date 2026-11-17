@@ -706,7 +706,7 @@ function ModulesSection({
         <ModuleDeclarationControl
           key={entry.id}
           moduleId={entry.id}
-          label={`${entry.view?.label ?? entry.id} module`}
+          label={`${entry.view?.label ?? entry.label ?? entry.id} module`}
           state={states[entry.id]}
           editable={editable}
           error={fieldErrors?.[`modules.${entry.id}`]}

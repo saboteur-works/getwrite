@@ -22,6 +22,7 @@ import {
 } from "../api/compile";
 import { toastService } from "../toast-service";
 import { downloadFile } from "./download-file";
+import type { CompileCitationsOption } from "../models/citations-types";
 
 /**
  * Output format a compile run may target, matching
@@ -38,7 +39,17 @@ export interface RunCompileAndDownloadOptions {
   /** User-supplied compilation name (may be empty, in which case the
    * server-provided filename is used instead). */
   compilationName: string;
+  /**
+   * Feature 116 (FR-9): the dialog's confirmed citations option. Sent only
+   * when present; absent leaves the request body exactly as it was.
+   */
+  citations?: CompileCitationsOption;
 }
+
+/** A compile body that may carry the confirmed citations option. */
+type CompileBodyWithCitations = CompileBody & {
+  citations?: CompileCitationsOption;
+};
 
 /**
  * Delivers a compiled blob to the user and announces a native save.
@@ -77,9 +88,13 @@ export async function triggerDownload(
  * @param options - Format and compilation-name options from the compile UI.
  */
 export async function runCompileAndDownload(
-  compileBody: CompileBody,
+  baseBody: CompileBody,
   options: RunCompileAndDownloadOptions,
 ): Promise<void> {
+  const compileBody: CompileBodyWithCitations =
+    options.citations === undefined
+      ? baseBody
+      : { ...baseBody, citations: options.citations };
   const rawName = options.compilationName.trim();
 
   if (options.format === "pdf") {

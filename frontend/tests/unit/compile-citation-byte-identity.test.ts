@@ -15,7 +15,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { JSONContent } from "@tiptap/core";
 
 import {
@@ -23,6 +23,8 @@ import {
   compileMarkdownCore,
   compilePdfCore,
   compileTextCore,
+  registerCitationsPass,
+  type CompileCitationsPass,
 } from "../../src/lib/models/compile-core";
 import {
   exportMarkdownCore,
@@ -137,9 +139,18 @@ async function docxParts(
   };
 }
 
+/** Extra project state and request fields for one Feature 116 state. */
+interface RunExtras {
+  /** Writes extra files into the project directory (a Source, project.json). */
+  setup?: (projectDir: string) => Promise<void>;
+  /** Fields merged into the compile request body (never `citations` with a value). */
+  bodyExtras?: Record<string, unknown>;
+}
+
 async function runAll(
   doc: JSONContent,
   annotations: Annotation[],
+  extras: RunExtras = {},
 ): Promise<Outputs> {
   const projectsDir = await fs.mkdtemp(path.join(os.tmpdir(), "gw-cite-"));
   tmpDirs.push(projectsDir);
@@ -162,6 +173,7 @@ async function runAll(
       JSON.stringify({ annotations }),
     );
   }
+  if (extras.setup) await extras.setup(projectDir);
   process.env.GETWRITE_PROJECTS_DIR = projectsDir;
 
   const resources = [{ id: RESOURCE_ID, name: "Chapter", type: "text" }];
@@ -171,6 +183,7 @@ async function runAll(
     resources,
     includeHeaders: true,
     projectName: "Citation Check",
+    ...extras.bodyExtras,
   };
   const exportBody = {
     projectId,
@@ -256,6 +269,117 @@ describe("a citation does not change compile or export output (FR-28)", () => {
       ]) {
         expect(everything).not.toContain(needle);
       }
+    }
+  });
+});
+
+/**
+ * Feature 116 Task 25 (FR-10): with the switch off, the module off, or the
+ * option absent, a document citing a Source with filled citation fields
+ * compiles exactly as the same document without the citation. PDF is compared
+ * as ordered per-page extracted text, not raw bytes: a fixed creation date
+ * does not make two renders byte-identical (the random font-subset tag differs;
+ * `experiments/task-12.md` (f)).
+ */
+const SOURCE_RESOURCE_ID = SOURCE_ID;
+const CITATION_FIELDS = {
+  referenceType: "book",
+  authors: [{ family: "Quimby", given: "Zora" }],
+  title: "The Zebra Atlas",
+  publisher: "Plugh Press",
+  place: "Xyzzyville",
+  date: "1887",
+};
+
+async function writeSourceAndConfig(
+  projectDir: string,
+  modules: Record<string, boolean> | undefined,
+): Promise<void> {
+  const sourceDir = path.join(projectDir, "resources", SOURCE_RESOURCE_ID);
+  await fs.mkdir(sourceDir, { recursive: true });
+  await fs.writeFile(path.join(sourceDir, "content.txt"), "Source body");
+  await fs.mkdir(path.join(projectDir, "meta"), { recursive: true });
+  const sidecarPath = path.join(
+    projectDir,
+    "meta",
+    `resource-${SOURCE_RESOURCE_ID}.meta.json`,
+  );
+  await fs.writeFile(
+    sidecarPath,
+    JSON.stringify({ citationFields: CITATION_FIELDS }),
+  );
+  if (modules !== undefined) {
+    await fs.writeFile(
+      path.join(projectDir, "project.json"),
+      JSON.stringify({ config: { modules } }),
+    );
+  }
+}
+
+/** The three states of FR-10. None of them carries a citations option. */
+const STATES: { name: string; extras: RunExtras }[] = [
+  {
+    name: "switch off (module on, no option sent)",
+    extras: {
+      setup: (dir) => writeSourceAndConfig(dir, { citations: true }),
+      bodyExtras: { citations: undefined },
+    },
+  },
+  {
+    name: "module off (config.modules.citations false)",
+    extras: { setup: (dir) => writeSourceAndConfig(dir, { citations: false }) },
+  },
+  {
+    name: "option absent (no module entry)",
+    extras: { setup: (dir) => writeSourceAndConfig(dir, undefined) },
+  },
+];
+
+describe("a citation to a Source with filled fields compiles as today (FR-10)", () => {
+  const spy = vi.fn<CompileCitationsPass>(async () => ({
+    arrayBuffer: new Uint8Array([1]).buffer,
+  }));
+
+  describe.each(STATES)("$name", ({ extras }) => {
+    let plain: Outputs;
+    let control: Outputs;
+    let cited: Outputs;
+    let seamCalls = -1;
+
+    beforeAll(async () => {
+      spy.mockClear();
+      registerCitationsPass(spy);
+      try {
+        plain = await runAll(PLAIN, [], extras);
+        control = await runAll(CONTROL, [], extras);
+        cited = await runAll(CITED, [CITATION], extras);
+        seamCalls = spy.mock.calls.length;
+      } finally {
+        registerCitationsPass(undefined);
+      }
+    });
+
+    it.each(FORMATS)("citation equals plain: $name", ({ pick }) => {
+      expect(pick(cited)).toEqual(pick(plain));
+    });
+
+    it.each(FORMATS)(
+      "non-vacuity, a one-letter change differs: $name",
+      ({ pick }) => {
+        expect(pick(control)).not.toEqual(pick(plain));
+      },
+    );
+
+    it("the Task 24 seam is not entered", () => {
+      expect(seamCalls).toBe(0);
+    });
+  });
+
+  it("equals the output with no Source and no config at all", async () => {
+    const bare = await runAll(PLAIN, []);
+    const state = await runAll(CITED, [CITATION], STATES[0].extras);
+    for (const { pick } of FORMATS) {
+      expect(pick(state)).toEqual(pick(bare));
     }
   });
 });

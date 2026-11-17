@@ -57,7 +57,7 @@ Bodies are indexed in `indexer-queue.ts` `runTask` into `meta/index/annotations.
 
 ## Compile and export
 
-Annotations are not compiled or exported. Measured (`compile-annotation-marks.test.ts`): for four annotated-document cases, TXT, Markdown (compile and export), PDF extracted text, the DOCX body and the Markdown warnings were equal to the same document without marks, both with the mark unregistered and after it was registered in the editor. No serializer change was made.
+Annotations are not compiled or exported, with one exception: with the Citations switch on, a citation (an annotation whose `target` is another Source) becomes a note in a PDF or DOCX compile, see [compile-export-defaults.md](compile-export-defaults.md). Measured (`compile-annotation-marks.test.ts`): for four annotated-document cases, TXT, Markdown (compile and export), PDF extracted text, the DOCX body and the Markdown warnings were equal to the same document without marks, both with the mark unregistered and after it was registered in the editor. No serializer change was made.
 
 ## Not measured or not demonstrated
 
