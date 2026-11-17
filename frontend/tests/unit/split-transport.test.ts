@@ -10,8 +10,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import * as client from "../../src/lib/api/split";
 import {
+  parseSplitLatestQuery,
+  parseSplitUndoBody,
+  requestLatestSplitOperation,
   requestSplit,
   requestSplitPreview,
+  requestUndoSplit,
   SPLIT_INVALID_REQUEST_MESSAGE,
   SPLIT_TRANSPORT_FAILED_MESSAGE,
   SPLIT_TRANSPORT_STATE_UNKNOWN_MESSAGE,
@@ -28,6 +32,7 @@ import {
   describeSplitFailure,
   describeSplitIndexFailure,
   SPLIT_REFUSAL_MESSAGES,
+  SPLIT_UNDO_REFUSAL_MESSAGES,
 } from "../../src/lib/models/split-messages";
 import { SPLIT_REFUSAL_REASONS } from "../../src/lib/models/split-types";
 
@@ -114,6 +119,271 @@ describe("the one hash function", () => {
     const code = source.replace(/\/\*[\s\S]*?\*\//g, "");
     expect(code).not.toMatch(/^\s*import\s/m);
     expect(code).not.toMatch(/node:|require\(|import\(/);
+  });
+});
+
+describe("requestUndoSplit (Feature 120 Task 31)", () => {
+  const UNDO_APPLIED = {
+    outcome: "applied",
+    originalDocumentId: RID,
+    splitOffDocumentId: NEW_ID,
+    splitOffState: "moved-to-trash",
+    preservedRevisions: [
+      { documentId: RID, revisionId: "v-3", revisionNumber: 3 },
+    ],
+    movedAnnotationIds: ["a1"],
+  };
+
+  it("posts only the validated project id and returns applied", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(response(200, UNDO_APPLIED));
+    const result = await requestUndoSplit(PID);
+    expect(result).toEqual({
+      kind: "applied",
+      originalDocumentId: RID,
+      splitOffDocumentId: NEW_ID,
+      splitOffState: "moved-to-trash",
+      preservedRevisions: UNDO_APPLIED.preservedRevisions,
+      movedAnnotationIds: ["a1"],
+    });
+    const [url, init] = spy.mock.calls[0];
+    expect(url).toBe("/api/project/split/undo");
+    expect(init?.method).toBe("POST");
+    expect(sentBody(init)).toEqual({ projectId: PID });
+  });
+
+  it("maps index-failed to a success kind carrying the failures", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, {
+        ...UNDO_APPLIED,
+        outcome: "index-failed",
+        failures: [{ documentId: RID, step: "inverted-index" }],
+      }),
+    );
+    expect(await requestUndoSplit(PID)).toMatchObject({
+      kind: "index-failed",
+      failures: [{ documentId: RID, step: "inverted-index" }],
+    });
+  });
+
+  it("maps nothing-to-undo, unsupported-operation and could-not-be-checked to their own kinds", async () => {
+    const bodies = [
+      [{ outcome: "nothing-to-undo" }, { kind: "nothing-to-undo" }],
+      [
+        { outcome: "unsupported-operation", kind: "merge" },
+        { kind: "unsupported-operation", operationKind: "merge" },
+      ],
+      [
+        { outcome: "could-not-be-checked", cause: "record-malformed" },
+        { kind: "could-not-be-checked", cause: "record-malformed" },
+      ],
+    ] as const;
+    for (const [body, expected] of bodies) {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(response(200, body));
+      expect(await requestUndoSplit(PID)).toEqual(expected);
+    }
+  });
+
+  it("maps a refusal to its reason and the Undo refusal text, not the server's text", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, {
+        outcome: "refused",
+        reason: "original-in-trash",
+        message: "server text",
+      }),
+    );
+    expect(await requestUndoSplit(PID)).toEqual({
+      kind: "refused",
+      reason: "original-in-trash",
+      message: SPLIT_UNDO_REFUSAL_MESSAGES["original-in-trash"],
+    });
+  });
+
+  it("maps failed to the step and the state that remains", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, {
+        outcome: "failed",
+        failedStep: "restore-original",
+        cause: "Error",
+        remainingState: "original-not-restored",
+      }),
+    );
+    expect(await requestUndoSplit(PID)).toEqual({
+      kind: "failed",
+      failedStep: "restore-original",
+      remainingState: "original-not-restored",
+      cause: "Error",
+    });
+  });
+
+  it("maps a thrown fetch, a non-ok status and a malformed body to failed with an unknown state, never to no result", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("net"));
+    expect(await requestUndoSplit(PID)).toEqual({
+      kind: "failed",
+      failedStep: null,
+      remainingState: "state-unknown",
+      cause: "transport-failed",
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response(500, {}));
+    expect(await requestUndoSplit(PID)).toMatchObject({
+      kind: "failed",
+      remainingState: "state-unknown",
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, { outcome: "bogus" }),
+    );
+    expect(await requestUndoSplit(PID)).toMatchObject({
+      kind: "failed",
+      remainingState: "state-unknown",
+    });
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "split.requestUndoSplit",
+      expect.anything(),
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, {
+        outcome: "failed",
+        failedStep: "x",
+        cause: "c",
+        remainingState: "y",
+      }),
+    );
+    expect(await requestUndoSplit(PID)).toMatchObject({
+      kind: "failed",
+      remainingState: "state-unknown",
+    });
+  });
+
+  it("rethrows the locked error for 401 and 409, not a not-paired 401", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response(401, {}));
+    await expect(requestUndoSplit(PID)).rejects.toBeInstanceOf(
+      ProjectLockedError,
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response(409, {}));
+    await expect(requestUndoSplit(PID)).rejects.toBeInstanceOf(
+      MissingProjectKeyError,
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(401, {}, { "x-getwrite-gate": "not-paired" }),
+    );
+    expect(await requestUndoSplit(PID)).toMatchObject({ kind: "failed" });
+  });
+
+  it("does not send a bad project id", async () => {
+    const spy = vi.spyOn(globalThis, "fetch");
+    expect(await requestUndoSplit("../x")).toMatchObject({
+      kind: "failed",
+      remainingState: "split-restored",
+    });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("the body parser accepts only the project id", () => {
+    expect(parseSplitUndoBody({ projectId: PID })).toEqual({
+      ok: true,
+      value: { projectId: PID },
+    });
+    for (const bad of [
+      null,
+      [],
+      {},
+      { projectId: PID, path: "x" },
+      { projectId: "x" },
+    ])
+      expect(parseSplitUndoBody(bad)).toEqual({ ok: false });
+  });
+});
+
+describe("requestLatestSplitOperation (Feature 120 Task 31)", () => {
+  const RECORD = {
+    kind: "split",
+    affectedDocumentIds: [RID, NEW_ID],
+    snapshotRevisions: [
+      { documentId: RID, revisionId: "v-2", revisionNumber: 2 },
+    ],
+    newDocumentId: NEW_ID,
+    date: "2026-11-17T10:00:00.000Z",
+  };
+
+  it("GETs with only the project id in the query and returns the record", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(response(200, { outcome: "found", record: RECORD }));
+    expect(await requestLatestSplitOperation(PID)).toEqual({
+      kind: "record",
+      record: RECORD,
+    });
+    const [url, init] = spy.mock.calls[0];
+    expect(url).toBe(`/api/project/split/latest?projectId=${PID}`);
+    expect(init?.method ?? "GET").toBe("GET");
+  });
+
+  it("returns none as none and a failed read as failed, never the same value", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, { outcome: "none" }),
+    );
+    expect(await requestLatestSplitOperation(PID)).toEqual({ kind: "none" });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, { outcome: "failed", cause: "record-unreadable" }),
+    );
+    expect(await requestLatestSplitOperation(PID)).toEqual({
+      kind: "failed",
+      cause: "record-unreadable",
+    });
+  });
+
+  it("maps a thrown fetch, a non-ok status and a malformed body to failed", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("net"));
+    expect(await requestLatestSplitOperation(PID)).toEqual({
+      kind: "failed",
+      cause: "transport-failed",
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response(500, {}));
+    expect(await requestLatestSplitOperation(PID)).toMatchObject({
+      kind: "failed",
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, { outcome: "found", record: { kind: "split" } }),
+    );
+    expect(await requestLatestSplitOperation(PID)).toMatchObject({
+      kind: "failed",
+    });
+    expect(reportTransportValidationFailure).toHaveBeenCalledWith(
+      "split.requestLatestSplitOperation",
+      expect.anything(),
+    );
+  });
+
+  it("rethrows the locked error for 401 and 409", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response(401, {}));
+    await expect(requestLatestSplitOperation(PID)).rejects.toBeInstanceOf(
+      ProjectLockedError,
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response(409, {}));
+    await expect(requestLatestSplitOperation(PID)).rejects.toBeInstanceOf(
+      MissingProjectKeyError,
+    );
+  });
+
+  it("does not send a bad project id; the query parser takes exactly one projectId", async () => {
+    const spy = vi.spyOn(globalThis, "fetch");
+    expect(await requestLatestSplitOperation("../x")).toMatchObject({
+      kind: "failed",
+    });
+    expect(spy).not.toHaveBeenCalled();
+    expect(
+      parseSplitLatestQuery(new URLSearchParams(`projectId=${PID}`)),
+    ).toEqual({ ok: true, value: { projectId: PID } });
+    for (const q of [
+      "",
+      `projectId=${PID}&x=1`,
+      `projectId=${PID}&projectId=${PID}`,
+      "projectId=x",
+    ])
+      expect(parseSplitLatestQuery(new URLSearchParams(q))).toEqual({
+        ok: false,
+      });
   });
 });
 

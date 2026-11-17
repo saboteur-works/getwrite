@@ -34,9 +34,20 @@ import {
   SPLIT_FAILED_REMAINING_STATE_MESSAGES,
   SPLIT_INDEX_STEP_LABELS,
   SPLIT_REFUSAL_MESSAGES,
+  SPLIT_UNDO_REFUSAL_MESSAGES,
+  SPLIT_UNDO_REFUSAL_REASONS,
   type SplitIndexFailureStep,
+  type SplitUndoRefusalReason,
 } from "../models/split-messages";
+import type {
+  SplitUndoAppliedFields,
+  SplitUndoRemainingState,
+  SplitUndoStep,
+} from "../models/split-undo-core";
+import type { SplitIndexFailure } from "../models/split-index-update";
 import {
+  SPLIT_OPERATION_KINDS,
+  type LatestOperationRecord,
   SPLIT_REFUSAL_REASONS,
   SPLIT_STEPS,
   type SplitRefusalReason,
@@ -60,6 +71,8 @@ export { hashSplitContent };
 
 const PREVIEW_ENDPOINT = "/api/project/split/preview";
 const SPLIT_ENDPOINT = "/api/project/split";
+const UNDO_ENDPOINT = "/api/project/split/undo";
+const LATEST_ENDPOINT = "/api/project/split/latest";
 
 /** Bounds of the request boundary (an assumption of this task; the cores set none of their own). */
 export const SPLIT_REQUEST_LIMITS = {
@@ -457,4 +470,265 @@ export async function requestSplit(
         data.failedStep,
       );
   }
+}
+
+// --- Undo and the latest-operation read (Task 31) ------------------------
+
+/** A validated Undo body: the project id and nothing else. */
+export interface SplitUndoBody {
+  projectId: string;
+}
+
+/** Validates an Undo body; only `projectId` can pass. */
+export function parseSplitUndoBody(
+  body: unknown,
+): SplitBodyParse<SplitUndoBody> {
+  if (!isRecord(body) || !hasOnlyKeys(body, ["projectId"]))
+    return { ok: false };
+  if (!isResourceId(body.projectId)) return { ok: false };
+  return { ok: true, value: { projectId: body.projectId } };
+}
+
+/** Validates the latest-operation query: exactly one `projectId`, no other parameter. */
+export function parseSplitLatestQuery(
+  params: URLSearchParams,
+): SplitBodyParse<SplitUndoBody> {
+  const keys = [...params.keys()];
+  if (keys.length !== 1 || keys[0] !== "projectId") return { ok: false };
+  const projectId = params.get("projectId");
+  if (!isResourceId(projectId)) return { ok: false };
+  return { ok: true, value: { projectId } };
+}
+
+const UNDO_REMAINING_STATES: Record<SplitUndoRemainingState, true> = {
+  "split-restored": true,
+  "record-not-restored": true,
+  "exclusion-not-restored": true,
+  "split-off-in-trash": true,
+  "notes-not-restored": true,
+  "original-not-restored": true,
+  "preserved-revisions-kept": true,
+  "state-unknown": true,
+};
+const UNDO_STEPS: Record<SplitUndoStep, true> = {
+  "save-current-text": true,
+  "restore-original": true,
+  "move-annotations": true,
+  "trash-split-off": true,
+  "remove-exclusion": true,
+  "clear-record": true,
+};
+
+function isKeyOf<T extends string>(
+  table: Record<T, true>,
+  value: unknown,
+): value is T {
+  return (
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(table, value)
+  );
+}
+
+const UndoRemainingStateSchema = z.custom<SplitUndoRemainingState>((v) =>
+  isKeyOf(UNDO_REMAINING_STATES, v),
+);
+/** Undo's index update has no word-count step (`SplitIndexFailure` in `split-index-update.ts`). */
+const UndoIndexStepSchema = z.custom<SplitIndexFailure["step"]>(
+  (v) =>
+    typeof v === "string" &&
+    v !== "word-count" &&
+    Object.prototype.hasOwnProperty.call(SPLIT_INDEX_STEP_LABELS, v),
+);
+const UndoStepSchema = z.custom<SplitUndoStep>((v) => isKeyOf(UNDO_STEPS, v));
+const UndoRefusalReasonSchema = z.custom<SplitUndoRefusalReason>(
+  (v) =>
+    typeof v === "string" &&
+    (SPLIT_UNDO_REFUSAL_REASONS as readonly string[]).includes(v),
+);
+
+const RevisionRefSchema = z.object({
+  documentId: z.string(),
+  revisionId: z.string(),
+  revisionNumber: z.number(),
+});
+
+const UndoAppliedShape = {
+  originalDocumentId: z.string(),
+  splitOffDocumentId: z.string(),
+  splitOffState: z.enum(["moved-to-trash", "was-in-trash", "was-purged"]),
+  preservedRevisions: z.array(RevisionRefSchema),
+  movedAnnotationIds: z.array(z.string()),
+};
+
+const UndoBodySchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("applied"), ...UndoAppliedShape }),
+  z.object({
+    outcome: z.literal("index-failed"),
+    ...UndoAppliedShape,
+    failures: z.array(
+      z.object({ documentId: z.string(), step: UndoIndexStepSchema }),
+    ),
+  }),
+  z.object({ outcome: z.literal("nothing-to-undo") }),
+  z.object({ outcome: z.literal("unsupported-operation"), kind: z.string() }),
+  z.object({ outcome: z.literal("refused"), reason: UndoRefusalReasonSchema }),
+  z.object({ outcome: z.literal("could-not-be-checked"), cause: z.string() }),
+  z.object({
+    outcome: z.literal("failed"),
+    failedStep: UndoStepSchema,
+    cause: z.string(),
+    remainingState: UndoRemainingStateSchema,
+  }),
+]);
+
+const LatestBodySchema = z.discriminatedUnion("outcome", [
+  z.object({
+    outcome: z.literal("found"),
+    record: z.object({
+      kind: z.enum(SPLIT_OPERATION_KINDS),
+      affectedDocumentIds: z.array(z.string()),
+      snapshotRevisions: z.array(RevisionRefSchema),
+      newDocumentId: z.string(),
+      date: z.string(),
+    }),
+  }),
+  z.object({ outcome: z.literal("none") }),
+  z.object({ outcome: z.literal("failed"), cause: z.string() }),
+]);
+
+/**
+ * Outcome of {@link requestUndoSplit}; the kinds never share a value. No kind
+ * carries writer text except `refused` (the Undo refusal texts): the messages
+ * for `could-not-be-checked`, `index-failed` and a failed Undo's remaining
+ * state do not exist in `split-messages.ts`, so those kinds carry the typed
+ * values and the caller must not show a made-up sentence for them.
+ */
+export type SplitUndoClientResult =
+  | ({ kind: "applied" } & SplitUndoAppliedFields)
+  | ({
+      kind: "index-failed";
+      failures: SplitIndexFailure[];
+    } & SplitUndoAppliedFields)
+  | { kind: "nothing-to-undo" }
+  | { kind: "unsupported-operation"; operationKind: string }
+  | { kind: "refused"; reason: SplitUndoRefusalReason; message: string }
+  | { kind: "could-not-be-checked"; cause: string }
+  | {
+      kind: "failed";
+      /** The step Undo stopped at; null when no step ran or it is unknown. */
+      failedStep: SplitUndoStep | null;
+      remainingState: SplitUndoRemainingState;
+      /** A stable code: an error name, or `transport-failed` / `invalid-request`. */
+      cause: string;
+    };
+
+/** Outcome of {@link requestLatestSplitOperation}; `failed` is never `none`. */
+export type SplitLatestClientResult =
+  | { kind: "record"; record: LatestOperationRecord }
+  | { kind: "none" }
+  | { kind: "failed"; cause: string };
+
+function undoFailed(
+  remainingState: SplitUndoRemainingState,
+  cause: string,
+): SplitUndoClientResult {
+  return { kind: "failed", failedStep: null, remainingState, cause };
+}
+
+/**
+ * Undoes the project's latest split. A thrown fetch, a non-ok response or a
+ * malformed body is a `failed` result with `state-unknown`, never "no result".
+ *
+ * @throws The locked-access error when the project is locked.
+ */
+export async function requestUndoSplit(
+  projectId: string,
+): Promise<SplitUndoClientResult> {
+  const checked = parseSplitUndoBody({ projectId });
+  if (!checked.ok) return undoFailed("split-restored", "invalid-request");
+  const sent = await post(UNDO_ENDPOINT, checked.value, projectId);
+  if (!sent.ok) return undoFailed("state-unknown", "transport-failed");
+  const parsed = UndoBodySchema.safeParse(sent.json);
+  if (!parsed.success) {
+    reportTransportValidationFailure(
+      "split.requestUndoSplit",
+      parsed.error.issues,
+    );
+    return undoFailed("state-unknown", "transport-failed");
+  }
+  const data = parsed.data;
+  switch (data.outcome) {
+    case "applied":
+    case "index-failed": {
+      const fields: SplitUndoAppliedFields = {
+        originalDocumentId: data.originalDocumentId,
+        splitOffDocumentId: data.splitOffDocumentId,
+        splitOffState: data.splitOffState,
+        preservedRevisions: data.preservedRevisions,
+        movedAnnotationIds: data.movedAnnotationIds,
+      };
+      return data.outcome === "applied"
+        ? { kind: "applied", ...fields }
+        : { kind: "index-failed", ...fields, failures: data.failures };
+    }
+    case "nothing-to-undo":
+      return { kind: "nothing-to-undo" };
+    case "unsupported-operation":
+      return { kind: "unsupported-operation", operationKind: data.kind };
+    case "refused":
+      return {
+        kind: "refused",
+        reason: data.reason,
+        message: SPLIT_UNDO_REFUSAL_MESSAGES[data.reason],
+      };
+    case "could-not-be-checked":
+      return { kind: "could-not-be-checked", cause: data.cause };
+    case "failed":
+      return {
+        kind: "failed",
+        failedStep: data.failedStep,
+        remainingState: data.remainingState,
+        cause: data.cause,
+      };
+  }
+}
+
+/**
+ * Reads the project's latest-operation record: the record, `none`, or a
+ * failed read (a thrown fetch, a non-ok response, a malformed body or a
+ * failed read on the server), which is never `none`.
+ *
+ * @throws The locked-access error when the project is locked.
+ */
+export async function requestLatestSplitOperation(
+  projectId: string,
+): Promise<SplitLatestClientResult> {
+  const checked = parseSplitLatestQuery(new URLSearchParams({ projectId }));
+  if (!checked.ok) return { kind: "failed", cause: "invalid-request" };
+  let response: Response;
+  try {
+    response = await fetch(
+      `${LATEST_ENDPOINT}?projectId=${encodeURIComponent(checked.value.projectId)}`,
+      { method: "GET" },
+    );
+  } catch {
+    return { kind: "failed", cause: "transport-failed" };
+  }
+  if (!response.ok) {
+    const locked = lockedAccessErrorFromResponse(response, projectId);
+    if (locked) throw locked;
+    return { kind: "failed", cause: "transport-failed" };
+  }
+  const parsed = LatestBodySchema.safeParse(await readJson(response));
+  if (!parsed.success) {
+    reportTransportValidationFailure(
+      "split.requestLatestSplitOperation",
+      parsed.error.issues,
+    );
+    return { kind: "failed", cause: "transport-failed" };
+  }
+  const data = parsed.data;
+  if (data.outcome === "found") return { kind: "record", record: data.record };
+  if (data.outcome === "none") return { kind: "none" };
+  return { kind: "failed", cause: data.cause };
 }

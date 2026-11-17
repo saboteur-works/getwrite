@@ -18,6 +18,10 @@
  * the same walk and export patterns as `enumerate` below). Each later route
  * raises them again; they are never lowered.
  *
+ * Feature 120, Task 31: raised again for `POST /api/project/split/undo` and
+ * `GET /api/project/split/latest`: 90 route files, 126 route/method pairs and
+ * 6 page files = 132 enumerated entries.
+ *
  * No test name, message or assertion prints a window secret or a credential.
  */
 import { existsSync } from "node:fs";
@@ -55,9 +59,9 @@ const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];
 
 /** Floors for the walk; see the header comment for the observed values. */
-const MIN_ROUTE_FILES = 88;
+const MIN_ROUTE_FILES = 90;
 const MIN_PAGE_FILES = 5;
-const MIN_ENTRIES = 130;
+const MIN_ENTRIES = 132;
 
 /**
  * The documented exceptions, by name. Adding one changes EXCEPTION_COUNT, which
@@ -406,6 +410,43 @@ describe("route and page enumeration", () => {
     for (const parts of [
       ["split", "preview", "route.ts"],
       ["split", "route.ts"],
+    ]) {
+      const route = await readFile(
+        path.join(APP_DIR, "api", "project", ...parts),
+        "utf8",
+      );
+      expect(route).not.toMatch(/checkLimit|limits-check|refusalFor/);
+    }
+  });
+
+  it("enumerates POST /api/project/split/undo and GET /api/project/split/latest by walking, refuses them unconfirmed and lets a paired device through (Feature 120, FR-14)", async () => {
+    const { entries } = await enumerate(APP_DIR);
+    const origin = "http://10.0.0.5:3000";
+    const token = await pairInto(dir);
+    for (const [method, url] of [
+      ["POST", "/api/project/split/undo"],
+      ["GET", "/api/project/split/latest"],
+    ]) {
+      const found = entries.filter((e) => e.url === url);
+      expect(found.map(label)).toEqual([`${method} ${url}`]);
+      expect(isException(found[0])).toBe(false);
+      const unpaired = await proxy(
+        makeRequest(found[0], { headers: { origin } }),
+      );
+      expect(isRefusal(unpaired), url).toBe(true);
+      const paired = await proxy(
+        makeRequest(found[0], {
+          headers: { cookie: `${DEVICE_COOKIE}=${token}`, origin },
+        }),
+      );
+      expect(isPassThrough(paired), url).toBe(true);
+    }
+  });
+
+  it("adds no paired-device limit switch or route guard to the undo and latest routes (Feature 120, FR-14)", async () => {
+    for (const parts of [
+      ["split", "undo", "route.ts"],
+      ["split", "latest", "route.ts"],
     ]) {
       const route = await readFile(
         path.join(APP_DIR, "api", "project", ...parts),
