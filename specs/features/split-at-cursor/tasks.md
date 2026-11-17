@@ -392,7 +392,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Only this task edits these documents. It states no device result; the device runs are Tasks 35 and 36.
 **POS:** task_92b90db4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 34: LEAD-RUN: build check
 **What:** Run the typecheck, lint, tests and builds outside the sandbox from the main checkout and record each as run or not run.
