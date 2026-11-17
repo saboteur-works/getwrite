@@ -202,7 +202,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Used only by Undo (Task 29); nothing in this feature displays a lineage state (FR-15, F120-4). The read side that gathers its inputs is written in Task 29.
 **POS:** task_5305fdde
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Lineage and latest-operation records (store, FR-5 and FR-16)
 **What:** Write and read the lineage record and the latest-operation record as new files under `meta/` through the storage adapter, outside the `project.json` schema, with the purge sweep leaving both alone.
