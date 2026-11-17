@@ -192,7 +192,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Mark behaviour at the cut is read from `experiments/task-6.md`; a case it does not cover is returned as a failed outcome naming the annotation id and not guessed. Reuse `frontend/src/lib/models/annotation-mark-strip.ts` and `frontend/src/lib/models/annotation-mark-ids.ts` by import without editing them.
 **POS:** task_b26f7d20
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: Lineage-state resolver (pure, FR-15)
 **What:** Resolve a lineage record against what is read from disk into exactly one of five states.
