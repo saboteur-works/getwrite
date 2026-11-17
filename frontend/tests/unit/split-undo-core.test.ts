@@ -238,8 +238,24 @@ describe("undoLatestSplit on a real project", () => {
     };
   }
 
-  async function dirSnapshot(): Promise<Map<string, string>> {
+  /**
+   * Waits out background indexing. A sidecar write schedules its enqueue with
+   * `setImmediate` plus a dynamic import, so the queue can read as empty
+   * before the enqueue has happened; `flushIndexer` alone returns at once in
+   * that gap. Two rounds, with a pause after each, let a late enqueue land
+   * and drain before a snapshot is taken.
+   */
+  async function settleIndexing(): Promise<void> {
+    for (let round = 0; round < 2; round += 1) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      await flushIndexer();
+      await new Promise<void>((resolve) => setTimeout(resolve, 150));
+    }
     await flushIndexer();
+  }
+
+  async function dirSnapshot(): Promise<Map<string, string>> {
+    await settleIndexing();
     const out = new Map<string, string>();
     async function walk(dir: string): Promise<void> {
       for (const e of await fs.readdir(dir, { withFileTypes: true })) {
