@@ -60,6 +60,7 @@ import ShellSettingsMenu, {
 import ShellModalCoordinator from "./ShellModalCoordinator";
 import CaptureBoxHost from "../Capture/CaptureBoxHost";
 import ShareCaptureHost from "../Capture/ShareCaptureHost";
+import SplitHost from "../Split/SplitHost";
 import type { ProjectGoalSavedHandler } from "./ProjectSettingsDialog";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
@@ -1231,6 +1232,12 @@ export default function AppShell({
           taken. Not mounted, and the plugin never called, elsewhere. */}
       {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native" ? (
         <ShareCaptureHost />
+      ) : null}
+      {/* Feature 120: the split host takes open requests from the editor
+          menu and palette (Tasks 26, 27). Its routes do not exist in the
+          native build, so it is not mounted there. */}
+      {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native" ? (
+        <SplitHost />
       ) : null}
       <ShellLayoutProvider>
         <UpdateNotice />
