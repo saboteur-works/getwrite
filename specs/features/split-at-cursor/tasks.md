@@ -172,7 +172,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Used by the client to explain and by the server to enforce (Tasks 19, 20, 26). Read `experiments/task-6.md` before writing the tests; any cut position it does not cover is refused with a stated reason and not guessed.
 **POS:** task_317ee586
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Document cut (pure, FR-3 text half)
 **What:** Cut a TipTap document at a text offset into a first half and a second half, splitting the node at the cursor and giving fresh ids to moved nodes.
