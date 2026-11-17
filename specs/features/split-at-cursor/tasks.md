@@ -82,7 +82,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Reads and throwaway probes only; probes live in the scratchpad and no production file is edited. Read `frontend/src/lib/models/revision-core.ts`, `frontend/src/lib/models/revision.ts`, `frontend/src/lib/models/writing-log.ts`, `frontend/src/lib/pending-saves.ts` and `frontend/src/lib/models/annotation-mark-strip.ts`. Tasks 16 and 19 read this record before writing tests.
 **POS:** task_835eeb4e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: FR-1 (d), (e), (m): sidecar writers, the two new `meta/` files, copied keys
 **What:** Record whether a new top-level sidecar key survives each writer, how new files under `meta/` behave through the adapter, tenancy and purge, and which sidecar keys a copy carries.
