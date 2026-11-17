@@ -162,7 +162,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** Model on `frontend/src/lib/sharing/limits-copy.ts`. Wording is drafted, not final; the owner reviews it at Task 28. Texts are plain, state the cause and name no mechanism that no experiment separated.
 **POS:** task_95788c4e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Eligibility function (pure, FR-2)
 **What:** Decide by one pure function whether a document can be split at a given offset, returning a distinct stable reason for each refusal, with the merged-mark seam.
