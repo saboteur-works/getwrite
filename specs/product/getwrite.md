@@ -468,7 +468,7 @@ with the app without hand-rewriting it (see OQ-90).
   split a document at my cursor into two, with the new one recording which
   document and revision it came from, so that I can reshape my manuscript
   without copying and pasting and without losing the link between the text and
-  its past. [Next] (Added 2026-11-16; FR-232 to FR-236, FR-241 to FR-264. Concept
+  its past. [Next] (Added 2026-11-16; FR-232 to FR-236, FR-241 to FR-265. Concept
   `specs/concepts/split-merge.md`. Owner answers, 2026-11-16, ideation: split and merge matter equally;
   split gives shared lineage, so nothing is copied and the new document records
   its source document and revision; the carry-over dialog asks each time.
@@ -483,7 +483,7 @@ with the app without hand-rewriting it (see OQ-90).
   others in the tree marked as merged until I remove them, and choose what
   carries over, so that I can fold text together without anything silently
   disappearing and without my notes, citations and claims coming loose. [Next]
-  (Added 2026-11-16; FR-237 to FR-264. Concept `specs/concepts/split-merge.md`. Owner answers, 2026-11-16,
+  (Added 2026-11-16; FR-237 to FR-265. Concept `specs/concepts/split-merge.md`. Owner answers, 2026-11-16,
   ideation: a merged-away document is kept in the tree, marked as merged, until
   the writer removes it; the carry-over dialog asks each time. Secondary
   audiences of the concept: nonfiction and research writers whose passages carry
@@ -2977,7 +2977,7 @@ with the app without hand-rewriting it (see OQ-90).
 - FR-256: A writer SHOULD see, in a document's history, its lineage as "split from X at revision N" or "merged into Y", with a way to open the named document. [US-55][US-56] (Added 2026-11-16. Concept v1 and Assumption caveat: a record nobody can see is cost without value. Milestone: v1.)
 - FR-257: A writer SHOULD be able to split a document at every heading of a chosen level in one step, with one carry-over dialog for the step. [US-55] (Added 2026-11-16. Concept v1: imported files need this most. How the one dialog applies to several new documents is a feature-spec question. Milestone: v1.)
 - FR-258: Split and merge SHOULD be available on Android and on a paired device, under the existing limits, because the MVP is desktop and hosted web only. [US-55][US-56] (Added 2026-11-16. Concept v1. Precedent: FR-185 and FR-161. Owner decision, 2026-11-16, Gate 1: Android and paired devices are v1. Milestone: v1.)
-- FR-261: Only text documents MUST be split or merged. Image and audio resources and folders MUST be refused, because they have no text body or revision, and Sources MUST be refused in the MVP. Entity documents, meaning any resource whose sidecar has `entityKind`, MUST also be refused in the MVP, as the split source, as the merge target and as an absorbed document. A document marked as merged MUST NOT be split, merged into, or absorbed again. Each refusal MUST show a message and MUST change nothing. Splitting a document that was itself split off, and merging more documents into one that was a target, MUST be allowed, so that lineage stays a tree. [US-55][US-56] (Added 2026-11-16. Owner decisions, Gate 1, 2026-11-16: OQ-260 (including entity documents), OQ-264; evidence `docs/features/revisions.md:52`. Milestone: MVP.)
+- FR-261: Only text documents MUST be split or merged. Image and audio resources and folders MUST be refused, because they have no text body or revision, and Sources MUST be refused in the MVP (FR-265 is the later lift). Entity documents, meaning any resource whose sidecar has `entityKind`, MUST also be refused in the MVP, as the split source, as the merge target and as an absorbed document. A document marked as merged MUST NOT be split, merged into, or absorbed again. Each refusal MUST show a message and MUST change nothing. Splitting a document that was itself split off, and merging more documents into one that was a target, MUST be allowed, so that lineage stays a tree. [US-55][US-56] (Added 2026-11-16. Owner decisions, Gate 1, 2026-11-16: OQ-260 (including entity documents), OQ-264; evidence `docs/features/revisions.md:52`. Milestone: MVP.)
 - FR-262: A writer MUST be able to run "Undo split" or "Undo merge" on the latest operation. The action MUST restore every affected document's text from the pre-operation snapshot revisions of FR-263 and MUST work after the project is closed and reopened or the page is reloaded. The feature spec MUST define what "latest" means and whether there is a time window. [US-55][US-56] (Added 2026-11-16. Owner decision, Gate 1, 2026-11-16: OQ-253. Milestone: MVP.)
 - FR-263: Before a split truncates the original, it MUST save a new non-canonical revision of the original's full text with `metadata.preserve` set, and the lineage MUST name that revision's number. A merge MUST do the same for the target and for each absorbed document before it changes them. [US-55][US-56] (Added 2026-11-16. Resolved from evidence, Gate 1, 2026-11-16: OQ-258; `docs/features/revisions.md:52-53, 66-72`, `revision-core.ts` `createRevision` and `setRevisionPreserve`. Milestone: MVP.)
 - FR-264: Once entity documents are allowed to be split or merged (they are refused in the MVP, FR-261), a split-off document MUST carry no entity declaration (`entityKind`, aliases), and a merge MUST keep the target's declaration and MUST leave the absorbed document's declaration unchanged. [US-55][US-56] (Added 2026-11-16. Owner decision, Gate 1, 2026-11-16: OQ-262; entity documents refused in the MVP by OQ-260. Milestone: v1.)
@@ -3817,6 +3817,7 @@ with the app without hand-rewriting it (see OQ-90).
 
 - FR-259: A writer MAY be able to unmerge: restore the merged-away documents and remove their text from the target, using the recorded lineage. This is a version 2 requirement. [US-56] (Added 2026-11-16. Concept v2. Milestone: v2.)
 - FR-260: A writer MAY be able to split at a selection: the selected range becomes its own document and the text before and after it stays in place. This is a version 2 requirement. [US-55] (Added 2026-11-16. Concept v2. Milestone: v2.)
+- FR-265: A writer MAY be able to split and merge Sources, once rules exist for their attachments and for their excerpts. Until then Sources are refused (FR-261). This is a version 2 requirement. [US-55][US-56] (Added 2026-11-16. Owner decision, Gate 2, 2026-11-16: a v2 feature for splitting and merging Sources. Read 2026-11-16: a Source has one rich-text body plus an ordered list of image and audio attachments in its sidecar `attachments` array, with files inside its own `resources/<id>/`; an excerpt is an annotation with a `target`, a text excerpt is marked in the Source body and an attachment excerpt carries a locator and no mark (`docs/features/sources.md`, `docs/features/annotations.md`). The open questions are OQ-266 to OQ-268 and must be resolved before this is broken into tasks. Milestone: v2.)
 
 ## Constraints
 
@@ -3983,7 +3984,7 @@ with the app without hand-rewriting it (see OQ-90).
   `docs/standards/security.md` and the no-usable-key constraint above; the
   mention index (`indexer-queue.ts`, `reindex` CLI) is the precedent.
 
-- Split and merge (FR-232 to FR-264; concept `specs/concepts/split-merge.md`) change documents
+- Split and merge (FR-232 to FR-265; concept `specs/concepts/split-merge.md`) change documents
   but never revision rules: each document keeps exactly one canonical revision,
   a revision is never copied between documents, and a merged-away document is
   kept until the writer removes it. Each split or merge is one operation that
@@ -6659,6 +6660,31 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 (Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
 
 
+**OQ-266: Where do a Source's attachments go on a split, and on a merge, where do the absorbed Source's attachments go?**
+Open. A split of a Source's body leaves the attachment list and the files in the Source's own folder with no stated owner among the two halves; a merge leaves two attachment lists and two sets of files for one target. Whether the attachments follow the first half, the second, a choice in the carry-over dialog, or move in a merge to the target's list, and how a file name clash is handled, is not decided.
+Deferred by design (Owner, Gate 2, 2026-11-16): decided in Feature 129's run; no requirement before FR-265 may assume an answer.
+**Impact:** FR-265, FR-261; US-55, US-56. Read 2026-11-16: `docs/features/sources.md` (attachments are not tree items and have no revisions; a removed or replaced attachment goes to Trash as its own item kind).
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-265. Added while breaking down, from the code and docs.)
+
+**OQ-267: What happens to a text excerpt whose marked passage moves in a split or merge, and to a citation that targets it?**
+Open. A text excerpt is an annotation marked in the Source body, and a Citation in another resource targets it by `sourceId` and `excerptId`. FR-242 keeps with the original a note whose passage spans the split point, and carries a note wholly in one half only when the writer chooses. Whether the same rules hold for an excerpt, and whether a citation's `target` keeps resolving when the excerpt moves to another Source, is not decided.
+Deferred by design (Owner, Gate 2, 2026-11-16): decided in Feature 129's run; no requirement before FR-265 may assume an answer.
+**Impact:** FR-265, FR-242; US-55, US-56. Read 2026-11-16: `docs/features/sources.md`, `docs/features/annotations.md`.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-265. Added while breaking down, from the code and docs.)
+
+**OQ-268: What happens to an attachment excerpt, which has a locator and no mark, when its attachment's Source is split or merged?**
+Open. An attachment excerpt targets an attachment by `attachmentId` and a locator, and is not tied to a place in the body. It follows the attachment under OQ-266, but whether its `target` is rewritten, whether a citation to it is rewritten, and what is shown when it no longer resolves, is not decided. The citation fields of the Source (`citationFields`) and a Source's entity declaration also need a stated rule, and are for the same decision.
+Deferred by design (Owner, Gate 2, 2026-11-16): decided in Feature 129's run; no requirement before FR-265 may assume an answer.
+**Impact:** FR-265; US-55, US-56. Read 2026-11-16: `docs/features/sources.md`.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-265. Added while breaking down, from the code and docs.)
+
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -6919,8 +6945,10 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   target (FR-259; concept `specs/concepts/split-merge.md`, v2): later.
 - Split at a selection, so the selected range becomes its own document
   (FR-260; concept v2): later.
+- Splitting and merging Sources, with rules for their attachments and excerpts
+  (FR-265; Owner decision, Gate 2, 2026-11-16): later, v2.
 - Keeping several live versions of a scene (Alternates, runway 3), reconciling
   edits between devices, and moving text between documents other than by split
   and merge (FR-255; concept "What This Is Not"): not planned for this feature.
-  Split and merge are specified in FR-232 to FR-264 (US-55, US-56, added
+  Split and merge are specified in FR-232 to FR-265 (US-55, US-56, added
   2026-11-16).
