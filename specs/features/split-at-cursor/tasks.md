@@ -362,7 +362,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Edits `split-undo-core.ts` after Task 29, serial.
 **POS:** task_a0daccf7
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Undo and latest-operation routes, client, enumeration and smoke count (FR-14)
 **What:** Add the Undo route and the latest-operation read route, their client functions, and the enumeration and smoke-count entries.
