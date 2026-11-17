@@ -402,7 +402,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** LEAD-RUN. Builds fail in worktrees here, so these run only from the main checkout.
 **POS:** task_35168653
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 35: LEAD-RUN: packaged desktop run with the owner
 **What:** Run the feature in the packaged desktop app with the owner and record only what was observed.
