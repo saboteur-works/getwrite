@@ -352,7 +352,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 8
 **Notes:** Built last among the feature tasks, by owner decision (F120-1). This task writes the forward path and the refusals; rollback of a failed Undo is Task 30, which edits the same file, so it runs after this one. The refusal texts are read from `split-messages.ts` (Task 10), not edited here.
 **POS:** task_93383f63
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Undo rollback and failure injection (FR-6 rules applied to Undo)
 **What:** Add reverse compensation to Undo and a test that injects a failure after each of its write steps.
