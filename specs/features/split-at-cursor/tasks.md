@@ -252,7 +252,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read `experiments/task-2.md` (a) and `experiments/task-4.md` (l) first. The client flushes pending saves before it calls this and the apply call; that half is Task 25.
 **POS:** task_6328278f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Split apply with ordered writes (FR-3 to FR-8, FR-10, FR-11, FR-16)
 **What:** Apply a split as one operation in the decided order, holding the original's revision lock across the snapshot, with stale and overlap refusals.
