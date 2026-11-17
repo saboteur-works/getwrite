@@ -72,7 +72,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 2
 **Notes:** Index only; measurements go to the per-task files. The spec names `experiments.md` as the FR-1 record; here it is the index that links Tasks 2 to 7, because only one task may edit it while the probes run in parallel.
 **POS:** task_4372e2a4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: FR-1 (a), (b), (c) and version numbers: canonical writers, stale hash, restore
 **What:** Record how a pending autosave and a stale content hash behave, what each canonical-content writer does to the writing log and revisions on a truncation, what `setCanonicalRevision` leaves, and whether two callers can pick one version number.
