@@ -563,6 +563,100 @@ async function updateRevisionInPlaceLocked(
   };
 }
 
+/** Options for {@link writeCanonicalContentWithoutLog}. */
+export interface WriteWithoutLogOptions {
+  /**
+   * Set when the caller already holds the `revision-content` lock for this
+   * resource. The lock is not reentrant, so taking it again would deadlock.
+   */
+  lockHeld?: boolean;
+}
+
+/**
+ * Overwrites a canonical revision's content under the `revision-content` lock
+ * with no writing-log entry and no automatic snapshot revision (Feature 120,
+ * FR-8). A sibling of {@link updateRevisionInPlace}, which is unchanged.
+ *
+ * Order: content write, derived content files, then `wordCount` and
+ * `updatedAt` through `mutateSidecar`. Used by Split (truncating the
+ * original) and Undo (restoring it from a snapshot).
+ *
+ * @throws {Error} `Revision ${revisionId} not found.` when no matching
+ *   revision exists.
+ * @throws {Error} `"Only the canonical revision can be updated in place."`
+ *   when the target revision is not canonical; nothing is written.
+ */
+export async function writeCanonicalContentWithoutLog(
+  projectRoot: string,
+  resourceId: string,
+  revisionId: string,
+  content: string,
+  options: WriteWithoutLogOptions = {},
+): Promise<Revision & { updatedAt: string }> {
+  if (options.lockHeld === true) {
+    return writeCanonicalContentWithoutLogLocked(
+      projectRoot,
+      resourceId,
+      revisionId,
+      content,
+    );
+  }
+  const release = await acquireLock(
+    `revision-content:${path.resolve(projectRoot)}:${resourceId}`,
+  );
+  try {
+    return await writeCanonicalContentWithoutLogLocked(
+      projectRoot,
+      resourceId,
+      revisionId,
+      content,
+    );
+  } finally {
+    release();
+  }
+}
+
+async function writeCanonicalContentWithoutLogLocked(
+  projectRoot: string,
+  resourceId: string,
+  revisionId: string,
+  content: string,
+): Promise<Revision & { updatedAt: string }> {
+  const revisions = await listRevisions(projectRoot, resourceId);
+  const target = revisions.find((revision) => revision.id === revisionId);
+  if (!target) {
+    throw new Error(`Revision ${revisionId} not found.`);
+  }
+  if (!target.isCanonical) {
+    throw new Error("Only the canonical revision can be updated in place.");
+  }
+
+  await writeRevisionContent(
+    projectRoot,
+    resourceId,
+    target.versionNumber,
+    content,
+  );
+  const wordCount = await syncDerivedResourceContent(
+    projectRoot,
+    resourceId,
+    content,
+  );
+  const updatedAt = new Date().toISOString();
+  // Lock edges: revision-content (held) -> withMetaLock -> sidecar file lock.
+  await mutateSidecar(
+    projectRoot,
+    resourceId,
+    (existingSidecar) => ({
+      ...(existingSidecar ?? {}),
+      updatedAt,
+      ...(wordCount === undefined ? {} : { wordCount }),
+    }),
+    { isReadTolerant: false },
+  );
+  return { ...target, updatedAt };
+}
+
 /**
  * Feature 101, FR-17 / OQ-11: on restore, removes `annotation` marks whose id
  * has no body in the resource's sidecar from the revision's stored document.
