@@ -61,6 +61,7 @@ import ShellModalCoordinator from "./ShellModalCoordinator";
 import CaptureBoxHost from "../Capture/CaptureBoxHost";
 import ShareCaptureHost from "../Capture/ShareCaptureHost";
 import SplitHost from "../Split/SplitHost";
+import { openSplitDialog } from "../Split/splitOpenRequest";
 import type { ProjectGoalSavedHandler } from "./ProjectSettingsDialog";
 import ShellProjectTypeLoader from "./ShellProjectTypeLoader";
 import type { ResourceContextAction } from "../ResourceTree/ResourceContextMenu";
@@ -930,6 +931,33 @@ export default function AppShell({
 
   useEffect(() => {
     const onDocumentKeyDown = (event: KeyboardEvent) => {
+      // Feature 120, FR-13: Mod+Shift+Enter splits the open document at its
+      // cursor. Off on native (its split routes do not exist). Unlike the K
+      // shortcuts it is ignored from inside any dialog and from a plain text
+      // field, where the editor cursor is not what the writer is acting on.
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        !event.altKey &&
+        event.key === "Enter"
+      ) {
+        const target = event.target instanceof Element ? event.target : null;
+        const isInOtherSurface =
+          target?.closest(
+            '[role="dialog"],[role="alertdialog"],input,textarea,select',
+          ) != null;
+        if (
+          process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native" &&
+          !event.repeat &&
+          !event.defaultPrevented &&
+          !isInOtherSurface &&
+          openSplitDialog() !== "no-document"
+        ) {
+          event.preventDefault();
+        }
+        return;
+      }
+
       const isKShortcut =
         (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
 
@@ -1394,6 +1422,7 @@ export default function AppShell({
                       setHasCaptureBoxBeenOpened(true);
                       setIsCaptureBoxOpen(true);
                     }}
+                    openResourceId={selectedResourceId}
                     isProjectTypesLoading={isProjectTypesLoading}
                     projectTypesLoadError={projectTypesLoadError}
                     projectTypesNotice={projectTypesNotice}

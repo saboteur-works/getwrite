@@ -1,11 +1,15 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { PenLine, Search } from "lucide-react";
+import { PenLine, Scissors, Search } from "lucide-react";
 import type { AnyResource } from "../../src/lib/models/types";
 import { Dialog, DialogContent, DialogTitle } from "./UI/Dialog";
 import Input from "./UI/Input/Input";
 import Listbox from "./UI/Listbox/Listbox";
+import { openSplitDialog } from "../Split/splitOpenRequest";
+import { splitEligibility } from "../../src/lib/models/split-eligibility";
+import { SPLIT_REFUSAL_REASONS } from "../../src/lib/models/split-types";
+import { SPLIT_REFUSAL_MESSAGES } from "../../src/lib/models/split-messages";
 import {
   AudioIcon,
   FileTextIcon,
@@ -23,15 +27,50 @@ interface ResourceCommandPaletteProps {
    * closes itself after calling it. Without it the row is not shown.
    */
   onCapture?: () => void;
+  /**
+   * The id of the document open in the editor (Feature 120, FR-13). When it
+   * names a resource in `resources`, a "Split at cursor" row follows the
+   * Capture row: it asks the split host to open the dialog, or, for a
+   * document the split rules refuse by type, is disabled and states why.
+   * Absent, null or unknown: no row. Never shown on the native runtime.
+   */
+  openResourceId?: string | null;
 }
 
-/** A palette row: the Capture action or an openable resource. */
+/** A palette row: an action (Capture, Split) or an openable resource. */
 type PaletteRow =
   | { kind: "capture" }
+  | { kind: "split"; refusal: string | null }
   | { kind: "resource"; resource: AnyResource };
 
 const CAPTURE_ROW_LABEL = "Capture...";
 const CAPTURE_ROW_VALUE = "palette-action:capture";
+const SPLIT_ROW_LABEL = "Split at cursor";
+const SPLIT_ROW_VALUE = "palette-action:split";
+
+/** True for an empty query or a case-insensitive prefix of the Split label. */
+function matchesSplitRow(normalizedQuery: string): boolean {
+  return SPLIT_ROW_LABEL.toLowerCase().startsWith(normalizedQuery);
+}
+
+/**
+ * The stated reason the open resource cannot be split because of what it is
+ * (image, audio, folder, Source, entity, merged), or null. Uses the pure
+ * decision of FR-2 with no document: the one answer that is not a kind
+ * refusal is `stale-cursor` (no document given), which here means "not
+ * refused by type"; the cursor and halves are the host's to judge.
+ */
+function splitRefusalByType(resource: AnyResource): string | null {
+  const result = splitEligibility({
+    document: null,
+    sidecar: resource as unknown as Record<string, unknown>,
+    offset: 0,
+  });
+  if (result.eligible || result.reason === SPLIT_REFUSAL_REASONS.staleCursor) {
+    return null;
+  }
+  return SPLIT_REFUSAL_MESSAGES[result.reason];
+}
 
 /** True for an empty query or a case-insensitive prefix of "capture". */
 function matchesCaptureRow(normalizedQuery: string): boolean {
@@ -67,6 +106,7 @@ export default function ResourceCommandPalette({
   onClose,
   onSelectResource,
   onCapture,
+  openResourceId,
 }: ResourceCommandPaletteProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState<string>("");
@@ -88,10 +128,22 @@ export default function ResourceCommandPalette({
     const resourceRows: PaletteRow[] = matching
       .slice(0, 50)
       .map((resource) => ({ kind: "resource", resource }));
-    return onCapture && matchesCaptureRow(normalizedQuery)
-      ? [{ kind: "capture" }, ...resourceRows]
-      : resourceRows;
-  }, [openableResources, query, onCapture]);
+    const openResource =
+      openResourceId && process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native"
+        ? resources.find((candidate) => candidate.id === openResourceId)
+        : undefined;
+    const actionRows: PaletteRow[] = [];
+    if (onCapture && matchesCaptureRow(normalizedQuery)) {
+      actionRows.push({ kind: "capture" });
+    }
+    if (openResource && matchesSplitRow(normalizedQuery)) {
+      actionRows.push({
+        kind: "split",
+        refusal: splitRefusalByType(openResource),
+      });
+    }
+    return [...actionRows, ...resourceRows];
+  }, [openableResources, resources, query, onCapture, openResourceId]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -112,6 +164,14 @@ export default function ResourceCommandPalette({
 
   const handleSelectRow = (row: PaletteRow | undefined): void => {
     if (!row) return;
+    if (row.kind === "split") {
+      // A disabled row does nothing and keeps the palette open, so its
+      // stated reason stays on screen.
+      if (row.refusal !== null) return;
+      onClose();
+      openSplitDialog();
+      return;
+    }
     if (row.kind === "capture") {
       onCapture?.();
     } else {
@@ -122,11 +182,11 @@ export default function ResourceCommandPalette({
 
   const handleSelectValue = (value: string): void => {
     handleSelectRow(
-      rows.find((row) =>
-        row.kind === "capture"
-          ? value === CAPTURE_ROW_VALUE
-          : row.resource.id === value,
-      ),
+      rows.find((row) => {
+        if (row.kind === "capture") return value === CAPTURE_ROW_VALUE;
+        if (row.kind === "split") return value === SPLIT_ROW_VALUE;
+        return row.resource.id === value;
+      }),
     );
   };
 
@@ -178,7 +238,9 @@ export default function ResourceCommandPalette({
           <span className="resource-palette-hint">
             {rows[highlightedIndex]?.kind === "capture"
               ? "Enter to open Capture box"
-              : "Enter to open"}
+              : rows[highlightedIndex]?.kind === "split"
+                ? "Enter to split at the cursor"
+                : "Enter to open"}
           </span>
         </div>
 
@@ -200,21 +262,32 @@ export default function ResourceCommandPalette({
 
         {rows.length > 0 ? (
           <Listbox
-            options={rows.map((row) =>
-              row.kind === "capture"
-                ? {
-                    value: CAPTURE_ROW_VALUE,
-                    label: CAPTURE_ROW_LABEL,
-                    icon: <PenLine size={16} aria-hidden="true" />,
-                    meta: "Action",
-                  }
-                : {
-                    value: row.resource.id,
-                    label: getResourceName(row.resource),
-                    icon: getResourceTypeIcon(row.resource),
-                    meta: getResourceTypeLabel(row.resource),
-                  },
-            )}
+            options={rows.map((row) => {
+              if (row.kind === "capture") {
+                return {
+                  value: CAPTURE_ROW_VALUE,
+                  label: CAPTURE_ROW_LABEL,
+                  icon: <PenLine size={16} aria-hidden="true" />,
+                  meta: "Action",
+                };
+              }
+              if (row.kind === "split") {
+                return {
+                  value: SPLIT_ROW_VALUE,
+                  label: SPLIT_ROW_LABEL,
+                  icon: <Scissors size={16} aria-hidden="true" />,
+                  meta: row.refusal === null ? "Action" : "Unavailable",
+                  description: row.refusal ?? undefined,
+                  disabled: row.refusal !== null,
+                };
+              }
+              return {
+                value: row.resource.id,
+                label: getResourceName(row.resource),
+                icon: getResourceTypeIcon(row.resource),
+                meta: getResourceTypeLabel(row.resource),
+              };
+            })}
             highlightedIndex={highlightedIndex}
             onSelect={handleSelectValue}
             onHighlightChange={setHighlightedIndex}
