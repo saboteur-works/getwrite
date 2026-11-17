@@ -232,7 +232,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read `experiments/task-4.md` first. It is awaited and reports; it is called after commit by Task 22 and is outside the split's rollback.
 **POS:** task_32e91bb3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: New document builder (FR-3 and FR-10)
 **What:** Create the new text document after the original in tree order with a sidecar built from named keys, and a function that removes it again for compensation.
