@@ -36,27 +36,55 @@
  * brought up to date (`updateDocumentIndexes`); a failure there is returned as
  * `index-failed` and undoes nothing.
  *
- * A step that throws returns `failed` naming the step. This task does not
- * undo the steps before it; rollback of a failed Undo is a later task.
+ * A step that throws is rolled back (FR-6 rules applied to Undo, Task 30): the
+ * steps that ran, the failing one included, are undone in reverse, so the split
+ * state before Undo is back: the latest-operation record is put back as the raw
+ * text read before the first step, the compile exclusion is re-listed, the
+ * split-off document is taken out of Trash (and the empty `.trash`
+ * directories the soft delete created are removed), both documents' note
+ * lists are put back, the original's text and derived files are put back from
+ * raw backups, and the preserved revisions Undo made are deleted, each after
+ * `setRevisionPreserve(false)` (a preserved revision is refused by
+ * `deleteRevision`). Each undo is idempotent, so the step that threw after
+ * writing is undone too. The result is `failed`, naming the step that failed
+ * and `remainingState`; it never reads as success. A step that cannot be
+ * undone is named in `remainingState`; two or more are `state-unknown`. The
+ * derived-index update after the commit is outside the rollback.
+ *
+ * Two choices keep text from being lost when an undo fails: if the split-off
+ * document cannot be taken out of Trash, the notes are not moved back to it
+ * (they stay on the original) and its saved revision stays with it; if the
+ * original's text cannot be put back, the revision that holds its text from
+ * before Undo is kept.
  *
  * No React, JSX, JSON or `node:*`.
  */
 import { flushIndexer } from "./indexer-queue";
-import { readFile, stat } from "./io";
+import { atomicWriteFile, readdir, readFile, rm, stat, writeFile } from "./io";
 import { isLockedAccessError } from "./locked-access";
 import { acquireLock } from "./locks";
+import { withMetaLock } from "./meta-locks";
+import { PROJECT_FILENAME } from "./project-config";
+import { updateProjectJson } from "./project-json-write";
 import {
   deleteResourceCore,
   resolveResourceProjectRootOrThrow,
 } from "./resource-crud-core";
-import { listRevisions } from "./revision";
+import { listRevisions, revisionDir } from "./revision";
 import {
   createRevision,
+  deleteRevision,
   readRevision,
+  setRevisionPreserve,
   writeCanonicalContentWithoutLog,
 } from "./revision-core";
 import { removeCompileExclusions } from "./saved-defaults-core";
-import { mutateSidecar, readSidecar, sidecarFilename } from "./sidecar";
+import {
+  mutateSidecar,
+  readSidecar,
+  SIDECAR_UNCHANGED,
+  sidecarFilename,
+} from "./sidecar";
 import {
   resolveSplitLineageState,
   type SplitLineageProbe,
@@ -72,15 +100,17 @@ import {
 import { revisionContentLockKey } from "./split-preview-core";
 import {
   clearLatestOperation,
+  LATEST_OPERATION_FILE_NAME,
   LINEAGE_FILE_NAME,
   readLatestOperation,
 } from "./split-records-core";
+import { restoreResource } from "./trash";
 import type {
   LatestOperationRecord,
   SnapshotRevisionRef,
   SplitLineageRecord,
 } from "./split-types";
-import type { Annotation, MetadataValue } from "./types";
+import type { Annotation, MetadataValue, ProjectConfig } from "./types";
 
 /** The ordered write steps of Undo; a failure names one. */
 export const SPLIT_UNDO_STEPS = [
@@ -94,6 +124,21 @@ export const SPLIT_UNDO_STEPS = [
 
 /** One write step of Undo. */
 export type SplitUndoStep = (typeof SPLIT_UNDO_STEPS)[number];
+
+/**
+ * What remains after a failed Undo that was rolled back. One value names the
+ * single undo that failed; two or more failed undos are `state-unknown`.
+ * `split-restored` means everything is as it was before Undo.
+ */
+export type SplitUndoRemainingState =
+  | "split-restored"
+  | "record-not-restored"
+  | "exclusion-not-restored"
+  | "split-off-in-trash"
+  | "notes-not-restored"
+  | "original-not-restored"
+  | "preserved-revisions-kept"
+  | "state-unknown";
 
 /** Where the split-off document was when Undo ran. */
 export type SplitOffState = "moved-to-trash" | "was-in-trash" | "was-purged";
@@ -135,6 +180,8 @@ export type SplitUndoResult =
       failedStep: SplitUndoStep;
       /** A stable cause string (an error name); never client input. */
       cause: string;
+      /** What is on disk after the rollback; `split-restored` when nothing remains changed. */
+      remainingState: SplitUndoRemainingState;
     };
 
 /** Everything the writes need, read before any write. */
@@ -489,9 +536,155 @@ function splitOffStateOf(facts: UndoFacts): SplitOffState {
   return facts.splitOffState === "in-trash" ? "was-in-trash" : "was-purged";
 }
 
+/** A file's raw text before Undo, or `null` when it did not exist. */
+interface RawFile {
+  path: string;
+  raw: string | null;
+}
+
+/** The original's stored text and derived values before its overwrite. */
+interface OriginalBackup {
+  contentPath: string;
+  content: string;
+  derived: RawFile[];
+  hadUpdatedAt: boolean;
+  updatedAt: unknown;
+  hadWordCount: boolean;
+  wordCount: unknown;
+}
+
+/** One sidecar's `annotations` value before the notes moved. */
+interface NoteListBackup {
+  documentId: string;
+  hadKey: boolean;
+  value: unknown;
+}
+
+/** The saved compile exclusions before the split-off id was removed; `null` when there was no usable list. */
+interface ExclusionBackup {
+  ids: string[] | null;
+}
+
+/**
+ * What each step had read or recorded before it wrote, set when the step is
+ * entered, so a step that threw after writing is undone as well. A field is
+ * `null` until its step is entered.
+ */
 interface StepProgress {
   step: SplitUndoStep;
   completed: number;
+  record: RawFile | null;
+  /** Revision ids each live document had before Undo's first write. */
+  savesBefore: { original: Set<string>; splitOff: Set<string> | null } | null;
+  original: OriginalBackup | null;
+  notes: NoteListBackup[] | null;
+  trash: { preexistingDirs: string[] } | null;
+  exclusion: ExclusionBackup | null;
+  isRecordClearEntered: boolean;
+}
+
+function newProgress(): StepProgress {
+  return {
+    step: "save-current-text",
+    completed: 0,
+    record: null,
+    savesBefore: null,
+    original: null,
+    notes: null,
+    trash: null,
+    exclusion: null,
+    isRecordClearEntered: false,
+  };
+}
+
+/** Directories `softDeleteResource` may create, deepest first, relative to the project root. */
+const TRASH_DIRS_DEEPEST_FIRST = [
+  ".trash/meta",
+  ".trash/resources",
+  ".trash/revisions",
+  ".trash",
+] as const;
+
+async function readRawOrNull(path: string): Promise<RawFile> {
+  try {
+    return { path, raw: await readFile(path, "utf8") };
+  } catch (err) {
+    if (isNotFound(err)) return { path, raw: null };
+    throw err;
+  }
+}
+
+async function putBack(file: RawFile): Promise<void> {
+  if (file.raw === null) await rm(file.path, { force: true });
+  else await writeFile(file.path, file.raw, "utf8");
+}
+
+async function revisionIdsOf(
+  projectRoot: string,
+  documentId: string,
+): Promise<Set<string>> {
+  return new Set(
+    (await listRevisions(projectRoot, documentId)).map((r) => r.id),
+  );
+}
+
+async function backUpOriginal(
+  projectRoot: string,
+  originalId: string,
+): Promise<OriginalBackup> {
+  const canonical = (await listRevisions(projectRoot, originalId)).find(
+    (r) => r.isCanonical,
+  );
+  if (!canonical) throw new Error("no canonical revision");
+  const contentPath = `${revisionDir(projectRoot, originalId, canonical.versionNumber)}/content.bin`;
+  const base = `${projectRoot}/resources/${originalId}`;
+  const sidecar = (await readSidecar(projectRoot, originalId)) ?? {};
+  const has = (key: string): boolean =>
+    Object.prototype.hasOwnProperty.call(sidecar, key);
+  return {
+    contentPath,
+    content: await readFile(contentPath, "utf8"),
+    derived: [
+      await readRawOrNull(`${base}/content.tiptap.json`),
+      await readRawOrNull(`${base}/content.txt`),
+    ],
+    hadUpdatedAt: has("updatedAt"),
+    updatedAt: sidecar.updatedAt,
+    hadWordCount: has("wordCount"),
+    wordCount: sidecar.wordCount,
+  };
+}
+
+async function backUpNoteList(
+  projectRoot: string,
+  documentId: string,
+): Promise<NoteListBackup> {
+  const sidecar = (await readSidecar(projectRoot, documentId)) ?? {};
+  return {
+    documentId,
+    hadKey: Object.prototype.hasOwnProperty.call(sidecar, "annotations"),
+    value: sidecar.annotations,
+  };
+}
+
+async function backUpExclusion(projectRoot: string): Promise<ExclusionBackup> {
+  const raw = await readFile(`${projectRoot}/${PROJECT_FILENAME}`, "utf8");
+  const project: unknown = JSON.parse(raw);
+  const config = isRecord(project) ? project.config : undefined;
+  const stored = isRecord(config) ? config.compileDefaults : undefined;
+  const ids = isRecord(stored) ? stored.excludedResourceIds : undefined;
+  if (!Array.isArray(ids) || !ids.every((id) => typeof id === "string")) {
+    return { ids: null };
+  }
+  return { ids: [...(ids as string[])] };
+}
+
+async function existingTrashDirs(projectRoot: string): Promise<string[]> {
+  const found: string[] = [];
+  for (const dir of TRASH_DIRS_DEEPEST_FIRST) {
+    if (await pathExists(`${projectRoot}/${dir}`)) found.push(dir);
+  }
+  return found;
 }
 
 async function runUndoSteps(
@@ -507,29 +700,52 @@ async function runUndoSteps(
   const done = (): void => {
     progress.completed += 1;
   };
+  progress.record = await readRawOrNull(
+    `${projectRoot}/meta/${LATEST_OPERATION_FILE_NAME}`,
+  );
   enter("save-current-text");
+  const isSplitOffLive = facts.splitOffState === "live";
+  progress.savesBefore = {
+    original: await revisionIdsOf(projectRoot, facts.originalId),
+    splitOff: isSplitOffLive
+      ? await revisionIdsOf(projectRoot, facts.splitOffId)
+      : null,
+  };
   const preservedRevisions = [
     await saveCurrentText(projectRoot, facts.originalId, date),
   ];
-  if (facts.splitOffState === "live") {
+  if (isSplitOffLive) {
     preservedRevisions.push(
       await saveCurrentText(projectRoot, facts.splitOffId, date),
     );
   }
   done();
   enter("restore-original");
+  progress.original = await backUpOriginal(projectRoot, facts.originalId);
   await restoreOriginal(projectRoot, facts);
   done();
   enter("move-annotations");
+  if (facts.returning.length > 0) {
+    const lists = [await backUpNoteList(projectRoot, facts.originalId)];
+    if (isSplitOffLive) {
+      lists.push(await backUpNoteList(projectRoot, facts.splitOffId));
+    }
+    progress.notes = lists;
+  }
   const movedAnnotationIds = await moveAnnotationsBack(projectRoot, facts);
   done();
   enter("trash-split-off");
+  if (isSplitOffLive) {
+    progress.trash = { preexistingDirs: await existingTrashDirs(projectRoot) };
+  }
   await trashSplitOff(projectId, facts);
   done();
   enter("remove-exclusion");
+  progress.exclusion = await backUpExclusion(projectRoot);
   await removeCompileExclusions(projectRoot, [facts.splitOffId]);
   done();
   enter("clear-record");
+  progress.isRecordClearEntered = true;
   await clearLatestOperation(projectRoot);
   done();
   return {
@@ -539,6 +755,228 @@ async function runUndoSteps(
     preservedRevisions,
     movedAnnotationIds,
   };
+}
+
+// --- reverse compensation ------------------------------------------------
+
+type UndoKind =
+  | "record"
+  | "exclusion"
+  | "trash"
+  | "notes"
+  | "original"
+  | "saves";
+
+/** Removes an empty directory; a missing or non-empty one is left alone. */
+async function removeIfEmpty(path: string): Promise<void> {
+  let entries: string[];
+  try {
+    entries = await readdir(path);
+  } catch (err) {
+    if (isNotFound(err)) return;
+    throw err;
+  }
+  if (entries.length === 0) await rm(path, { recursive: true });
+}
+
+async function restoreRecord(
+  projectRoot: string,
+  file: RawFile,
+): Promise<void> {
+  await withMetaLock(projectRoot, async () => {
+    if (file.raw === null) await rm(file.path, { force: true });
+    else await atomicWriteFile(file.path, file.raw, "utf8");
+  });
+}
+
+/** Lists the split-off id again: the earlier list, then any id added since. */
+async function restoreExclusion(
+  projectRoot: string,
+  splitOffId: string,
+  backup: ExclusionBackup,
+): Promise<void> {
+  const earlier = backup.ids;
+  if (earlier === null || !earlier.includes(splitOffId)) return;
+  await withMetaLock(projectRoot, async () =>
+    updateProjectJson<void>(projectRoot, (project) => {
+      const stored = project.config?.compileDefaults as
+        | { excludedResourceIds?: unknown }
+        | undefined;
+      const now = Array.isArray(stored?.excludedResourceIds)
+        ? (stored.excludedResourceIds as unknown[])
+        : [];
+      if (now.includes(splitOffId)) {
+        return { result: undefined, shouldWrite: false };
+      }
+      const added = now.filter(
+        (id): id is string => typeof id === "string" && !earlier.includes(id),
+      );
+      project.config = {
+        ...project.config,
+        compileDefaults: {
+          ...(stored ?? {}),
+          excludedResourceIds: [...earlier, ...added],
+        },
+      } as ProjectConfig;
+      return { result: undefined };
+    }),
+  );
+}
+
+/** Takes the split-off document out of Trash and removes the empty `.trash` directories the soft delete created. */
+async function restoreSplitOff(
+  projectRoot: string,
+  splitOffId: string,
+  preexistingDirs: readonly string[],
+): Promise<void> {
+  await flushIndexer();
+  await restoreResource(projectRoot, splitOffId);
+  for (const dir of TRASH_DIRS_DEEPEST_FIRST) {
+    if (preexistingDirs.includes(dir)) continue;
+    await removeIfEmpty(`${projectRoot}/${dir}`);
+  }
+}
+
+async function restoreNoteList(
+  projectRoot: string,
+  backup: NoteListBackup,
+): Promise<void> {
+  await mutateSidecar(projectRoot, backup.documentId, (current) => {
+    if (current === null) throw new Error("sidecar missing");
+    const hasKey = Object.prototype.hasOwnProperty.call(current, "annotations");
+    if (
+      hasKey === backup.hadKey &&
+      JSON.stringify(current.annotations) === JSON.stringify(backup.value)
+    ) {
+      return SIDECAR_UNCHANGED;
+    }
+    const next: Record<string, MetadataValue> = { ...current };
+    if (backup.hadKey) next.annotations = backup.value as MetadataValue;
+    else delete next.annotations;
+    return next;
+  });
+}
+
+async function restoreOriginalBackup(
+  projectRoot: string,
+  originalId: string,
+  backup: OriginalBackup,
+): Promise<void> {
+  await atomicWriteFile(backup.contentPath, backup.content, "utf8");
+  for (const file of backup.derived) await putBack(file);
+  await mutateSidecar(projectRoot, originalId, (current) => {
+    if (current === null) throw new Error("sidecar missing");
+    const next: Record<string, MetadataValue> = { ...current };
+    if (backup.hadUpdatedAt) next.updatedAt = backup.updatedAt as MetadataValue;
+    else delete next.updatedAt;
+    if (backup.hadWordCount) next.wordCount = backup.wordCount as MetadataValue;
+    else delete next.wordCount;
+    return next;
+  });
+}
+
+/** Deletes the preserved revisions Undo made: clear the preserve flag, then delete (a preserved revision is refused). */
+async function removeSavedRevisions(
+  projectRoot: string,
+  documentId: string,
+  before: ReadonlySet<string>,
+): Promise<void> {
+  for (const revision of await listRevisions(projectRoot, documentId)) {
+    if (before.has(revision.id) || revision.metadata?.splitUndoSave !== true) {
+      continue;
+    }
+    await setRevisionPreserve(projectRoot, documentId, revision.id, false);
+    await deleteRevision(projectRoot, documentId, revision.id);
+  }
+}
+
+const REMAINING_BY_KIND: Record<UndoKind, SplitUndoRemainingState> = {
+  record: "record-not-restored",
+  exclusion: "exclusion-not-restored",
+  trash: "split-off-in-trash",
+  notes: "notes-not-restored",
+  original: "original-not-restored",
+  saves: "preserved-revisions-kept",
+};
+
+function remainingStateOf(
+  failed: ReadonlySet<UndoKind>,
+): SplitUndoRemainingState {
+  if (failed.size === 0) return "split-restored";
+  if (failed.size > 1) return "state-unknown";
+  const [kind] = [...failed];
+  return REMAINING_BY_KIND[kind];
+}
+
+/**
+ * Undoes the steps that were entered, in reverse. Every undo is attempted; one
+ * that fails is recorded and decides the state returned. When the split-off
+ * document stays in Trash the notes are not moved back to it (they stay on the
+ * original) and its saved revision stays with it; when the original's text
+ * cannot be put back, its saved revision (its text from before Undo) stays.
+ */
+async function compensateUndo(
+  projectRoot: string,
+  facts: UndoFacts,
+  progress: StepProgress,
+): Promise<SplitUndoRemainingState> {
+  const failed = new Set<UndoKind>();
+  const attempt = async (
+    kind: UndoKind,
+    run: () => Promise<void>,
+  ): Promise<void> => {
+    try {
+      await run();
+    } catch {
+      failed.add(kind);
+    }
+  };
+  const { record, exclusion, trash, notes, original, savesBefore } = progress;
+  if (progress.isRecordClearEntered && record) {
+    await attempt("record", () => restoreRecord(projectRoot, record));
+  }
+  if (exclusion) {
+    await attempt("exclusion", () =>
+      restoreExclusion(projectRoot, facts.splitOffId, exclusion),
+    );
+  }
+  if (trash) {
+    await attempt("trash", () =>
+      restoreSplitOff(projectRoot, facts.splitOffId, trash.preexistingDirs),
+    );
+  }
+  if (notes && !failed.has("trash")) {
+    const lists = notes;
+    await attempt("notes", async () => {
+      for (const list of lists) await restoreNoteList(projectRoot, list);
+    });
+  }
+  if (original) {
+    await attempt("original", () =>
+      restoreOriginalBackup(projectRoot, facts.originalId, original),
+    );
+  }
+  if (savesBefore) {
+    const { original: originalBefore, splitOff: splitOffBefore } = savesBefore;
+    await attempt("saves", async () => {
+      if (splitOffBefore && !failed.has("trash")) {
+        await removeSavedRevisions(
+          projectRoot,
+          facts.splitOffId,
+          splitOffBefore,
+        );
+      }
+      if (!failed.has("original")) {
+        await removeSavedRevisions(
+          projectRoot,
+          facts.originalId,
+          originalBefore,
+        );
+      }
+    });
+  }
+  await flushIndexer();
+  return remainingStateOf(failed);
 }
 
 function isSameRecord(
@@ -589,13 +1027,21 @@ async function undoUnderLocks(
     );
     return { kind: "applied", fields };
   } catch (err) {
-    if (isLockedAccessError(err) && progress.completed === 0) throw err;
+    const remainingState = await compensateUndo(
+      projectRoot,
+      gathered.facts,
+      progress,
+    );
+    if (isLockedAccessError(err) && remainingState === "split-restored") {
+      throw err;
+    }
     return {
       kind: "result",
       result: {
         outcome: "failed",
         failedStep: progress.step,
         cause: causeOf(err),
+        remainingState,
       },
     };
   }
@@ -627,7 +1073,7 @@ export async function undoLatestSplit(
   if (snapshot === null) {
     return { outcome: "could-not-be-checked", cause: "record-malformed" };
   }
-  const progress: StepProgress = { step: "save-current-text", completed: 0 };
+  const progress = newProgress();
   const releaseOriginal = await acquireLock(
     revisionContentLockKey(projectRoot, snapshot.documentId),
   );
