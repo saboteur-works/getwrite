@@ -272,7 +272,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Edits `split-core.ts` after Task 20, serial. The failed-state message texts are read from `split-messages.ts`, not edited here.
 **POS:** task_b2250203
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Post-commit index update wiring and failure report (FR-9)
 **What:** Call the Task 17 update after the split commits, awaited, and return an index failure to the writer without rolling the split back.
