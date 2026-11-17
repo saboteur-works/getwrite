@@ -382,7 +382,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Last UI task, serial after Tasks 26 and 27, which edit the same files. Read the source of each file and the stories of any shared control first.
 **POS:** task_fa9780d5
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 33: Documentation for the scribe (FR-22 documents)
 **What:** Update the handbook, the feature documents, `frontend/CLAUDE.md`, the root `CLAUDE.md` glossary and the Android note, without any sentence that states an unmeasured result as fact.
