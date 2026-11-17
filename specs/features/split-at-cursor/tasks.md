@@ -302,7 +302,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Presentational with props for data and callbacks. Read the source and stories of every shared control before using a prop. The wording shown is the drafted text of Task 10; the owner reviews it at Task 28.
 **POS:** task_70d12860
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Split host (flush, request, reload, cursor at end) (FR-7 client half)
 **What:** Mount the host that flushes pending saves, previews, opens the dialog, applies, and then shows the stored state of the original with the cursor at its end.
