@@ -104,9 +104,12 @@ vi.mock(
   },
 );
 
-import { updateDocumentIndexes } from "../../src/lib/models/split-index-update";
+import {
+  updateDocumentIndexes,
+  SPLIT_INDEX_STEPS,
+} from "../../src/lib/models/split-index-update";
 import { rebuildDerivedIndexes } from "../../src/lib/models/derived-index-rebuild";
-import { waitForDrain } from "../../src/lib/models/indexer-queue";
+import { waitForDrain, enqueueIndex } from "../../src/lib/models/indexer-queue";
 
 const fsFunctions = {
   mkdir: async (p: string, o?: object) => {
@@ -440,28 +443,77 @@ describe("updateDocumentIndexes", () => {
     });
   });
 
-  it("measurement: rebuildDerivedIndexes leaves a failed diagnostics step unrepaired; running the update again repairs it", async () => {
-    const p = await makeSplitProject();
+  async function failDiagnosticsThenReindex(p: Project): Promise<void> {
     faults.step = "diagnostics";
-    await run(p.root, () =>
+    const result = await run(p.root, () =>
       updateDocumentIndexes(p.root, [p.original, p.split]),
     );
     faults.step = null;
+    expect(result.outcome).toBe("failed");
     await run(p.root, () => rebuildDerivedIndexes(p.root));
-    const afterRebuild = (await readJson(
-      p.root,
-      "meta/index/diagnostics.json",
-    )) as Record<string, unknown> | "absent";
-    expect(afterRebuild === "absent" || !(p.split in afterRebuild)).toBe(true);
+  }
 
+  async function hasDiagnosticsRecord(
+    root: string,
+    id: string,
+  ): Promise<boolean> {
+    const index = (await readJson(root, "meta/index/diagnostics.json")) as
+      | Record<string, unknown>
+      | "absent";
+    return index !== "absent" && id in index;
+  }
+
+  it("a failed diagnostics step is not repaired by reindex (rebuildDerivedIndexes)", async () => {
+    const p = await makeSplitProject();
+    await failDiagnosticsThenReindex(p);
+    expect(await hasDiagnosticsRecord(p.root, p.split)).toBe(false);
+  });
+
+  it("a failed diagnostics step is written by the document's next save (enqueueIndex)", async () => {
+    const p = await makeSplitProject();
+    await failDiagnosticsThenReindex(p);
+    expect(await hasDiagnosticsRecord(p.root, p.split)).toBe(false);
+
+    await run(p.root, async () => {
+      await enqueueIndex(p.root, p.split);
+      await waitForDrain(5000);
+    });
+    expect(await hasDiagnosticsRecord(p.root, p.split)).toBe(true);
+  });
+
+  it("running the update again also writes a failed diagnostics record", async () => {
+    const p = await makeSplitProject();
+    await failDiagnosticsThenReindex(p);
     const again = await run(p.root, () =>
       updateDocumentIndexes(p.root, [p.original, p.split]),
     );
     expect(again.outcome).toBe("updated");
-    const repaired = (await readJson(
-      p.root,
-      "meta/index/diagnostics.json",
-    )) as Record<string, unknown>;
-    expect(repaired[p.split]).toBeDefined();
+    expect(await hasDiagnosticsRecord(p.root, p.split)).toBe(true);
+  });
+
+  it("each failure carries a stable step identifier Task 22 can name", async () => {
+    expect([...SPLIT_INDEX_STEPS]).toEqual([
+      "read-content",
+      "read-sidecar",
+      "inverted-index",
+      "annotation-index",
+      "backlinks",
+      "mention-index",
+      "diagnostics",
+    ]);
+    const p = await makeSplitProject();
+    faults.step = "diagnostics";
+    const result = await run(p.root, () =>
+      updateDocumentIndexes(p.root, [p.original, p.split]),
+    );
+    faults.step = null;
+    expect(result.outcome).toBe("failed");
+    if (result.outcome !== "failed") throw new Error("unreachable");
+    expect(result.failures.length).toBeGreaterThan(0);
+    for (const failure of result.failures) {
+      expect(Object.keys(failure).sort()).toEqual(["documentId", "step"]);
+      expect(SPLIT_INDEX_STEPS).toContain(failure.step);
+      expect(failure.step).toBe("diagnostics");
+    }
   });
 });

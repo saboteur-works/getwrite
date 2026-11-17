@@ -53,3 +53,22 @@ Fault injection is by `vi.mock` wrappers over `indexResource`, `indexAnnotationB
 ## Not measured
 
 Whether the `updateMentionIndex` and `persistBacklinks` writes interleave safely with a background `enqueueIndex` of the same project running at the same time (Task 22 will call this after commit while `persistResourceContent` may have scheduled its own index).
+
+## Gate 5 update
+
+Owner decision, Gate 5, 2026-11-16: `reindex` is not extended; the writer-facing message says `reindex` repairs the four indexes and prose diagnostics refresh on the document's next save. Done-when rewritten accordingly. Edited: `frontend/tests/unit/split-index-update.test.ts` only. `split-index-update.ts`, `indexer-queue.ts` and the `reindex` command are unchanged.
+
+### Clause by clause
+
+1. `reindex` after an injected failure equals a full rebuild, for the inverted index, annotation-body index, backlinks and mention index. Already satisfied by the committed code and already tested: the five per-step injection tests ("returns a failed outcome naming the document and step when <step> fails, and reindex then equals a full rebuild") run `rebuildDerivedIndexes` (all that `reindex` runs) on the failed project and on an untouched copy and compare the four files as parsed values with sorted keys. No failing run exists for this clause and none was fabricated.
+2. A failed diagnostics step is not repaired by `reindex` and is written by the next save. The old single test "measurement: rebuildDerivedIndexes leaves a failed diagnostics step unrepaired; running the update again repairs it" covered the first half and a different second half (running the update again). It is replaced by three tests, each named for its clause: "a failed diagnostics step is not repaired by reindex (rebuildDerivedIndexes)"; "a failed diagnostics step is written by the document's next save (enqueueIndex)" (injected failure, rebuild, record absent, then `enqueueIndex` for the split-off document and `waitForDrain`, record present); "running the update again also writes a failed diagnostics record" (the old second half, kept). No failing run exists: the behaviour was already present (Task 4 F5 measured that `enqueueIndex` writes diagnostics and the rebuild does not), so the new tests passed on first run.
+3. The failure outcome carries what Task 22 needs to name the step. The existing shape is `{ documentId, step }` per failure, with `step` drawn from the exported `SPLIT_INDEX_STEPS` tuple. I added no field. Which repair applies (`reindex` or next save) is derived from `step` alone: `diagnostics` is the next-save case, `inverted-index`, `annotation-index`, `backlinks` and `mention-index` are the `reindex` case. New test "each failure carries a stable step identifier Task 22 can name" asserts the exact tuple of identifiers, that a failure has exactly the keys `documentId` and `step`, and that an injected diagnostics failure reports `diagnostics`. No failing run exists (shape already present). `read-content` and `read-sidecar` have no repair route recorded here; Task 22's message for those is not established by this task.
+
+### Runs
+
+- `pnpm --filter getwrite-frontend exec vitest run tests/unit/split-index-update.test.ts tests/unit/split-core-import-graph.test.ts`: 2 files passed, 20 tests passed (split-index-update now 15 tests).
+- `pnpm typecheck` (frontend): exit 0.
+- `pnpm lint` (frontend): 0 errors, 459 warnings (same count as the Task 17 record).
+- `pnpm --filter getwrite-electron typecheck` (both tsc passes): exit 0.
+- `pnpm --filter getwrite-cli typecheck`: exit 0.
+- Not run: full frontend suite, builds, e2e, any device.
