@@ -16,7 +16,7 @@ import { resolveSplitOffName } from "../Split/splitUndoName";
 import {
   describeUndoSplitAction,
   UNDO_SPLIT_LABEL,
-} from "../Split/splitUndoMessages";
+} from "../../src/lib/models/split-messages";
 import { splitEligibility } from "../../src/lib/models/split-eligibility";
 import { SPLIT_REFUSAL_REASONS } from "../../src/lib/models/split-types";
 import { SPLIT_REFUSAL_MESSAGES } from "../../src/lib/models/split-messages";

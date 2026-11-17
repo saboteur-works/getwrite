@@ -9,7 +9,7 @@ import {
   describeUndoSplitFailure,
   describeUndoSplitSuccess,
   UNDO_SPLIT_READ_FAILED_MESSAGE,
-} from "../../components/Split/splitUndoMessages";
+} from "../../src/lib/models/split-messages";
 import type { AnyResource } from "../../src/lib/models/types";
 
 function makeResource(id: string, name: string): AnyResource {

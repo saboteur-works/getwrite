@@ -53,7 +53,7 @@ import {
   UNDO_SPLIT_SAVE_FAILED_MESSAGE,
   UNDO_SPLIT_TRANSPORT_FAILED_MESSAGE,
   UNDO_SPLIT_UNKNOWN_NAME_PHRASE,
-} from "../../components/Split/splitUndoMessages";
+} from "../../src/lib/models/split-messages";
 import { SPLIT_UNDO_REFUSAL_MESSAGES } from "../../src/lib/models/split-messages";
 import { ProjectLockedError } from "../../src/lib/models/crypto/locked-errors";
 import type { AnyResource } from "../../src/lib/models/types";

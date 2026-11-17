@@ -34,7 +34,16 @@ import {
 } from "../../src/lib/api/split";
 import { flushPendingSaves } from "../../src/lib/pending-saves";
 import { isLockedAccessError } from "../../src/lib/models/crypto/locked-errors";
-import { SPLIT_REFUSAL_MESSAGES } from "../../src/lib/models/split-messages";
+import {
+  describeSplitSuccess,
+  SPLIT_READ_FAILED_MESSAGE,
+  SPLIT_REFUSAL_MESSAGES,
+  SPLIT_RELOAD_FAILED_MESSAGE,
+  SPLIT_SAVE_FAILED_MESSAGE,
+  SPLIT_SUCCESS_TITLE,
+  SPLIT_TREE_REFRESH_FAILED_MESSAGE,
+  SPLIT_UNEXPECTED_FAILURE_MESSAGE,
+} from "../../src/lib/models/split-messages";
 import {
   SPLIT_REFUSAL_REASONS,
   type SplitCarryOverChoice,
@@ -54,21 +63,6 @@ import {
 } from "../../src/store/resourcesSlice";
 import { loadRevisionsForSelectedResource } from "../../src/store/revisionsSlice";
 import type { RootState } from "../../src/store/store";
-
-/**
- * Task 25 texts. They are not in `split-messages.ts`, which only Tasks 10, 22
- * and 28 edit; the owner's wording review (Task 28) can move them there.
- */
-const SAVE_FAILED_MESSAGE =
-  "Your latest edits could not be saved, so the document was not split. Nothing was changed.";
-const READ_FAILED_MESSAGE =
-  "The saved document could not be read, so it was not split. Nothing was changed.";
-const UNEXPECTED_FAILURE_MESSAGE =
-  "The split could not be started. Nothing was changed.";
-const RELOAD_FAILED_MESSAGE =
-  "The split was saved, but the document could not be read back into the editor. The editor is read-only until you open another document and come back, so the text before the split cannot be saved over the result.";
-const TREE_REFRESH_FAILED_MESSAGE =
-  "The document was split, but the project tree could not be refreshed. Reopen the project to see the new document.";
 
 export interface SplitHostProps {
   /**
@@ -323,13 +317,13 @@ export default function SplitHost({ unlock }: SplitHostProps): JSX.Element {
     projectDirectoryId: string,
   ): Promise<void> {
     if (!(await flushPendingSaves())) {
-      endWithToast(SAVE_FAILED_MESSAGE);
+      endWithToast(SPLIT_SAVE_FAILED_MESSAGE);
       return;
     }
     const stored = await readStoredCanonical(projectDirectoryId, resourceId);
     const storedDocument = stored ? parseDocument(stored.content) : null;
     if (!stored || !storedDocument) {
-      endWithToast(READ_FAILED_MESSAGE);
+      endWithToast(SPLIT_READ_FAILED_MESSAGE);
       return;
     }
     const shown = editor.getJSON() as TipTapDocument;
@@ -391,7 +385,7 @@ export default function SplitHost({ unlock }: SplitHostProps): JSX.Element {
     editor.setEditable(false, false);
     begin(editor, resourceId, projectDirectoryId).catch((error: unknown) => {
       console.error("Split could not be started", error);
-      endWithToast(UNEXPECTED_FAILURE_MESSAGE);
+      endWithToast(SPLIT_UNEXPECTED_FAILURE_MESSAGE);
     });
     return "started";
   }
@@ -421,7 +415,7 @@ export default function SplitHost({ unlock }: SplitHostProps): JSX.Element {
       notifyProjectChanged?.();
     } catch (error: unknown) {
       console.error("Error refreshing project after split:", error);
-      toastService.error(TREE_REFRESH_FAILED_MESSAGE);
+      toastService.error(SPLIT_TREE_REFRESH_FAILED_MESSAGE);
     }
   }
 
@@ -446,7 +440,7 @@ export default function SplitHost({ unlock }: SplitHostProps): JSX.Element {
       isHeldForGood.current = true;
       setDialog({
         preview: null,
-        failure: RELOAD_FAILED_MESSAGE,
+        failure: SPLIT_RELOAD_FAILED_MESSAGE,
         isSubmitting: false,
       });
       return;
@@ -458,10 +452,7 @@ export default function SplitHost({ unlock }: SplitHostProps): JSX.Element {
         wordCount: countWords(tiptapToPlainText(doc)),
       }),
     );
-    toastService.success(
-      "Document split",
-      `The text after the cursor is now the new document “${newName}”.`,
-    );
+    toastService.success(SPLIT_SUCCESS_TITLE, describeSplitSuccess(newName));
     setDialog(null);
     release();
   }
@@ -478,7 +469,7 @@ export default function SplitHost({ unlock }: SplitHostProps): JSX.Element {
     const around = held.current;
     if (!around) return;
     if (!(await flushPendingSaves())) {
-      stopSubmit({ failure: SAVE_FAILED_MESSAGE });
+      stopSubmit({ failure: SPLIT_SAVE_FAILED_MESSAGE });
       return;
     }
     const isSameEditor =
@@ -525,7 +516,7 @@ export default function SplitHost({ unlock }: SplitHostProps): JSX.Element {
     apply(choice)
       .catch((error: unknown) => {
         console.error("Split failed", error);
-        stopSubmit({ failure: UNEXPECTED_FAILURE_MESSAGE });
+        stopSubmit({ failure: SPLIT_UNEXPECTED_FAILURE_MESSAGE });
       })
       .finally(() => {
         isSubmitting.current = false;

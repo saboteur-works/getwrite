@@ -1,7 +1,7 @@
 /**
  * Feature 120, Task 10: the split message constants. Every reason code of the
  * contract has a text, the Undo refusals have their own, and no two texts are
- * equal. The wording is a draft for owner review (Task 28).
+ * equal. The wording was reviewed and kept by the owner (Task 28).
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -15,6 +15,36 @@ import {
   SPLIT_UNDO_REFUSAL_REASONS,
   describeSplitFailure,
   describeSplitIndexFailure,
+  SPLIT_SAVE_FAILED_MESSAGE,
+  SPLIT_READ_FAILED_MESSAGE,
+  SPLIT_UNEXPECTED_FAILURE_MESSAGE,
+  SPLIT_RELOAD_FAILED_MESSAGE,
+  SPLIT_TREE_REFRESH_FAILED_MESSAGE,
+  SPLIT_SUCCESS_TITLE,
+  describeSplitSuccess,
+  UNDO_SPLIT_STEP_LABELS,
+  UNDO_SPLIT_REMAINING_STATE_MESSAGES,
+  UNDO_SPLIT_LABEL,
+  UNDO_SPLIT_UNKNOWN_NAME_PHRASE,
+  UNDO_SPLIT_READ_FAILED_MESSAGE,
+  UNDO_SPLIT_READ_LOCKED_MESSAGE,
+  UNDO_SPLIT_WORKING_MESSAGE,
+  UNDO_SPLIT_SAVE_FAILED_MESSAGE,
+  UNDO_SPLIT_LOCKED_MESSAGE,
+  UNDO_SPLIT_INVALID_REQUEST_MESSAGE,
+  UNDO_SPLIT_TRANSPORT_FAILED_MESSAGE,
+  UNDO_SPLIT_UNEXPECTED_FAILURE_MESSAGE,
+  UNDO_SPLIT_RELOAD_FAILED_MESSAGE,
+  UNDO_SPLIT_TREE_REFRESH_FAILED_MESSAGE,
+  UNDO_SPLIT_OPEN_DOCUMENT_IN_TRASH_MESSAGE,
+  UNDO_SPLIT_EDITOR_HELD_MESSAGE,
+  UNDO_SPLIT_NOTHING_TO_UNDO_MESSAGE,
+  UNDO_SPLIT_UNSUPPORTED_OPERATION_MESSAGE,
+  UNDO_SPLIT_COULD_NOT_BE_CHECKED_MESSAGE,
+  describeUndoSplitAction,
+  describeUndoSplitFailure,
+  describeUndoSplitSuccess,
+  describeUndoSplitIndexFailure,
 } from "../../src/lib/models/split-messages";
 import {
   SPLIT_REFUSAL_REASONS,
@@ -149,5 +179,140 @@ describe("split index-failure text (Task 22)", () => {
   it("differs from every other text and echoes no client input", () => {
     expect(allTexts()).not.toContain(SPLIT_INDEX_FAILURE_MESSAGE);
     expect(SPLIT_INDEX_FAILURE_MESSAGE).not.toMatch(/\$\{|\{\w+\}|%s/);
+  });
+});
+
+describe("split host and Undo texts moved here (Task 28)", () => {
+  const UNDO_STEPS = [
+    "save-current-text",
+    "restore-original",
+    "move-annotations",
+    "trash-split-off",
+    "remove-exclusion",
+    "clear-record",
+  ] as const;
+  const UNDO_STATES = [
+    "split-restored",
+    "record-not-restored",
+    "exclusion-not-restored",
+    "split-off-in-trash",
+    "notes-not-restored",
+    "original-not-restored",
+    "preserved-revisions-kept",
+    "state-unknown",
+  ] as const;
+
+  it("has the five host texts and the success title and body, all distinct and non-empty", () => {
+    const texts = [
+      SPLIT_SAVE_FAILED_MESSAGE,
+      SPLIT_READ_FAILED_MESSAGE,
+      SPLIT_UNEXPECTED_FAILURE_MESSAGE,
+      SPLIT_RELOAD_FAILED_MESSAGE,
+      SPLIT_TREE_REFRESH_FAILED_MESSAGE,
+      SPLIT_SUCCESS_TITLE,
+      describeSplitSuccess("X"),
+    ];
+    for (const text of texts) expect(text.trim().length).toBeGreaterThan(0);
+    expect(new Set(texts).size).toBe(texts.length);
+    expect(SPLIT_SUCCESS_TITLE).toBe("Document split");
+    expect(describeSplitSuccess("Chapter 2")).toBe(
+      "The text after the cursor is now the new document “Chapter 2”.",
+    );
+  });
+
+  it("has a distinct non-empty label for every Undo step and text for every remaining state", () => {
+    expect(Object.keys(UNDO_SPLIT_STEP_LABELS).sort()).toEqual(
+      [...UNDO_STEPS].sort(),
+    );
+    expect(Object.keys(UNDO_SPLIT_REMAINING_STATE_MESSAGES).sort()).toEqual(
+      [...UNDO_STATES].sort(),
+    );
+    for (const record of [
+      Object.values(UNDO_SPLIT_STEP_LABELS),
+      Object.values(UNDO_SPLIT_REMAINING_STATE_MESSAGES),
+    ]) {
+      for (const text of record) expect(text.trim().length).toBeGreaterThan(0);
+      expect(new Set(record).size).toBe(record.length);
+    }
+  });
+
+  it("has distinct Undo constants, none equal to a text already in the module", () => {
+    const undo = [
+      UNDO_SPLIT_LABEL,
+      UNDO_SPLIT_UNKNOWN_NAME_PHRASE,
+      UNDO_SPLIT_READ_FAILED_MESSAGE,
+      UNDO_SPLIT_READ_LOCKED_MESSAGE,
+      UNDO_SPLIT_WORKING_MESSAGE,
+      UNDO_SPLIT_SAVE_FAILED_MESSAGE,
+      UNDO_SPLIT_LOCKED_MESSAGE,
+      UNDO_SPLIT_INVALID_REQUEST_MESSAGE,
+      UNDO_SPLIT_TRANSPORT_FAILED_MESSAGE,
+      UNDO_SPLIT_UNEXPECTED_FAILURE_MESSAGE,
+      UNDO_SPLIT_RELOAD_FAILED_MESSAGE,
+      UNDO_SPLIT_TREE_REFRESH_FAILED_MESSAGE,
+      UNDO_SPLIT_OPEN_DOCUMENT_IN_TRASH_MESSAGE,
+      UNDO_SPLIT_EDITOR_HELD_MESSAGE,
+      UNDO_SPLIT_NOTHING_TO_UNDO_MESSAGE,
+      UNDO_SPLIT_UNSUPPORTED_OPERATION_MESSAGE,
+      UNDO_SPLIT_COULD_NOT_BE_CHECKED_MESSAGE,
+    ];
+    expect(new Set(undo).size).toBe(undo.length);
+    for (const text of undo) expect(allTexts()).not.toContain(text);
+  });
+
+  it("describes a failed Undo by step and state, and never as rolled back when no request ran", () => {
+    const seen = new Set<string>();
+    for (const step of UNDO_STEPS) {
+      for (const state of UNDO_STATES) {
+        const text = describeUndoSplitFailure(step, state, "step-failed");
+        expect(text).toContain(UNDO_SPLIT_STEP_LABELS[step]);
+        expect(text).toContain(UNDO_SPLIT_REMAINING_STATE_MESSAGES[state]);
+        seen.add(text);
+      }
+    }
+    expect(seen.size).toBe(UNDO_STEPS.length * UNDO_STATES.length);
+    expect(describeUndoSplitFailure(null, "state-unknown", "x")).toContain(
+      "Undo split did not finish.",
+    );
+    expect(
+      describeUndoSplitFailure(
+        "clear-record",
+        "split-restored",
+        "transport-failed",
+      ),
+    ).toBe(UNDO_SPLIT_TRANSPORT_FAILED_MESSAGE);
+    expect(
+      describeUndoSplitFailure(
+        "clear-record",
+        "split-restored",
+        "invalid-request",
+      ),
+    ).toBe(UNDO_SPLIT_INVALID_REQUEST_MESSAGE);
+  });
+
+  it("describes the Undo action and success with the name, or the unknown-name phrase", () => {
+    expect(describeUndoSplitAction("Part 2")).toContain("“Part 2”");
+    expect(describeUndoSplitAction(null)).toContain(
+      UNDO_SPLIT_UNKNOWN_NAME_PHRASE,
+    );
+    const states = ["moved-to-trash", "was-in-trash", "was-purged"] as const;
+    const texts = states.map((s) => describeUndoSplitSuccess("N", s, 0));
+    expect(new Set(texts).size).toBe(3);
+    expect(describeUndoSplitSuccess("N", "moved-to-trash", 1)).toContain(
+      " 1 note was put back",
+    );
+    expect(describeUndoSplitSuccess("N", "moved-to-trash", 3)).toContain(
+      " 3 notes were put back",
+    );
+  });
+
+  it("names the steps not brought up to date after an Undo, without repeating one", () => {
+    const text = describeUndoSplitIndexFailure(["diagnostics", "diagnostics"]);
+    expect(text).toContain(SPLIT_INDEX_STEP_LABELS.diagnostics);
+    const listed = text.slice(text.indexOf("Not brought up to date:"));
+    expect(listed).toBe(
+      `Not brought up to date: ${SPLIT_INDEX_STEP_LABELS.diagnostics}.`,
+    );
+    expect(text).toMatch(/does not rebuild prose diagnostics/);
   });
 });

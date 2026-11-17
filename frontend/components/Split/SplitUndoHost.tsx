@@ -39,7 +39,7 @@ import {
   UNDO_SPLIT_UNEXPECTED_FAILURE_MESSAGE,
   UNDO_SPLIT_UNSUPPORTED_OPERATION_MESSAGE,
   UNDO_SPLIT_WORKING_MESSAGE,
-} from "./splitUndoMessages";
+} from "../../src/lib/models/split-messages";
 import { openProject } from "../../src/lib/api/projects";
 import {
   requestLatestSplitOperation,

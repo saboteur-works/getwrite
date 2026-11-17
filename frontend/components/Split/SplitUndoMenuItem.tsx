@@ -9,7 +9,10 @@ import {
 } from "../common/UI/ContextMenu";
 import { useSplitUndoAvailability, requestSplitUndo } from "./splitUndoRequest";
 import { resolveSplitOffName } from "./splitUndoName";
-import { describeUndoSplitAction, UNDO_SPLIT_LABEL } from "./splitUndoMessages";
+import {
+  describeUndoSplitAction,
+  UNDO_SPLIT_LABEL,
+} from "../../src/lib/models/split-messages";
 import type { RootState } from "../../src/store/store";
 
 /**
