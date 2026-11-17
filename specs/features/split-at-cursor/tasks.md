@@ -222,7 +222,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Read `experiments/task-2.md` first. Only this task edits `revision-core.ts`. The caller (Task 20) holds the lock across the snapshot because `createRevision` takes none; this function must not take the lock a second time when the caller already holds it, which the lock-guard tests of Feature 93 check.
 **POS:** task_0a9d41f8
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Per-document index update that reports failure (FR-9)
 **What:** Add one awaited function that updates the derived data of a set of documents, rebuilds prose diagnostics for them, and returns failure instead of hiding it.
