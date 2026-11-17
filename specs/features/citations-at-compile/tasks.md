@@ -600,7 +600,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** LEAD-RUN with the owner, outside the sandbox from the main checkout. A test is not a hosted run.
 **POS:** task_0b5daa65
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 54: LEAD-RUN: CI, results into docs, close-out
 **What:** Run every CI workflow command, add the run results to the docs, and link the per-task records in the experiments index.
