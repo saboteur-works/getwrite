@@ -122,7 +122,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Probes in the scratchpad using the schema of `frontend/components/Editor/editorExtensions.ts` and `frontend/src/lib/models/annotation-mark-ids.ts`. Tasks 11, 12 and 13 read this record before writing tests.
 **POS:** task_8923f1e4
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: FR-1 (j) shortcut shortlist and (k) paired-device and Android reach
 **What:** Record every key binding that could clash with a chosen shortcut, produce the shortlist with the clash check for the owner, and record what a confirmed paired device and the Android build reach if new routes and menu items are added to shared code.
