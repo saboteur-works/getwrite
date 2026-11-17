@@ -510,7 +510,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Only Tasks 28 and 44 edit these files.
 **POS:** task_63c50bbb
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 45: "Still needs" line in the editor
 **What:** Show, in the sidebar section, a text line naming which details the bundled style still needs for the chosen type.
