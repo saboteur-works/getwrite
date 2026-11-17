@@ -322,7 +322,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Read the source and tests of `EditorContextMenu.tsx` first; its full item list is not known (FR-1 table). The shortcut is not bound here (Task 27).
 **POS:** task_156a56b8
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Command palette row and keyboard shortcut (FR-13, FR-19)
 **What:** Add the Split row to the command palette and bind the chosen shortcut, Mod+Shift+Enter (Cmd on macOS, Ctrl elsewhere; Owner decision, Task 8, Gate 5, 2026-11-16), both opening the same dialog.
