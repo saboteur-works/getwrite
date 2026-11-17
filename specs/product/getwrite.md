@@ -461,6 +461,35 @@ with the app without hand-rewriting it (see OQ-90).
   2026-11-04, note_31c82491, row C and Phase 2; ADR-016's condition. First-party
   modules only, no third-party plugins.)
 
+**Writer reshaping documents that have outgrown their first shape**
+
+- US-55: As a novelist or long-form writer whose chapter has grown to hold
+  several scenes, or whose imported file arrived as one long block, I want to
+  split a document at my cursor into two, with the new one recording which
+  document and revision it came from, so that I can reshape my manuscript
+  without copying and pasting and without losing the link between the text and
+  its past. [Next] (Added 2026-11-16; FR-232 to FR-236, FR-241 to FR-264. Concept
+  `specs/concepts/split-merge.md`. Owner answers, 2026-11-16, ideation: split and merge matter equally;
+  split gives shared lineage, so nothing is copied and the new document records
+  its source document and revision; the carry-over dialog asks each time.
+  Read 2026-11-16, not run: no split or merge exists today; the only way to
+  reshape is copy and paste, which leaves revisions, notes and citations behind.
+  Milestones from the concept: MVP is split at the cursor, merge, the carry-over
+  dialog and updated derived data; v1 is the lineage view, split at every
+  heading and Android and paired-device support; v2 is unmerge and split at a
+  selection. The shape questions, OQ-251 to OQ-265, were answered by the owner at Gate 1, 2026-11-16.)
+- US-56: As a writer who has drafted three captures or fragments that turned
+  out to be one idea, I want to merge two or more documents into one, keep the
+  others in the tree marked as merged until I remove them, and choose what
+  carries over, so that I can fold text together without anything silently
+  disappearing and without my notes, citations and claims coming loose. [Next]
+  (Added 2026-11-16; FR-237 to FR-264. Concept `specs/concepts/split-merge.md`. Owner answers, 2026-11-16,
+  ideation: a merged-away document is kept in the tree, marked as merged, until
+  the writer removes it; the carry-over dialog asks each time. Secondary
+  audiences of the concept: nonfiction and research writers whose passages carry
+  citations, claims and notes, and writers bringing work in through import or the
+  Inbox.)
+
 ## Functional Requirements
 
 ### Shipped Requirements
@@ -2921,6 +2950,38 @@ with the app without hand-rewriting it (see OQ-90).
   have accessible names, to the project's WCAG 2.1 AA target. [US-53] (Added
   2026-11-14. `docs/standards/accessibility.md`. Milestone: MVP.)
 
+- FR-232: A writer MUST be able to split an open text document at the cursor into two documents: the text before the cursor stays in the original and the text after it becomes a new document placed directly after the original, in the same folder, in tree order. Which documents can be split is stated in FR-261. [US-55] (Added 2026-11-16. Concept `specs/concepts/split-merge.md`, Core Concept and MVP. Milestone: MVP.)
+- FR-233: A split with the cursor at the very start or the very end of the document, where one half would be empty, MUST be refused with a message and MUST change nothing. [US-55] (Added 2026-11-16. Derived: a split that makes an empty document is not a split. Milestone: MVP.)
+- FR-234: The split and merge actions MUST be reachable from the editor's context menu, the tree's context menu, the command palette and a keyboard shortcut. [US-55][US-56] (Added 2026-11-16. Concept Adoption caveat: writers used to copy and paste will not find the actions otherwise. Which shortcut is a feature-spec question. Milestone: MVP.)
+- FR-235: The new document made by a split MUST record its lineage: the source document, the source revision, the operation and the date. No revision of the original MUST be copied; the new document MUST start with its own single initial revision as any new text document does. The revision the record names is the pre-operation snapshot revision of FR-263 (OQ-258). [US-55] (Added 2026-11-16. Owner answer, 2026-11-16: shared lineage, nothing copied. Concept Technical Considerations: a small record in the sidecar is worth exploring; where it is stored is a feature-spec question. Milestone: MVP.)
+- FR-236: A split or merge MUST NOT change how canonical revisions work: after the operation every affected document MUST have exactly one canonical revision, and the original MUST keep every revision it had before the operation, plus the pre-operation snapshot revisions of FR-263. [US-55][US-56] (Added 2026-11-16. Concept "What This Is Not". Read 2026-11-16: the editor loads and autosaves into the one canonical revision (`docs/features/revisions.md`). Milestone: MVP.)
+- FR-237: A writer MUST be able to select two or more text documents and merge them into the first selected document, with the text of the others appended to it in tree order. The target is the first selected document, and the dialog MUST show the writer which document is the target before the merge. Each joint between two texts is one empty paragraph. Which documents can be merged is stated in FR-261. [US-56] (Added 2026-11-16. Concept Core Concept and MVP; owner request of 2026-11-16 names the first selected document. Milestone: MVP.)
+- FR-238: A document absorbed by a merge MUST NOT be deleted. It MUST stay in the tree, marked as merged into its target, until the writer removes it. The mark MUST be shown in the tree and MUST survive closing and reopening the project. The mark MUST NOT rely on colour alone and MUST NOT use the red reserved for canonical and position state. [US-56] (Added 2026-11-16. Owner answer, 2026-11-16: kept in the tree, marked as merged, until the writer removes it. Styling rule: the repo's Red-is-reserved rule. Milestone: MVP.)
+- FR-239: A merge MUST record, on each absorbed document, the target document, the target revision and the date, and MUST keep every revision of every absorbed document. Removing an absorbed document MUST be the writer's own act through the existing delete, which goes to Trash. [US-56] (Added 2026-11-16. Concept Core Concept and Technical Considerations. Milestone: MVP.)
+- FR-240: For a document marked as merged, each of compile, export, the project and daily word goals, the Goal filter, search and word counts MUST have one stated, testable rule, and the rule MUST be visible to the writer, so that merged-away text is not compiled or counted twice by surprise. The rule: while a document is marked as merged it MUST be excluded automatically from compile, from the project total goal, the daily word goal and the Goal filter, and from word counts; it MUST stay searchable and MUST still be exported. The product MUST state this rule to the writer where the mark is shown. [US-56] (Added 2026-11-16. Concept Execution caveat and first open question. Today a kept document still compiles, exports, counts and is searched. Milestone: MVP.)
+- FR-241: Before every split and every merge a dialog MUST ask the writer what carries over, and MUST ask each time. Choices made in one operation MUST NOT change the next operation's choices: the dialog has no memory and opens with the same fixed defaults every time. Cancelling the dialog MUST change nothing. [US-55][US-56] (Added 2026-11-16. Owner answer, 2026-11-16: the dialog asks each time. Whether it remembers the last choices is OQ-255. Milestone: MVP.)
+- FR-242: The dialog MUST offer the notes, citations and claims anchored to passages of the moved text. One whose passage lies wholly in one half MUST go with its exact text when chosen, keeping its body, its `target` and a claim's status and date. One whose passage spans the split point MUST stay with the first half, the original, with its mark covering only the part of the passage that remains there; it MUST NOT be duplicated or lost. One the writer does not carry MUST NOT be deleted: it stays with the document it was in and, if its passage left, is shown as detached. [US-55][US-56] (Added 2026-11-16. Concept Key Capabilities and Execution caveat. Read 2026-11-16: an annotation is a note in the sidecar plus a mark with the same id; a note with no mark in the open document is detached; a Citation and a Claim are annotations (Features 101, 103 and 108). Milestone: MVP.)
+- FR-243: The dialog MUST offer the document's metadata, which means status, POV and custom fields, each as its own choice. A value not carried MUST NOT be invented: a status not carried is absent, as for "No status". In a merge, the target's own values MUST NOT change unless the writer chooses. [US-55][US-56] (Added 2026-11-16. Concept Core Concept: a scene split from a chapter usually keeps the POV, two merged captures usually do not share a status. Read 2026-11-16: the status key exists only when chosen (`docs/features/status-rollup.md`). Milestone: MVP.)
+- FR-244: After a split or merge, backlinks, the mention index, the search index, the annotation-body index, word counts and prose diagnostics MUST reflect the new shape without a whole-project reindex, by running the shared derived-index rebuild for the affected documents only. Mentions MUST be recomputed, not copied. A backlink to a document that still exists MUST still resolve. If a derived-data update fails, the writer MUST be told and `reindex` MUST repair it; a failure MUST NOT show as an empty or up-to-date index. [US-55][US-56] (Added 2026-11-16. Concept MVP and Technical Considerations. `docs/standards/failure-visibility.md`. Milestone: MVP.)
+- FR-245: A split or merge MUST be one operation: if any step fails, every affected document MUST be as it was before the operation and the writer MUST be told what failed. No document MAY be left half-changed. [US-55][US-56] (Added 2026-11-16. Concept Technical Considerations (one locked operation across all affected files). Milestone: MVP.)
+- FR-246: A writer MUST be able to undo a split or a merge without losing text: after the undo, the text of every affected document MUST equal its text before the operation, and no text MUST exist only in a document or revision the undo made unreachable. The undo is the "Undo split" / "Undo merge" action of FR-262; editor-level undo across documents is not required. [US-55][US-56] (Added 2026-11-16. Concept Key Capabilities and third open question. Milestone: MVP.)
+- FR-247: A split or merge in a locked project MUST raise the locked error and write nothing, as every other write does, and the lock prompt MUST be offered as for other writes (OQ-254, locked half, resolved from evidence). Any lineage or merged-mark data MUST be written through the encrypting adapter and fail closed when no usable key is available. [US-55][US-56] (Added 2026-11-16. Read 2026-11-16: a write on a locked project raises the locked error today (`locked-access.ts`); `docs/standards/security.md`. The locked-project half of concept question 4 is restated as OQ-254 and is not answered here. Milestone: MVP.)
+- FR-248: On hosted web, a split or merge MUST write only into a project of the signed-in tenant. On a paired device, the route MUST be classified and checked as every other route is (the shared limit check fails closed on a missing classification) and MUST NOT let a paired device do what the five existing limits refuse. No sixth limit switch is added (OQ-263). [US-55][US-56] (Added 2026-11-16. Read 2026-11-16: the five limits are project deletion, unlocking, locking, encryption changes and permanent deletion (`docs/features/home-network-sharing.md`). Precedent: FR-161. Milestone: MVP.)
+- FR-249: The MVP MUST be available on desktop and hosted web. It is limited to those: Android and paired devices wait for v1 (FR-258). A claim for Android or a paired device MUST NOT be made until a recorded run on it shows it. [US-55][US-56] (Added 2026-11-16. Concept Feature Milestones, v1, and fourth open question. Precedent: FR-185. Milestone: MVP.)
+- FR-250: Passage-anchored data belonging to a module that is switched off MUST still be offered and carried when the writer chooses it, because off keeps data. The Sources, Claims and Citations switches MUST NOT change what a split or merge can do with it. [US-55][US-56] (Added 2026-11-16. Read 2026-11-16: an off module keeps its data and stops only its indexing (`docs/features/modules.md`). Milestone: MVP.)
+- FR-251: A document made by a split, and an absorbed document, MUST be ordinary documents for Trash: removing one goes to Trash, restoring brings it back with its lineage or merged mark, and nothing in a split or merge purges a document. Prune, Trash and purge MUST NOT rewrite or delete a lineage record or merged mark. A record or mark whose named revision or document is gone MUST show a distinct stated state, never blank and never the same as "none": "revision no longer kept", "document in Trash" (with a way to restore it) or "document permanently removed". [US-55][US-56] (Added 2026-11-16. Read 2026-11-16: Trash restores and purges per item (`trash-core.ts`). Concept Technical Considerations: the record survives Trash and restore. Milestone: MVP.)
+- FR-252: What a split or merge adds to the writing log and to the daily word goal MUST be stated and testable: moved text MUST log nothing in the writing log for either document: the original's truncation MUST NOT log deleted words and the new document's initial text MUST NOT be logged as added, so neither affects the daily word goal. [US-55][US-56] (Added 2026-11-16. Read 2026-11-16: the writing log is append-only per UTC day and `reindex` does not clear it (`docs/features/writing-log.md`). Milestone: MVP.)
+- FR-253: The new document of a split MUST inherit the source's compile exclusion (its id added to `config.compileDefaults` when the source is excluded) and the source's resource subtype. Its Inbox and goal-filter membership MUST follow from its folder and carried fields. A merge MUST NOT change any of the target's values unless the writer chooses them in the dialog (FR-243). [US-55][US-56] (Added 2026-11-16. Read 2026-11-16: an Inbox item is left out of compile by default and out of the goals unless the goal filter selects it; filing out clears the exclusion. Milestone: MVP.)
+- FR-254: The split and merge actions and the carry-over dialog MUST be keyboard operable and have accessible names, to the project's WCAG 2.1 AA target. [US-55][US-56] (Added 2026-11-16. `docs/standards/accessibility.md`. Milestone: MVP.)
+- FR-255: This feature MUST NOT include keeping several live versions of a scene (Alternates), reconciling edits between devices, moving text between documents by any means other than split and merge, or any change to how canonical revisions work. [US-55][US-56] (Added 2026-11-16. Concept "What This Is Not". Pattern: FR-229. Milestone: MVP and v1.)
+- FR-256: A writer SHOULD see, in a document's history, its lineage as "split from X at revision N" or "merged into Y", with a way to open the named document. [US-55][US-56] (Added 2026-11-16. Concept v1 and Assumption caveat: a record nobody can see is cost without value. Milestone: v1.)
+- FR-257: A writer SHOULD be able to split a document at every heading of a chosen level in one step, with one carry-over dialog for the step. [US-55] (Added 2026-11-16. Concept v1: imported files need this most. How the one dialog applies to several new documents is a feature-spec question. Milestone: v1.)
+- FR-258: Split and merge SHOULD be available on Android and on a paired device, under the existing limits, because the MVP is desktop and hosted web only. [US-55][US-56] (Added 2026-11-16. Concept v1. Precedent: FR-185 and FR-161. Owner decision, 2026-11-16, Gate 1: Android and paired devices are v1. Milestone: v1.)
+- FR-261: Only text documents MUST be split or merged. Image and audio resources and folders MUST be refused, because they have no text body or revision, and Sources MUST be refused in the MVP. Entity documents, meaning any resource whose sidecar has `entityKind`, MUST also be refused in the MVP, as the split source, as the merge target and as an absorbed document. A document marked as merged MUST NOT be split, merged into, or absorbed again. Each refusal MUST show a message and MUST change nothing. Splitting a document that was itself split off, and merging more documents into one that was a target, MUST be allowed, so that lineage stays a tree. [US-55][US-56] (Added 2026-11-16. Owner decisions, Gate 1, 2026-11-16: OQ-260 (including entity documents), OQ-264; evidence `docs/features/revisions.md:52`. Milestone: MVP.)
+- FR-262: A writer MUST be able to run "Undo split" or "Undo merge" on the latest operation. The action MUST restore every affected document's text from the pre-operation snapshot revisions of FR-263 and MUST work after the project is closed and reopened or the page is reloaded. The feature spec MUST define what "latest" means and whether there is a time window. [US-55][US-56] (Added 2026-11-16. Owner decision, Gate 1, 2026-11-16: OQ-253. Milestone: MVP.)
+- FR-263: Before a split truncates the original, it MUST save a new non-canonical revision of the original's full text with `metadata.preserve` set, and the lineage MUST name that revision's number. A merge MUST do the same for the target and for each absorbed document before it changes them. [US-55][US-56] (Added 2026-11-16. Resolved from evidence, Gate 1, 2026-11-16: OQ-258; `docs/features/revisions.md:52-53, 66-72`, `revision-core.ts` `createRevision` and `setRevisionPreserve`. Milestone: MVP.)
+- FR-264: Once entity documents are allowed to be split or merged (they are refused in the MVP, FR-261), a split-off document MUST carry no entity declaration (`entityKind`, aliases), and a merge MUST keep the target's declaration and MUST leave the absorbed document's declaration unchanged. [US-55][US-56] (Added 2026-11-16. Owner decision, Gate 1, 2026-11-16: OQ-262; entity documents refused in the MVP by OQ-260. Milestone: v1.)
+
 ### Later Requirements
 
 - FR-30: The product SHOULD ship hosted, multi-device access to the same
@@ -3753,6 +3814,10 @@ with the app without hand-rewriting it (see OQ-90).
   tags attach to the whole variant, so this is separate from FR-197. OQ-233, Owner
   decision, Gate 1, 2026-11-12. Whether a passage mark also sets the variant-level
   tag was not decided; the v2 feature spec settles it.)
+
+- FR-259: A writer MAY be able to unmerge: restore the merged-away documents and remove their text from the target, using the recorded lineage. This is a version 2 requirement. [US-56] (Added 2026-11-16. Concept v2. Milestone: v2.)
+- FR-260: A writer MAY be able to split at a selection: the selected range becomes its own document and the text before and after it stays in place. This is a version 2 requirement. [US-55] (Added 2026-11-16. Concept v2. Milestone: v2.)
+
 ## Constraints
 
 - Folder names carry no application semantics: any folder layout is valid,
@@ -3917,6 +3982,17 @@ with the app without hand-rewriting it (see OQ-90).
   and fail closed when no usable key is available, per
   `docs/standards/security.md` and the no-usable-key constraint above; the
   mention index (`indexer-queue.ts`, `reindex` CLI) is the precedent.
+
+- Split and merge (FR-232 to FR-264; concept `specs/concepts/split-merge.md`) change documents
+  but never revision rules: each document keeps exactly one canonical revision,
+  a revision is never copied between documents, and a merged-away document is
+  kept until the writer removes it. Each split or merge is one operation that
+  leaves no document half-changed, writes through the storage adapter, raises
+  the locked error on a locked project and fails closed on an encrypted project
+  with no usable key. Lineage and merged marks are new persisted data and must
+  be validated in `frontend/src/lib/models/schemas.ts`. The "ask each time"
+  carry-over dialog is the owner's answer of 2026-11-16 and is not to be
+  replaced by a silent default.
 
 ## Open Questions
 
@@ -6477,6 +6553,112 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
 (Raised 2026-11-14 for FR-210 to FR-231. Added while speccing.)
 
 
+**OQ-251 (resolved): Does a merged-away document stay in compile, export, goals and search, or is it excluded automatically while marked merged?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): while marked as merged, the absorbed document is excluded automatically from compile, the project total goal, the daily goal, the Goal filter and word counts; it stays searchable and is still exported; the rule is stated to the writer in the product. Applied in FR-240.
+**Impact:** FR-240; FR-238; US-56.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. From `specs/concepts/split-merge.md`, Open Questions.)
+
+**OQ-252 (resolved): Where does a note whose passage spans the split point go: the first half, the second half, or both?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): a note, citation or claim whose passage spans the split point stays with the first half (the original), its mark covering only the part that remains; never duplicated or lost. Applied in FR-242.
+**Impact:** FR-242; US-55.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. From `specs/concepts/split-merge.md`, Open Questions.)
+
+**OQ-253 (resolved): Is undo an editor-level undo right after the operation, a restore from the lineage record, or both?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): an "Undo split" / "Undo merge" action for the latest operation, restoring from the pre-operation snapshot revisions (OQ-258) and working after a reload; the feature spec defines "latest" and any time window; editor-level undo across documents is not required. Applied in FR-246 and FR-262.
+**Impact:** FR-246; FR-259; US-55, US-56.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. From `specs/concepts/split-merge.md`, Open Questions.)
+
+**OQ-254 (resolved): Is MVP desktop and hosted web only, with Android and paired devices later? Is a split or merge refused on a locked project, as other writes are?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): a split or merge on a locked project raises the locked error and writes nothing, like every write (evidence: `docs/features/writing-log.md:15`, `lib/models/locked-access.ts` `isLockedAccessError`; confirmed by the owner at Gate 1, from evidence); the MVP is desktop and hosted web, and Android and paired devices are v1 (Owner decision, Gate 1). Applied in FR-247, FR-249 and FR-258.
+**Impact:** FR-249, FR-258; FR-247 states what a locked project does for every other write today and is not an answer; US-55, US-56.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. From `specs/concepts/split-merge.md`, Open Questions.)
+
+**OQ-255 (resolved): Should the carry-over dialog remember the writer's last choices as the default?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): no memory: the carry-over dialog opens with the same fixed defaults every time. Applied in FR-241.
+**Impact:** FR-241; US-55, US-56. The owner's answer that the dialog asks each time stands; this asks only about its starting choices.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. From `specs/concepts/split-merge.md`, Open Questions.)
+
+**OQ-256 (resolved): What does the merge join with between documents: nothing, a blank line, a scene separator, or the absorbed document's title as a heading?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): a merge joins texts with one empty paragraph between them. Applied in FR-237.
+**Impact:** FR-237; US-56.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. From `specs/concepts/split-merge.md`, Open Questions.)
+
+**OQ-257 (resolved): Is "the first" document of a merge the first the writer selected or the first in tree order, given the concept says the text is joined in tree order to "the first" and the owner request says the first selected?**
+**Resolution:** Resolved (2026-11-16, from evidence, confirmed by the owner at Gate 1): the target is the first selected document and the others are appended after it in tree order; the feature spec must show the writer which document is the target (evidence confirmed by the owner at Gate 1; the owner's request of 2026-11-16 names the first selected document). Applied in FR-237.
+**Impact:** FR-237; US-56.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
+
+**OQ-258 (resolved): Which revision does a split's lineage name, given that the editor autosaves into the one canonical revision so its text changes after the split? Does a split save a revision of the original's full text first, and is the named revision protected?**
+**Resolution:** Resolved (2026-11-16, from evidence, confirmed by the owner at Gate 1): before truncating the original, a split saves a new non-canonical revision of the original's full text with `metadata.preserve` set, and the lineage names that revision's number; a merge does the same for the target and each absorbed document before changing them. Evidence: `docs/features/revisions.md:52-53, 66-72`; `revision-core.ts:241-265` (`createRevision`), `:668` (`setRevisionPreserve`). Applied in FR-235, FR-236 and FR-263.
+**Impact:** FR-235, FR-236, FR-246; US-55. Read 2026-11-16: `docs/features/revisions.md`.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
+
+**OQ-259 (resolved): What does a lineage record or merged mark show when the document or revision it names is gone: the source revision pruned (the prune command drops the oldest non-canonical, unprotected revisions), the source or target in Trash, or purged?**
+**Resolution:** Resolved (2026-11-16, from evidence, confirmed by the owner at Gate 1): a lineage record or merged mark whose named revision or document is gone shows a distinct stated state, never blank and never the same as "none": revision no longer kept, document in Trash (with restore), document permanently removed; prune, Trash and purge never rewrite or delete the record. Evidence: `docs/standards/failure-visibility.md`; `docs/features/revisions.md:102`. Applied in FR-251.
+**Impact:** FR-251, FR-256; US-55, US-56.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
+
+**OQ-260 (resolved): Which resource types can be split or merged: text only, or also Sources (handled as text, with attachments), image and audio resources, entity documents and folders?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): text documents only. Image and audio resources and folders are refused (no text body or revision; evidence `docs/features/revisions.md:52`, the folder sidecar has no body; confirmed by the owner at Gate 1, from evidence); Sources are refused in the MVP (Owner decision, Gate 1). Entity documents (any resource whose sidecar has `entityKind`) are refused in the MVP, as split source, merge target and absorbed document, with a message (Owner decision, Gate 1, 2026-11-16). Applied in FR-261.
+**Impact:** FR-232, FR-237; US-55, US-56.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
+
+**OQ-261 (resolved): Do the words moved by a split or merge count in the writing log and the daily word goal as added in one document and deleted in the other, or as no change?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): moved text logs nothing in the writing log, for either document: the original's truncation logs no deleted words and the new document's initial text is not logged as added. Applied in FR-252.
+**Impact:** FR-252; US-55, US-56. Read 2026-11-16: the log is per UTC day and append-only.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
+
+**OQ-262 (resolved): What happens to a document's entity declaration (`entityKind`, aliases) on a split or merge, so that the entity roster and mention detection do not list the same entity twice or lose it?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): a split-off document carries no entity declaration (`entityKind`, aliases); a merge keeps the target's declaration and leaves the absorbed document's unchanged. Applied in FR-264.
+**Impact:** FR-242, FR-243, FR-244; US-55, US-56. Read 2026-11-16: an entity is a resource with a sidecar `entityKind`; mentions are detected, not authored.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
+
+**OQ-263 (resolved): Does a split or merge need its own paired-device limit switch, or does it fall under the five existing limits, given that a merge keeps every document and removes none?**
+**Resolution:** Resolved (2026-11-16, from evidence, confirmed by the owner at Gate 1): no new paired-device limit switch; the route is still classified (FR-248). Evidence: `docs/features/home-network-sharing.md:155-163`. Applied in FR-248.
+**Impact:** FR-248; US-55, US-56. Precedent: FR-161, OQ-161.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
+
+**OQ-264 (resolved): What do split and merge do on a document already in a lineage: splitting or merging into a merged-away document, merging a document twice, or merging a target that was itself absorbed?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): a merged-away document cannot be split, merged into, or absorbed again, and this is refused with a message; splitting a split-off document and merging more into a document that was a target are allowed; lineage stays a tree. Applied in FR-261.
+**Impact:** FR-237, FR-238, FR-239, FR-259; US-56.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
+
+**OQ-265 (resolved): Does the new document of a split inherit the source's compile exclusion, Inbox membership, goal-filter membership and subtype, and does a merge change the target's?**
+**Resolution:** Resolved (2026-11-16, Owner decision, Gate 1): a split's new document inherits the source's compile exclusion (its id added to `config.compileDefaults` when the source is excluded) and its subtype; Inbox and goal-filter membership follow from its folder and carried fields; a merge changes none of the target's values unless the writer chooses them in the dialog (FR-243). Applied in FR-253.
+**Impact:** FR-253; US-55. Read 2026-11-16: `docs/features/inbox.md`.
+**Owner:** Product owner.
+
+(Raised 2026-11-16 for FR-232 to FR-260. Added while speccing, from the code and docs.)
+
+
 ## Out of Scope (Deferred)
 
 - Plain-text file import as an import file type (FR-48, resolved: OQ-48).
@@ -6733,3 +6915,12 @@ The owner's request says "users"; this spec reads that as writers. Whether self-
   compile formats (Run G's other half) are a separate run (Owner answer,
   2026-11-14). Citations and bibliography at compile are specified in FR-210 to
   FR-231 (US-53, US-54, added 2026-11-14).
+- Unmerge, restoring the merged-away documents and removing their text from the
+  target (FR-259; concept `specs/concepts/split-merge.md`, v2): later.
+- Split at a selection, so the selected range becomes its own document
+  (FR-260; concept v2): later.
+- Keeping several live versions of a scene (Alternates, runway 3), reconciling
+  edits between devices, and moving text between documents other than by split
+  and merge (FR-255; concept "What This Is Not"): not planned for this feature.
+  Split and merge are specified in FR-232 to FR-264 (US-55, US-56, added
+  2026-11-16).
