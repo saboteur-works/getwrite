@@ -610,7 +610,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** LEAD-RUN. Only this task edits `experiments.md` after Task 1.
 **POS:** task_aa3e3ec3
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 55: Hayagriva wrapper crate source
 **What:** Write the source of a small Rust wrapper crate around Hayagriva, pinned to a commit, with one exported function returning structured citation and bibliography output, and the script that builds and vendors it.
