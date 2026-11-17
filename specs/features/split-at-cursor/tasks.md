@@ -132,7 +132,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Reads and probes only. A browser-reserved key list is stated from a probe run or marked as not run; none is assumed. Task 8 reads this shortlist.
 **POS:** task_bf61e250
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: LEAD/OWNER: choose the shortcut (OQ-8)
 **What:** The owner picks the Split shortcut from the Task 7 shortlist and the lead records it.
