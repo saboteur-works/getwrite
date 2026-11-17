@@ -112,7 +112,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Probes in the scratchpad; no production file is edited. Read `frontend/src/lib/models/locks.ts`, `frontend/src/lib/models/lock-guard.ts`, `frontend/src/lib/models/meta-locks.ts`, `frontend/src/lib/models/resource-crud-core.ts`, `frontend/src/lib/models/resource-templates.ts`, `frontend/components/ResourceTree/moveResource.ts` and `frontend/src/lib/models/saved-defaults-core.ts`. Tasks 18, 20 and 21 read this record before writing tests.
 **POS:** task_921bc734
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: FR-1 (i): TipTap cut points, marks and `UniqueID`
 **What:** Record what cutting TipTap JSON at a point does to each node type and to `annotation` marks, and whether `UniqueID` gives fresh ids to moved nodes.
