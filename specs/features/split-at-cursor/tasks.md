@@ -102,7 +102,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Probes in the scratchpad with a generated 500-document project. Read `frontend/src/lib/models/derived-index-rebuild.ts`, `frontend/src/lib/models/indexer-queue.ts`, `frontend/src/lib/models/prose-diagnostics.ts`, `frontend/src/lib/models/mention-index.ts`, `frontend/src/lib/models/inverted-index.ts` and `frontend/src/lib/models/backlinks.ts`. `withIndexingSuspended` is not used (FR-1(g)).
 **POS:** task_f5ec5d3f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: FR-1 (g) lock edges and failure injection, (h) placement after the original
 **What:** Record the lock edges a split must take, what a failure after each write step of the decided order leaves with reverse compensation, and how a new document is placed directly after its original.
