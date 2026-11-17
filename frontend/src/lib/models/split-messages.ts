@@ -16,6 +16,10 @@ import {
   type SplitRemainingState,
   type SplitStep,
 } from "./split-types";
+import type { SplitIndexStep } from "./split-index-update";
+
+/** A step after a split that can fail without undoing it: an index step or the new document's word count. */
+export type SplitIndexFailureStep = SplitIndexStep | "word-count";
 
 /** Refusals known before or at a split (FR-2, FR-6, FR-7, FR-14). One per reason code. */
 export const SPLIT_REFUSAL_MESSAGES: Record<SplitRefusalReason, string> = {
@@ -115,4 +119,37 @@ export function describeSplitFailure(
   remaining: SplitRemainingState,
 ): string {
   return `The split did not finish. It stopped while ${SPLIT_FAILED_STEP_LABELS[step]}. ${SPLIT_FAILED_REMAINING_STATE_MESSAGES[remaining]}`;
+}
+
+/**
+ * The text when the split was saved but its derived data could not be
+ * brought up to date (FR-9). `reindex` rewrites the inverted index, the
+ * annotation-body index, backlinks and the mention index; it does not rebuild
+ * prose diagnostics or word counts, which the document's next save writes
+ * (Owner decision, Gate 5, 2026-11-16). No sentence that names `reindex`
+ * names diagnostics.
+ */
+export const SPLIT_INDEX_FAILURE_MESSAGE =
+  "The split was saved, but some search and link data for the two documents could not be brought up to date. Running reindex repairs the search index, the notes search index, links and mentions. Prose diagnostics and word counts refresh the next time you save the document.";
+
+/** What was not brought up to date, in words. One label per failing step. */
+export const SPLIT_INDEX_STEP_LABELS: Record<SplitIndexFailureStep, string> = {
+  "read-content": "reading the saved text",
+  "read-sidecar": "reading the document's details",
+  "inverted-index": "the search index",
+  "annotation-index": "the notes search index",
+  backlinks: "links between documents",
+  "mention-index": "name mentions",
+  diagnostics: "prose diagnostics",
+  "word-count": "the new document's word count",
+};
+
+/** The text for an index failure after a saved split: the general text, then what was not updated. */
+export function describeSplitIndexFailure(
+  steps: readonly SplitIndexFailureStep[],
+): string {
+  const labels = [...new Set(steps)].map(
+    (step) => SPLIT_INDEX_STEP_LABELS[step],
+  );
+  return `${SPLIT_INDEX_FAILURE_MESSAGE} Not brought up to date: ${labels.join(", ")}.`;
 }

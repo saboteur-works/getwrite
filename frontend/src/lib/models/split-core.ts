@@ -64,7 +64,14 @@ import {
 } from "./saved-defaults-core";
 import { mutateSidecar, SIDECAR_UNCHANGED } from "./sidecar";
 import { partitionAnnotations } from "./split-annotations";
-import { SPLIT_COMPILE_EXCLUSION_NOTICE } from "./split-messages";
+import {
+  SPLIT_COMPILE_EXCLUSION_NOTICE,
+  describeSplitIndexFailure,
+  type SplitIndexFailureStep,
+} from "./split-messages";
+import { updateDocumentIndexes } from "./split-index-update";
+import { tiptapToPlainText } from "../tiptap-utils";
+import { countWords } from "../word-count";
 import {
   createSplitDocument,
   removeSplitDocument,
@@ -106,16 +113,34 @@ export interface SplitApplyOptions {
   now?: () => Date;
 }
 
-/** Result of {@link applySplit}; the outcomes never share a value. */
+/** What a committed split reports. */
+export interface SplitAppliedFields {
+  newDocumentId: string;
+  /** Texts of non-fatal conditions, for example a full exclusion list. */
+  notices: string[];
+  snapshotRevisionId: string;
+  snapshotRevisionNumber: number;
+}
+
+/** One step after the commit that did not finish, for one document. */
+export interface SplitPostCommitFailure {
+  documentId: string;
+  step: SplitIndexFailureStep;
+}
+
+/**
+ * Result of {@link applySplit}; the outcomes never share a value. `applied`
+ * and `index-failed` both mean the split is committed; `index-failed` adds
+ * what could not be brought up to date and the text for the writer.
+ */
 export type SplitApplyResult =
-  | {
-      outcome: "applied";
-      newDocumentId: string;
-      /** Texts of non-fatal conditions, for example a full exclusion list. */
-      notices: string[];
-      snapshotRevisionId: string;
-      snapshotRevisionNumber: number;
-    }
+  | ({ outcome: "applied" } & SplitAppliedFields)
+  | ({
+      outcome: "index-failed";
+      failures: SplitPostCommitFailure[];
+      /** The writer-facing text, from `split-messages.ts`. */
+      message: string;
+    } & SplitAppliedFields)
   | { outcome: "refused"; reason: SplitRefusalReason }
   | {
       outcome: "failed";
@@ -168,6 +193,8 @@ interface Progress {
   isExclusionAttempted: boolean;
   truncation: TruncationBackup | null;
   recordFiles: RawFile[] | null;
+  /** The text of the new document, for the word count written after commit. */
+  newText: TipTapDocument | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -215,9 +242,12 @@ async function putBack(file: RawFile): Promise<void> {
 
 /**
  * Applies a split. Takes the original's `revision-content` lock first and
- * holds it to the end, so a concurrent autosave or a second split of the same
- * document waits and then meets a changed document: the second split is
- * refused as stale.
+ * holds it to the end of the writes, so a concurrent autosave or a second
+ * split of the same document waits and then meets a changed document: the
+ * second split is refused as stale. The lock is released before the
+ * post-commit step (the new document's `wordCount` and the derived-index
+ * update, FR-9), which is awaited, outside the rollback, and reported as
+ * `index-failed` without undoing the split.
  *
  * @throws The locked-access error for a locked or key-less encrypted project
  *   when nothing remains changed; `InvalidProjectIdCoreError` for a bad
@@ -229,14 +259,75 @@ export async function applySplit(
   options: SplitApplyOptions = {},
 ): Promise<SplitApplyResult> {
   const projectRoot = resolveResourceProjectRootOrThrow(projectId);
+  const progress: Progress = {
+    step: "lock-original",
+    revisionIdsBefore: null,
+    created: null,
+    isDocumentLeftBehind: false,
+    annotationsBefore: null,
+    isExclusionAttempted: false,
+    truncation: null,
+    recordFiles: null,
+    newText: null,
+  };
   const release = await acquireLock(
     revisionContentLockKey(projectRoot, request.resourceId),
   );
+  let result: SplitApplyResult;
   try {
-    return await applyUnderLock(projectId, projectRoot, request, options);
+    result = await applyUnderLock(
+      projectId,
+      projectRoot,
+      request,
+      options,
+      progress,
+    );
   } finally {
     release();
   }
+  if (result.outcome !== "applied" || progress.newText === null) return result;
+  return finishAfterCommit(
+    projectRoot,
+    request.resourceId,
+    result,
+    progress.newText,
+  );
+}
+
+/**
+ * After the commit: the new document's `wordCount` through `mutateSidecar`
+ * (nothing on the index paths writes it, `experiments/task-4.md`), then the
+ * awaited per-document index update (Task 17). Neither failure undoes the
+ * split; each is returned. `updateDocumentIndexes` reports its own step
+ * failures and does not throw.
+ */
+async function finishAfterCommit(
+  projectRoot: string,
+  originalId: string,
+  applied: Extract<SplitApplyResult, { outcome: "applied" }>,
+  newText: TipTapDocument,
+): Promise<SplitApplyResult> {
+  const newId = applied.newDocumentId;
+  const failures: SplitPostCommitFailure[] = [];
+  try {
+    const wordCount = countWords(tiptapToPlainText(newText));
+    await mutateSidecar(projectRoot, newId, (current) =>
+      current === null
+        ? SIDECAR_UNCHANGED
+        : { ...current, wordCount: asValue(wordCount) },
+    );
+  } catch {
+    failures.push({ documentId: newId, step: "word-count" });
+  }
+  const update = await updateDocumentIndexes(projectRoot, [originalId, newId]);
+  if (update.outcome === "failed") failures.push(...update.failures);
+  if (failures.length === 0) return applied;
+  return {
+    ...applied,
+    outcome: "index-failed",
+    failures,
+    message: describeSplitIndexFailure(failures.map((f) => f.step)),
+  };
 }
 
 async function applyUnderLock(
@@ -244,6 +335,7 @@ async function applyUnderLock(
   projectRoot: string,
   request: SplitApplyRequest,
   options: SplitApplyOptions,
+  progress: Progress,
 ): Promise<SplitApplyResult> {
   const evaluation = await evaluateSplitRequest(projectRoot, request);
   if (evaluation.outcome === "refused") return evaluation;
@@ -255,16 +347,6 @@ async function applyUnderLock(
       cause: evaluation.cause,
     };
   }
-  const progress: Progress = {
-    step: "lock-original",
-    revisionIdsBefore: null,
-    created: null,
-    isDocumentLeftBehind: false,
-    annotationsBefore: null,
-    isExclusionAttempted: false,
-    truncation: null,
-    recordFiles: null,
-  };
   try {
     return await runSteps(
       projectId,
@@ -320,6 +402,7 @@ async function runSteps(
       cause: `annotations-${partition.reason}`,
     };
   }
+  progress.newText = partition.newDocument;
   const date = (options.now ?? (() => new Date()))().toISOString();
 
   // Step 2: the preserved snapshot of the full stored text.

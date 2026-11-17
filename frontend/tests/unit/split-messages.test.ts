@@ -8,10 +8,13 @@ import {
   SPLIT_COMPILE_EXCLUSION_NOTICE,
   SPLIT_FAILED_REMAINING_STATE_MESSAGES,
   SPLIT_FAILED_STEP_LABELS,
+  SPLIT_INDEX_FAILURE_MESSAGE,
+  SPLIT_INDEX_STEP_LABELS,
   SPLIT_REFUSAL_MESSAGES,
   SPLIT_UNDO_REFUSAL_MESSAGES,
   SPLIT_UNDO_REFUSAL_REASONS,
   describeSplitFailure,
+  describeSplitIndexFailure,
 } from "../../src/lib/models/split-messages";
 import {
   SPLIT_REFUSAL_REASONS,
@@ -110,5 +113,41 @@ describe("split messages", () => {
     for (const text of allTexts()) {
       expect(text).not.toMatch(/\$\{|\{\w+\}|%s/);
     }
+  });
+});
+
+describe("split index-failure text (Task 22)", () => {
+  it("says the split was saved, that reindex repairs the indexes, and that diagnostics refresh on the next save", () => {
+    const text = SPLIT_INDEX_FAILURE_MESSAGE;
+    expect(text).toMatch(/was saved/);
+    expect(text).toMatch(/reindex/);
+    expect(text).toMatch(/next time you save/);
+    expect(text).toMatch(/diagnostics/i);
+  });
+
+  it("does not say reindex repairs diagnostics: no sentence names both", () => {
+    const sentences = SPLIT_INDEX_FAILURE_MESSAGE.split(/(?<=\.)\s+/);
+    const withReindex = sentences.filter((s) => /reindex/i.test(s));
+    expect(withReindex.length).toBeGreaterThan(0);
+    for (const sentence of withReindex)
+      expect(sentence).not.toMatch(/diagnostic/i);
+  });
+
+  it("has a distinct label for every failing step and names the steps that failed", () => {
+    const labels = Object.values(SPLIT_INDEX_STEP_LABELS);
+    expect(new Set(labels).size).toBe(labels.length);
+    for (const label of labels) expect(label.trim().length).toBeGreaterThan(0);
+    const text = describeSplitIndexFailure(["diagnostics", "word-count"]);
+    expect(text).toContain(SPLIT_INDEX_FAILURE_MESSAGE);
+    expect(text).toContain(SPLIT_INDEX_STEP_LABELS.diagnostics);
+    expect(text).toContain(SPLIT_INDEX_STEP_LABELS["word-count"]);
+    expect(describeSplitIndexFailure(["diagnostics"])).not.toContain(
+      SPLIT_INDEX_STEP_LABELS["word-count"],
+    );
+  });
+
+  it("differs from every other text and echoes no client input", () => {
+    expect(allTexts()).not.toContain(SPLIT_INDEX_FAILURE_MESSAGE);
+    expect(SPLIT_INDEX_FAILURE_MESSAGE).not.toMatch(/\$\{|\{\w+\}|%s/);
   });
 });
