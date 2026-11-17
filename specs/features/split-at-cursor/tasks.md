@@ -92,7 +92,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Probes live in the scratchpad; no production file is edited. Tasks 14, 15 and 18 read this record before writing tests.
 **POS:** task_9e5c6549
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: FR-1 (f), (l): derived indexes and word counts
 **What:** Record what each derived index holds for a document before and after a per-document update and after a rebuild, which figures exist as word counts, and the time on a project of at least 500 documents.
