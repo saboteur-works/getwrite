@@ -332,7 +332,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** The only task that binds a key. `experiments/task-8.md` records Mod+Shift+Enter, so the task is dispatched; had it recorded none, it would not be. The `AppShell.tsx` document key handler has no native-runtime check (`experiments/task-7.md`), so this task keeps the key off Android. Read the source and stories of the palette before using any prop.
 **POS:** task_70d7d231
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: LEAD/OWNER: wording review of the message constants (FR-2, OQ-12)
 **What:** The owner reviews the drafted wording of every text in the message constants module, as shown by the dialog, menu, palette and toasts, and the lead applies the owner's edits.
