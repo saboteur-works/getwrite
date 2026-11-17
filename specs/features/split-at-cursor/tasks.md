@@ -212,7 +212,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** The kind field accepts `split` and `merge` so Feature 121 needs no migration; nothing here writes a `merge`. Read `experiments/task-3.md` first. Only this task edits `trash.ts`.
 **POS:** task_67fed586
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: No-log truncating write (sibling to `updateRevisionInPlace`, FR-8)
 **What:** Add a sibling function that overwrites a canonical revision's content under the same `revision-content` lock without a writing-log entry and without an automatic snapshot revision.
