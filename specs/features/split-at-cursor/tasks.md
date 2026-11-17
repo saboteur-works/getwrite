@@ -312,7 +312,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read `frontend/src/lib/pending-saves.ts`, `frontend/components/Capture/CaptureBoxHost.tsx` and the `TipTapEditor.tsx` autosave path before editing. The host exposes one open-request function that Tasks 26 and 27 call. Only this task edits `TipTapEditor.tsx`.
 **POS:** task_a1e3520e
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Editor context menu item with disabled reasons and Android exclusion (FR-13, FR-2)
 **What:** Add Split to the editor's context menu, disabled with its stated reason for a document the eligibility function refuses by type, and absent on the Android runtime.
