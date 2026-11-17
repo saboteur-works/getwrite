@@ -372,7 +372,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Edits the files Task 23 edited, so it runs after it. Undo is HTTP-only with no native backend pair; the documentation says so (Task 33).
 **POS:** task_bc9a8928
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 32: Undo split action in the palette and the editor menu (FR-18, FR-19)
 **What:** Offer "Undo split" in the command palette and the editor context menu in any open document while the latest operation is a split.
