@@ -292,7 +292,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Follow `frontend/app/api/project/capture/route.ts` and `frontend/tests/unit/claims-route.test.ts`. Read `experiments/task-7.md` (k) first. This task and Task 31 edit the enumeration test and the smoke script, so Task 31 runs after it.
 **POS:** task_54172f2f
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Split dialog component (FR-12, FR-19)
 **What:** Build the carry-over dialog: fixed defaults, per-annotation checkboxes grouped by kind, a choice per metadata field, word counts of each half, the spanning-annotation note and an editable name.
