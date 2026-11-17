@@ -39,3 +39,15 @@ With the trial edit above: `tests/unit/split-new-document.test.ts` 24 tests pass
 ## Checks
 
 - `pnpm typecheck` (frontend), `pnpm lint` (0 errors; the existing warnings remain), `pnpm --filter getwrite-electron typecheck` (both passes), `pnpm --filter getwrite-cli typecheck`: all passed with the trial edit in place; the Electron and CLI typechecks do not reach `split-new-document.ts` through `@gw/core` as far as the passing run shows (not otherwise checked). `pnpm typecheck` and lint were not re-run after the edit was reverted (the reverted file is byte-identical to the committed one per `git status`).
+
+## Import fix (follow-up)
+
+Change: in `frontend/src/lib/models/resource-crud-core.ts`, `InvalidProjectIdCoreError` is imported from `./project-id-core-error` instead of `./project-crud-core`. `project-crud-core.ts` imports the class from `project-id-core-error.ts` and re-exports it (`export { InvalidProjectIdCoreError }`), so it is the same class; `project-id-core-error.ts` has no imports.
+
+Failing run before the change: `pnpm exec vitest run tests/unit/split-core-import-graph.test.ts` (from `frontend/`). Output summary: 1 failed, 4 passed; for `split-new-document.ts` the offender list had 13 entries, all of the form "`project-types-static.ts` imports a JSON file" (the six bundled project-type JSON files, each listed twice, plus a `*.json` glob entry). The route to `project-types-static.ts` was measured by the Task 18 implementor as `resource-crud-core.ts` -> `project-crud-core.ts`.
+
+Green run after the change:
+- `tests/unit/split-core-import-graph.test.ts` and `tests/unit/split-new-document.test.ts`: 2 files, 29 tests passed (5 + 24).
+- Every test file under `frontend/tests` that mentions `resource-crud-core` (51 files, including the two above): 51 files passed, 708 tests passed.
+- `pnpm typecheck` (frontend): passed. `pnpm lint` (frontend): 0 errors, 459 warnings (existing). `pnpm --filter getwrite-electron typecheck` (both passes): passed. `pnpm --filter getwrite-cli typecheck`: passed.
+- No other offender appeared in the import-graph walk after the change (the test reports none).

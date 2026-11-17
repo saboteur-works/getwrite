@@ -41,7 +41,7 @@ import {
   writeFile,
 } from "./io";
 import { resolveProjectRoot } from "./project-root-resolver";
-import { InvalidProjectIdCoreError } from "./project-crud-core";
+import { InvalidProjectIdCoreError } from "./project-id-core-error";
 import { withMetaLock } from "./meta-locks";
 import {
   createResourceOfType,
