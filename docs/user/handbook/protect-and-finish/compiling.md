@@ -79,10 +79,14 @@ To export, open a document's or folder's menu in the [resource tree](../organize
 
 - In the **Compile Project** dialog, a ticked image counts towards "resource(s) selected" and **Compile (n)**, but its content is not in the file. Only documents are compiled.
 - A ticked Source counts towards "resource(s) selected" and **Compile (n)**, and its text is in the file.
-- [Annotations](../write/annotations.md) are not part of a compiled or exported file, in any format.
+- [Annotations](../write/annotations.md) are not part of a compiled or exported file, in any format. The one exception is a citation in a PDF or DOCX compile with **Citations** switched on; see [Citations](../write/citations.md).
 - On Android, PDF compile works without a network connection and uses the same IBM Plex fonts.
 
 ## Coming in the next release
+
+### Citations in a compile
+
+With **Citations** switched on for the project, a PDF or DOCX compile can turn each citation into a numbered note and add a bibliography. The Compile dialog then has a **Citations** switch and a **Citation style** choice. See [Citations](../write/citations.md).
 
 ### Inbox notes in compile and export
 

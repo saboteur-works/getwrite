@@ -78,4 +78,4 @@ Search finds text inside notes, including the statement of a claim. See [Search]
 ## Good to know
 
 - In an encrypted project, notes are stored encrypted. When the project is locked, they can't be read or changed.
-- Annotations are not in compiled or exported files.
+- Annotations are not in compiled or exported files. The one exception is a citation: with **Citations** switched on, a compiled PDF or DOCX shows it as a note. See [Citations](citations.md).

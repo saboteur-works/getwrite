@@ -28,7 +28,7 @@ Citations work without the **Sources** module being on. A [project type](../orga
 1. Open the Source and find **Citation fields** in the sidebar.
 2. Under **Reference type**, choose **Book**, **Article (journal)**, **Web page** or **Interview**.
 3. Fill in the fields. Every field is optional, so you can save a Source before it is complete.
-4. Stop typing. The fields save by themselves a moment after your last change, and a message below the fields says **Citation fields saved.** There is no Save button. If a date is not a real date or is later than today, the field says why and nothing is saved until you correct it. If you open another Source while a field is still wrong, that change is not saved and a message tells you so.
+4. Stop typing. The fields save by themselves a moment after your last change, and a message below the fields says **Citation fields saved.** There is no Save button. If a date is not a real date or is later than today, the field says why and nothing is saved until you correct it. If you open another Source while a field is still wrong, that change is not saved. A message names the Source and has a **Dismiss** button. If you close the sidebar or switch Citations off at that moment, no message appears and the change is not saved.
 
 Each type has its own fields.
 
@@ -41,7 +41,7 @@ Each type has its own fields.
 
 **Authors**, **Editors**, **Interviewee** and **Interviewer** can hold several people. Choose **Add**, then choose **Person** (a family name and a given name) or **Organisation** (one name). Choose **Remove** to take a row out. A field holds up to 500 characters, and each of these lists up to 50 people.
 
-**Date** and **Accessed** take a year, a year and month, or a full date: `2024`, `2024-05` or `2024-05-17`. GetWrite refuses anything else and tells you.
+**Date** and **Accessed** take a year, a year and month, or a full date: `2024`, `2024-05` or `2024-05-17`. The date must be a real date, and it can't be later than today. GetWrite refuses anything else and tells you.
 
 If you change the reference type, the form shows the fields of the new type.
 
@@ -85,7 +85,7 @@ Only citations in the documents you tick are included. A Source cited in a docum
 When Citations is on, GetWrite checks your citations before it compiles. If every citation is complete, the compile starts. If not, a **Check citations before compiling** dialog opens first. It says how many citations there are and how many Sources are incomplete, for example "5 citations, 2 Sources incomplete", then lists each Source once with its number of citations and the reason:
 
 - **Removed:** the Source is in Trash or has been deleted.
-- **Incomplete: missing** followed by the details the style needs, such as "Date".
+- **Incomplete: missing** followed by the details the style needs, such as "Date". A date that is stored but is not a real date, or is later than today, counts as missing. GetWrite doesn't change the stored date.
 - **Could not be checked:** GetWrite couldn't read the Source.
 
 A Source you never filled in is listed as incomplete too.
@@ -105,7 +105,7 @@ A citation that can't be written in full still appears. It ends with a visible m
 
 After the last document, the file has a **Bibliography** listing the Sources you cited, each once. With no citations, there is no bibliography and no notes. An interview is cited in its note but isn't listed in the bibliography, and GetWrite doesn't tell you.
 
-If a citation's passage is no longer in its document, the compile fails and makes no file. To fix it, open the document and re-attach the citation to a passage (see [Annotations](annotations.md)), or delete the citation.
+If a citation's passage is no longer in its document, the compile fails, makes no file, and shows a **Compile failed** message that says which citation. To fix it, open the document and re-attach the citation to a passage (see [Annotations](annotations.md)), or delete the citation.
 
 ### Good to know
 
