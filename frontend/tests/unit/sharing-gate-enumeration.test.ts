@@ -12,6 +12,12 @@
  * entries. The floors below are deliberately lower than the observed values so
  * an empty or truncated walk fails while a new route does not.
  *
+ * Feature 120, Task 23 (2026-11-16): the floors were raised to the counts
+ * observed after the two split routes were added: 88 route files, 124
+ * route/method pairs and 6 page files = 130 enumerated entries (counted with
+ * the same walk and export patterns as `enumerate` below). Each later route
+ * raises them again; they are never lowered.
+ *
  * No test name, message or assertion prints a window secret or a credential.
  */
 import { existsSync } from "node:fs";
@@ -49,9 +55,9 @@ const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];
 
 /** Floors for the walk; see the header comment for the observed values. */
-const MIN_ROUTE_FILES = 50;
+const MIN_ROUTE_FILES = 88;
 const MIN_PAGE_FILES = 5;
-const MIN_ENTRIES = 80;
+const MIN_ENTRIES = 130;
 
 /**
  * The documented exceptions, by name. Adding one changes EXCEPTION_COUNT, which
@@ -373,6 +379,40 @@ describe("route and page enumeration", () => {
       "utf8",
     );
     expect(route).not.toMatch(/checkLimit|limits-check|refusalFor/);
+  });
+
+  it("enumerates POST /api/project/split/preview and POST /api/project/split by walking, refuses them unconfirmed and lets a paired device through (Feature 120, FR-14)", async () => {
+    const { entries } = await enumerate(APP_DIR);
+    const origin = "http://10.0.0.5:3000";
+    const token = await pairInto(dir);
+    for (const url of ["/api/project/split/preview", "/api/project/split"]) {
+      const found = entries.filter((e) => e.url === url);
+      expect(found.map(label)).toEqual([`POST ${url}`]);
+      expect(isException(found[0])).toBe(false);
+      const unpaired = await proxy(
+        makeRequest(found[0], { headers: { origin } }),
+      );
+      expect(isRefusal(unpaired), url).toBe(true);
+      const paired = await proxy(
+        makeRequest(found[0], {
+          headers: { cookie: `${DEVICE_COOKIE}=${token}`, origin },
+        }),
+      );
+      expect(isPassThrough(paired), url).toBe(true);
+    }
+  });
+
+  it("adds no paired-device limit switch or route guard to the split routes (Feature 120, FR-14)", async () => {
+    for (const parts of [
+      ["split", "preview", "route.ts"],
+      ["split", "route.ts"],
+    ]) {
+      const route = await readFile(
+        path.join(APP_DIR, "api", "project", ...parts),
+        "utf8",
+      );
+      expect(route).not.toMatch(/checkLimit|limits-check|refusalFor/);
+    }
   });
 
   it("counts the documented exceptions", () => {

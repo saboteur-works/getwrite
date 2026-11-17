@@ -56,6 +56,13 @@ const EXCEPTION_COUNT = ENUMERATED_EXCEPTIONS.length + 1;
 /** Domain-separation prefix of the readiness proof; same string as readiness-proof.ts. */
 const PROOF_CONTEXT = "getwrite-ready/1\n";
 const READINESS_URL = "/api/sharing/ready";
+/** Entry-count floor; same value as the unit test's MIN_ENTRIES. */
+const MIN_ENTRIES = 130;
+/** The two Feature 120 routes; each is gated like the capture route, with no limit switch. */
+const SPLIT_ROUTE_LABELS = [
+  "POST /api/project/split/preview",
+  "POST /api/project/split",
+];
 
 const failures = [];
 let checks = 0;
@@ -236,6 +243,17 @@ async function main() {
   );
   const entries = await enumerate();
   check("enumeration is non-empty", entries.length > 0);
+  // Feature 120, Task 23: floors as in the unit test's MIN_ROUTE_FILES and
+  // MIN_ENTRIES (88 route files, 124 route/method pairs and 6 pages = 130
+  // entries when the split routes were added); never lowered.
+  check(
+    "enumeration is at least the recorded floor",
+    entries.length >= MIN_ENTRIES,
+  );
+  check(
+    "enumeration includes the split preview and split routes",
+    SPLIT_ROUTE_LABELS.every((n) => entries.map(label).includes(n)),
+  );
   check(
     "enumeration includes the pairing page and route",
     ENUMERATED_EXCEPTIONS.every((n) => entries.map(label).includes(n)),
