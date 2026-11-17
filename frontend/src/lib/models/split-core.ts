@@ -2,9 +2,9 @@
  * @module split-core
  *
  * Applies a split of a text document at the cursor as one operation in the
- * decided order (Feature 120, FR-3 to FR-8, FR-10, FR-11, FR-16, OQ-9). This
- * is the forward path: stale and eligibility refusals, then the ordered
- * writes.
+ * decided order, with reverse compensation (Feature 120, FR-3 to FR-8, FR-10,
+ * FR-11, FR-16, OQ-9): stale and eligibility refusals, then the ordered
+ * writes, then, if a step fails, the undo of the earlier ones.
  *
  * Writer model: the claim that nothing else writes between the staleness
  * check and the last write holds under one writer instance per tenant
@@ -28,39 +28,73 @@
  *    `withMetaLock`; never nested inside another `withMetaLock`).
  * No step nests a non-reentrant lock inside itself. `withIndexingSuspended` is
  * not used. The derived-index update runs after commit (Task 22) and is
- * outside this operation.
+ * outside this operation and its rollback.
  *
- * A step that throws propagates its error from here (reverse compensation is
- * Task 21); a locked-access error before any write writes nothing.
+ * Reverse compensation (FR-6): a step that throws undoes the earlier steps in
+ * reverse (records, truncation, exclusion, annotations, the new document, the
+ * snapshot), each undo idempotent so it is also safe for the step that threw
+ * after writing, and returns `failed` naming the step and the state that
+ * remains. The undo steps restore what the forward steps changed: the raw
+ * text of the files a step rewrote (derived content, the two record files)
+ * and the sidecar keys it set. A snapshot is removed by clearing its preserve
+ * flag first, because `deleteRevision` refuses a preserved revision.
+ * `project.json`'s `metadataRevision` counter may stay higher: every sidecar
+ * write advances it and nothing writes it back. A locked-access error with
+ * nothing left changed is rethrown.
  *
  * No React, JSX, JSON or `node:*`.
  */
-import { readFile } from "./io";
+import { atomicWriteFile, readFile, rm, writeFile } from "./io";
+import { flushIndexer } from "./indexer-queue";
+import { isLockedAccessError } from "./locked-access";
 import { acquireLock } from "./locks";
+import { withMetaLock } from "./meta-locks";
+import { PROJECT_FILENAME } from "./project-config";
 import { resolveResourceProjectRootOrThrow } from "./resource-crud-core";
+import { listRevisions, revisionDir } from "./revision";
 import {
   createRevision,
+  deleteRevision,
+  setRevisionPreserve,
   writeCanonicalContentWithoutLog,
 } from "./revision-core";
-import { seedCompileExclusion } from "./saved-defaults-core";
-import { PROJECT_FILENAME } from "./project-config";
+import {
+  removeCompileExclusions,
+  seedCompileExclusion,
+} from "./saved-defaults-core";
 import { mutateSidecar, SIDECAR_UNCHANGED } from "./sidecar";
 import { partitionAnnotations } from "./split-annotations";
 import { SPLIT_COMPILE_EXCLUSION_NOTICE } from "./split-messages";
-import { createSplitDocument } from "./split-new-document";
+import {
+  createSplitDocument,
+  removeSplitDocument,
+  SplitNewDocumentError,
+  type SplitNewDocumentResult,
+} from "./split-new-document";
 import {
   evaluateSplitRequest,
   revisionContentLockKey,
+  type SplitEvaluation,
   type SplitPreviewRequest,
 } from "./split-preview-core";
-import { writeLatestOperation, writeLineageEntry } from "./split-records-core";
+import {
+  LATEST_OPERATION_FILE_NAME,
+  LINEAGE_FILE_NAME,
+  writeLatestOperation,
+  writeLineageEntry,
+} from "./split-records-core";
 import {
   type SplitCarryOverChoice,
   type SplitRefusalReason,
   type SplitRemainingState,
   type SplitStep,
 } from "./split-types";
-import type { Annotation, MetadataValue } from "./types";
+import type {
+  Annotation,
+  MetadataValue,
+  Revision,
+  TipTapDocument,
+} from "./types";
 
 /** A split request: the cursor of {@link SplitPreviewRequest} plus the carry-over choice. */
 export interface SplitApplyRequest extends SplitPreviewRequest {
@@ -87,14 +121,65 @@ export type SplitApplyResult =
       outcome: "failed";
       failedStep: SplitStep;
       remainingState: SplitRemainingState;
-      /** A stable cause string; never client input. */
+      /** A stable cause string (an error name); never client input. */
       cause: string;
     };
 
 type CompileExclusionState = "not-listed" | "listed" | "unusable";
 
+type ReadyEvaluation = Extract<SplitEvaluation, { outcome: "ready" }>;
+
+/** A file's raw text before a step rewrote it; `null` when it did not exist. */
+interface RawFile {
+  path: string;
+  raw: string | null;
+}
+
+/** What the truncation changed, so it can be put back exactly. */
+interface TruncationBackup {
+  contentPath: string;
+  content: string;
+  derived: RawFile[];
+  hadUpdatedAt: boolean;
+  updatedAt: MetadataValue | undefined;
+  hadWordCount: boolean;
+  wordCount: MetadataValue | undefined;
+}
+
+/** Which kind of undo step failed; the set decides the state reported. */
+type UndoKind =
+  | "records"
+  | "truncate"
+  | "exclusion"
+  | "annotations"
+  | "document"
+  | "snapshot";
+
+/** What the forward steps did so far; compensation undoes exactly these. */
+interface Progress {
+  step: SplitStep;
+  /** Revision ids before the snapshot step; null until that step starts. */
+  revisionIdsBefore: Set<string> | null;
+  created: SplitNewDocumentResult | null;
+  /** The builder failed and could not remove the document it wrote. */
+  isDocumentLeftBehind: boolean;
+  /** The original's annotation list before the move; null until a move starts. */
+  annotationsBefore: Annotation[] | null;
+  isExclusionAttempted: boolean;
+  truncation: TruncationBackup | null;
+  recordFiles: RawFile[] | null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isNotFound(err: unknown): boolean {
+  return isRecord(err) && err.code === "ENOENT";
+}
+
+function asValue(value: unknown): MetadataValue {
+  return value as MetadataValue;
 }
 
 /** Whether `project.json`'s saved compile exclusions list the original. */
@@ -113,8 +198,19 @@ async function readExclusionState(
   return ids.includes(originalId) ? "listed" : "not-listed";
 }
 
-function asValue(value: unknown): MetadataValue {
-  return value as MetadataValue;
+/** Raw text of a file, or `null` when it does not exist; any other failure is thrown. */
+async function readRawOrNull(path: string): Promise<RawFile> {
+  try {
+    return { path, raw: await readFile(path, "utf8") };
+  } catch (err) {
+    if (isNotFound(err)) return { path, raw: null };
+    throw err;
+  }
+}
+
+async function putBack(file: RawFile): Promise<void> {
+  if (file.raw === null) await rm(file.path, { force: true });
+  else await writeFile(file.path, file.raw, "utf8");
 }
 
 /**
@@ -124,8 +220,8 @@ function asValue(value: unknown): MetadataValue {
  * refused as stale.
  *
  * @throws The locked-access error for a locked or key-less encrypted project
- *   (nothing is written); `InvalidProjectIdCoreError` for a bad `projectId`.
- *   An error thrown by a write step propagates (Task 21 adds compensation).
+ *   when nothing remains changed; `InvalidProjectIdCoreError` for a bad
+ *   `projectId`.
  */
 export async function applySplit(
   projectId: string,
@@ -149,7 +245,6 @@ async function applyUnderLock(
   request: SplitApplyRequest,
   options: SplitApplyOptions,
 ): Promise<SplitApplyResult> {
-  const originalId = request.resourceId;
   const evaluation = await evaluateSplitRequest(projectRoot, request);
   if (evaluation.outcome === "refused") return evaluation;
   if (evaluation.outcome === "failed") {
@@ -160,8 +255,53 @@ async function applyUnderLock(
       cause: evaluation.cause,
     };
   }
-  const { sidecar, cut, revision, content } = evaluation;
+  const progress: Progress = {
+    step: "lock-original",
+    revisionIdsBefore: null,
+    created: null,
+    isDocumentLeftBehind: false,
+    annotationsBefore: null,
+    isExclusionAttempted: false,
+    truncation: null,
+    recordFiles: null,
+  };
+  try {
+    return await runSteps(
+      projectId,
+      projectRoot,
+      request,
+      evaluation,
+      progress,
+      options,
+    );
+  } catch (err) {
+    const remainingState = await compensate(
+      projectId,
+      projectRoot,
+      request.resourceId,
+      progress,
+    );
+    if (isLockedAccessError(err) && remainingState === "original-restored")
+      throw err;
+    return {
+      outcome: "failed",
+      failedStep: progress.step,
+      remainingState,
+      cause: err instanceof Error ? err.name : "unknown",
+    };
+  }
+}
 
+async function runSteps(
+  projectId: string,
+  projectRoot: string,
+  request: SplitApplyRequest,
+  evaluation: ReadyEvaluation,
+  progress: Progress,
+  options: SplitApplyOptions,
+): Promise<SplitApplyResult> {
+  const originalId = request.resourceId;
+  const { sidecar, cut, revision, content } = evaluation;
   const stored: unknown = sidecar.annotations;
   const annotations: Annotation[] = Array.isArray(stored)
     ? (stored as Annotation[])
@@ -180,10 +320,13 @@ async function applyUnderLock(
       cause: `annotations-${partition.reason}`,
     };
   }
-
   const date = (options.now ?? (() => new Date()))().toISOString();
 
   // Step 2: the preserved snapshot of the full stored text.
+  progress.step = "snapshot";
+  progress.revisionIdsBefore = new Set(
+    (await listRevisions(projectRoot, originalId)).map((r) => r.id),
+  );
   const snapshot = await createRevision(projectRoot, originalId, {
     content,
     isCanonical: false,
@@ -195,45 +338,38 @@ async function applyUnderLock(
   });
 
   // Step 3: the new document, directly after the original.
-  const created = await createSplitDocument(projectId, {
-    originalId,
-    text: partition.newDocument,
-    newName: request.carryOver.newName,
-    carriedFields: request.carryOver.fields,
-  });
-  const newId = created.documentId;
+  progress.step = "create-document";
+  const newId = await createDocument(
+    projectId,
+    request,
+    partition.newDocument,
+    progress,
+  );
 
   // Step 4: the chosen annotations leave the original and join the new document.
-  const movingIds = new Set(partition.newAnnotations.map((a) => a.id));
-  if (movingIds.size > 0) {
-    await mutateSidecar(projectRoot, newId, (current) => ({
-      ...(current ?? {}),
-      annotations: asValue(partition.newAnnotations),
-    }));
-    await mutateSidecar(projectRoot, originalId, (current) => {
-      const list: unknown = current?.annotations;
-      if (current === null || !Array.isArray(list)) return SIDECAR_UNCHANGED;
-      return {
-        ...current,
-        annotations: asValue(
-          (list as Annotation[]).filter((a) => !movingIds.has(a.id)),
-        ),
-      };
-    });
-  }
+  progress.step = "move-annotations";
+  await moveAnnotations(
+    projectRoot,
+    originalId,
+    newId,
+    annotations,
+    partition.newAnnotations,
+    progress,
+  );
 
   // Step 5: the compile exclusion; at the cap or an unusable list the split goes on.
-  const notices: string[] = [];
-  const exclusion = await readExclusionState(projectRoot, originalId);
-  if (exclusion !== "not-listed") {
-    const seeded = await seedCompileExclusion(projectRoot, newId, {
-      atCap: SPLIT_COMPILE_EXCLUSION_NOTICE,
-      unreadable: SPLIT_COMPILE_EXCLUSION_NOTICE,
-    });
-    if (seeded.notice !== undefined) notices.push(seeded.notice);
-  }
+  progress.step = "seed-exclusion";
+  const notices = await seedExclusion(projectRoot, originalId, newId, progress);
 
   // Step 6: the truncation, no writing-log entry, no automatic snapshot.
+  progress.step = "truncate";
+  progress.truncation = await backUpTruncation(
+    projectRoot,
+    originalId,
+    revision,
+    content,
+    sidecar,
+  );
   await writeCanonicalContentWithoutLog(
     projectRoot,
     originalId,
@@ -243,6 +379,11 @@ async function applyUnderLock(
   );
 
   // Step 7: the lineage entry, then the latest-operation record last.
+  progress.step = "write-records";
+  progress.recordFiles = [
+    await readRawOrNull(`${projectRoot}/meta/${LINEAGE_FILE_NAME}`),
+    await readRawOrNull(`${projectRoot}/meta/${LATEST_OPERATION_FILE_NAME}`),
+  ];
   await writeLineageEntry(projectRoot, newId, {
     sourceDocumentId: originalId,
     sourceRevisionId: snapshot.id,
@@ -271,4 +412,226 @@ async function applyUnderLock(
     snapshotRevisionId: snapshot.id,
     snapshotRevisionNumber: snapshot.versionNumber,
   };
+}
+
+async function createDocument(
+  projectId: string,
+  request: SplitApplyRequest,
+  text: TipTapDocument,
+  progress: Progress,
+): Promise<string> {
+  try {
+    progress.created = await createSplitDocument(projectId, {
+      originalId: request.resourceId,
+      text,
+      newName: request.carryOver.newName,
+      carriedFields: request.carryOver.fields,
+    });
+  } catch (err) {
+    // The builder removes what it wrote when it can; this records when it could not.
+    if (err instanceof SplitNewDocumentError && !err.cleanedUp)
+      progress.isDocumentLeftBehind = true;
+    throw err;
+  }
+  return progress.created.documentId;
+}
+
+async function moveAnnotations(
+  projectRoot: string,
+  originalId: string,
+  newId: string,
+  before: Annotation[],
+  moving: Annotation[],
+  progress: Progress,
+): Promise<void> {
+  if (moving.length === 0) return;
+  const movingIds = new Set(moving.map((a) => a.id));
+  progress.annotationsBefore = structuredClone(before);
+  await mutateSidecar(projectRoot, newId, (current) => ({
+    ...(current ?? {}),
+    annotations: asValue(moving),
+  }));
+  await mutateSidecar(projectRoot, originalId, (current) => {
+    const list: unknown = current?.annotations;
+    if (current === null || !Array.isArray(list)) return SIDECAR_UNCHANGED;
+    return {
+      ...current,
+      annotations: asValue(
+        (list as Annotation[]).filter((a) => !movingIds.has(a.id)),
+      ),
+    };
+  });
+}
+
+async function seedExclusion(
+  projectRoot: string,
+  originalId: string,
+  newId: string,
+  progress: Progress,
+): Promise<string[]> {
+  const state = await readExclusionState(projectRoot, originalId);
+  if (state === "not-listed") return [];
+  progress.isExclusionAttempted = true;
+  const seeded = await seedCompileExclusion(projectRoot, newId, {
+    atCap: SPLIT_COMPILE_EXCLUSION_NOTICE,
+    unreadable: SPLIT_COMPILE_EXCLUSION_NOTICE,
+  });
+  return seeded.notice === undefined ? [] : [seeded.notice];
+}
+
+async function backUpTruncation(
+  projectRoot: string,
+  originalId: string,
+  revision: Revision,
+  content: string,
+  sidecar: Record<string, MetadataValue>,
+): Promise<TruncationBackup> {
+  const base = `${projectRoot}/resources/${originalId}`;
+  const has = (key: string): boolean =>
+    Object.prototype.hasOwnProperty.call(sidecar, key);
+  const dir = revisionDir(projectRoot, originalId, revision.versionNumber);
+  return {
+    contentPath: `${dir}/content.bin`,
+    content,
+    derived: [
+      await readRawOrNull(`${base}/content.tiptap.json`),
+      await readRawOrNull(`${base}/content.txt`),
+    ],
+    hadUpdatedAt: has("updatedAt"),
+    updatedAt: sidecar.updatedAt,
+    hadWordCount: has("wordCount"),
+    wordCount: sidecar.wordCount,
+  };
+}
+
+// --- reverse compensation -----------------------------------------------
+
+async function restoreRecords(
+  projectRoot: string,
+  files: readonly RawFile[],
+): Promise<void> {
+  await withMetaLock(projectRoot, async () => {
+    for (const file of files) {
+      if (file.raw === null) await rm(file.path, { force: true });
+      else await atomicWriteFile(file.path, file.raw, "utf8");
+    }
+  });
+}
+
+async function restoreTruncation(
+  projectRoot: string,
+  originalId: string,
+  backup: TruncationBackup,
+): Promise<void> {
+  await atomicWriteFile(backup.contentPath, backup.content, "utf8");
+  for (const file of backup.derived) await putBack(file);
+  await mutateSidecar(projectRoot, originalId, (current) => {
+    if (current === null) throw new Error("sidecar missing");
+    const next: Record<string, MetadataValue> = { ...current };
+    if (backup.hadUpdatedAt) next.updatedAt = backup.updatedAt as MetadataValue;
+    else delete next.updatedAt;
+    if (backup.hadWordCount) next.wordCount = backup.wordCount as MetadataValue;
+    else delete next.wordCount;
+    return next;
+  });
+}
+
+/**
+ * Puts the moved annotations back into the original's list: the earlier
+ * order, the current version of any that is still there, and any annotation
+ * added since kept at the end.
+ */
+async function restoreAnnotations(
+  projectRoot: string,
+  originalId: string,
+  before: readonly Annotation[],
+): Promise<void> {
+  await mutateSidecar(projectRoot, originalId, (current) => {
+    if (current === null) throw new Error("sidecar missing");
+    const list: unknown = current.annotations;
+    const now = Array.isArray(list) ? (list as Annotation[]) : [];
+    const byId = new Map(now.map((a) => [a.id, a]));
+    const known = new Set(before.map((a) => a.id));
+    const restored = before.map((a) => byId.get(a.id) ?? a);
+    for (const a of now) if (!known.has(a.id)) restored.push(a);
+    return { ...current, annotations: asValue(restored) };
+  });
+}
+
+/** Removes the snapshot: clear the preserve flag, then delete (a preserved revision is refused). */
+async function removeSnapshots(
+  projectRoot: string,
+  originalId: string,
+  before: ReadonlySet<string>,
+): Promise<void> {
+  const revisions = await listRevisions(projectRoot, originalId);
+  for (const revision of revisions) {
+    if (before.has(revision.id) || revision.metadata?.splitSnapshot !== true)
+      continue;
+    await setRevisionPreserve(projectRoot, originalId, revision.id, false);
+    await deleteRevision(projectRoot, originalId, revision.id);
+  }
+}
+
+function remainingStateOf(failed: ReadonlySet<UndoKind>): SplitRemainingState {
+  if (failed.size === 0) return "original-restored";
+  if (failed.size > 1) return "state-unknown";
+  if (failed.has("truncate")) return "original-truncated";
+  if (failed.has("document")) return "new-document-remains";
+  if (failed.has("snapshot")) return "snapshot-revision-kept";
+  return "state-unknown";
+}
+
+/**
+ * Undoes the steps that ran, in reverse. Every undo is attempted; one that
+ * fails is recorded and decides the state returned. The snapshot is kept when
+ * the truncation or the records could not be put back (it holds the earlier
+ * text), and the new document is kept when the notes could not be put back
+ * (it holds them).
+ */
+async function compensate(
+  projectId: string,
+  projectRoot: string,
+  originalId: string,
+  progress: Progress,
+): Promise<SplitRemainingState> {
+  const failed = new Set<UndoKind>();
+  const attempt = async (
+    kind: UndoKind,
+    run: () => Promise<void>,
+  ): Promise<void> => {
+    try {
+      await run();
+    } catch {
+      failed.add(kind);
+    }
+  };
+  const newId = progress.created?.documentId ?? null;
+  const { recordFiles, truncation, annotationsBefore } = progress;
+  if (recordFiles)
+    await attempt("records", () => restoreRecords(projectRoot, recordFiles));
+  if (truncation)
+    await attempt("truncate", () =>
+      restoreTruncation(projectRoot, originalId, truncation),
+    );
+  if (progress.isExclusionAttempted && newId !== null)
+    await attempt("exclusion", () =>
+      removeCompileExclusions(projectRoot, [newId]),
+    );
+  if (annotationsBefore)
+    await attempt("annotations", () =>
+      restoreAnnotations(projectRoot, originalId, annotationsBefore),
+    );
+  if (progress.created && !failed.has("annotations")) {
+    const { undo } = progress.created;
+    await attempt("document", () => removeSplitDocument(projectId, undo));
+  }
+  if (progress.isDocumentLeftBehind) failed.add("document");
+  const before = progress.revisionIdsBefore;
+  if (before && !failed.has("truncate") && !failed.has("records"))
+    await attempt("snapshot", () =>
+      removeSnapshots(projectRoot, originalId, before),
+    );
+  await flushIndexer();
+  return remainingStateOf(failed);
 }
