@@ -282,7 +282,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** Edits `split-core.ts` after Task 21, serial. The failure does not trigger Task 21's compensation (Owner decision, Gate 3, 2026-11-16).
 **POS:** task_dcd8b2bc
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Preview and split routes, client, sharing-gate enumeration and smoke count (FR-14)
 **What:** Add the preview and split routes in the storage context, the client functions, and the enumeration and smoke-count entries.
