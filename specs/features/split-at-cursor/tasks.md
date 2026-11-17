@@ -262,7 +262,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read `experiments/task-5.md` (lock edges, order) first. This task writes the forward path only; reverse compensation and the failure-injection suite are Task 21, which edits the same file, so the orchestrator must run it after this one. Neither task is mergeable alone, they ship in one PR. `withIndexingSuspended` is not used.
 **POS:** task_ca6a5456
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Reverse compensation and failure injection (FR-6)
 **What:** Add reverse compensation to the split and a test that injects a failure after each write step.
