@@ -182,7 +182,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Annotation marks are handled by Task 13, which depends on this function's cut position; this task keeps marks as they are in each half and returns the position of the cut. Node-level splitting follows OQ-3, as corrected at Gate 5: the fresh ids are assigned here, on the server side, and no later task may leave them to the editor.
 **POS:** task_e5bb32e7
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: Annotation partition and mark cut (pure, FR-11)
 **What:** Classify every annotation as before, after or spanning the cursor, apply the carry rules, shrink a spanning mark, and strip the marks of annotations not carried in the new document.
