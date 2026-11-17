@@ -152,7 +152,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 3
 **Notes:** No behaviour here. The record shapes are finalised against `experiments/task-3.md` by the tasks that write them (Tasks 15 and 20); if a measured fact contradicts a shape, that task stops and returns to the owner. Only this task edits `split-types.ts`.
 **POS:** task_23348558
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Message constants module (drafted wording)
 **What:** Add the one message-constants module holding every refusal, notice and failure text, drafted for the owner to review.
