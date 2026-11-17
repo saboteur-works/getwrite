@@ -242,7 +242,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** Read `experiments/task-3.md` and `experiments/task-5.md` first. Do not call `copyResourceCore` (it spreads the whole sidecar). The compile-exclusion inheritance is done by Task 20 through `seedCompileExclusion`, because it writes `project.json`. Placement uses `reorderResourcesCore`, never `moveResource` (`experiments/task-5.md`; Owner decision, Gate 5, 2026-11-16). The text it receives already carries fresh ids from Task 12; it neither generates nor repairs ids.
 **POS:** task_a02391f0
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Preview and staleness core (FR-7 server half, FR-12 data)
 **What:** Add the server-side read that checks a cursor against the stored document and returns what the dialog shows: eligibility, word counts of each half, the annotations anchored in the moving text and those that stay.
