@@ -74,6 +74,7 @@ import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import MediaDropExtension from "./Editor/Extensions/MediaDropExtension";
 import GetWriteImage from "./Editor/Extensions/GetWriteImage";
 import MentionJumpHighlightExtension from "./Editor/Extensions/MentionJumpHighlightExtension";
+import SplitShortcutExtension from "./Editor/Extensions/SplitShortcutExtension";
 import DialogueHighlightExtension, {
   DIALOGUE_HIGHLIGHT_KEY,
 } from "./Editor/Extensions/DialogueHighlightExtension";
@@ -466,6 +467,7 @@ export default function TipTapEditor({
           isEnabled: spellGate.isEnabled,
         }),
         MentionJumpHighlightExtension,
+        SplitShortcutExtension,
         AnnotationHighlightExtension,
         AnnotationClipboard.configure({
           getResourceId: () => annotationResourceIdRef.current,
