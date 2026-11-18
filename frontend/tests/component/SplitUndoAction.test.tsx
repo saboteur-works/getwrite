@@ -76,9 +76,11 @@ vi.mock("../../src/lib/api/split", async (importOriginal) => {
 
 const fetchResourceContent = vi.fn();
 const fetchRevisionContent = vi.fn();
-vi.mock("../../src/lib/api/resources", () => ({
-  fetchResourceContent: (...args: unknown[]) => fetchResourceContent(...args),
-  fetchRevisionContent: (...args: unknown[]) => fetchRevisionContent(...args),
+vi.mock("../../src/lib/api/split-stored-read", () => ({
+  fetchSplitResourceContent: (...args: unknown[]) =>
+    fetchResourceContent(...args),
+  fetchSplitRevisionContent: (...args: unknown[]) =>
+    fetchRevisionContent(...args),
 }));
 
 const openProject = vi.fn();
@@ -514,6 +516,23 @@ describe("Undo split report and editor", () => {
     await waitFor(() =>
       expect(screen.getByRole("status").textContent).toContain(
         "read-only until you open another document",
+      ),
+    );
+    expect(fake.editable).toEqual([false]);
+  });
+
+  it("reports a locked project at the read-back as a failed read-back, not as an undo that did not happen", async () => {
+    latestIsSplit();
+    requestUndoSplit.mockResolvedValue(APPLIED);
+    fetchRevisionContent.mockRejectedValue(new ProjectLockedError("locked"));
+    const fake = makeFakeEditor(AFTER_SPLIT);
+    setActiveEditor(fake.editor);
+    setActiveEditorResourceId(ORIGINAL_ID);
+    renderPalette({ openResourceId: ORIGINAL_ID });
+    await runUndoFromPalette();
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toContain(
+        "could not be read back into the editor",
       ),
     );
     expect(fake.editable).toEqual([false]);

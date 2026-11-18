@@ -34,7 +34,10 @@ import {
 } from "../../src/lib/pending-saves";
 import { cutDocument } from "../../src/lib/models/split-cut";
 import { tiptapToPlainText } from "../../src/lib/tiptap-text";
-import { SPLIT_REFUSAL_MESSAGES } from "../../src/lib/models/split-messages";
+import {
+  SPLIT_READ_FAILED_MESSAGE,
+  SPLIT_REFUSAL_MESSAGES,
+} from "../../src/lib/models/split-messages";
 import { SPLIT_REFUSAL_REASONS } from "../../src/lib/models/split-types";
 import { ProjectLockedError } from "../../src/lib/models/crypto/locked-errors";
 import type { TipTapDocument } from "../../src/lib/models";
@@ -54,9 +57,11 @@ vi.mock("../../src/lib/api/split", async (importOriginal) => {
 
 const fetchResourceContent = vi.fn();
 const fetchRevisionContent = vi.fn();
-vi.mock("../../src/lib/api/resources", () => ({
-  fetchResourceContent: (...args: unknown[]) => fetchResourceContent(...args),
-  fetchRevisionContent: (...args: unknown[]) => fetchRevisionContent(...args),
+vi.mock("../../src/lib/api/split-stored-read", () => ({
+  fetchSplitResourceContent: (...args: unknown[]) =>
+    fetchResourceContent(...args),
+  fetchSplitRevisionContent: (...args: unknown[]) =>
+    fetchRevisionContent(...args),
 }));
 
 const openProject = vi.fn();
@@ -689,6 +694,74 @@ describe("SplitHost locked project", () => {
     await screen.findByLabelText("Name of the new document");
     expect(unlock).toHaveBeenCalledWith("secret");
     expect(requestSplitPreview).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens the unlock prompt when the stored text read hits a locked project, then retries the read and reaches the preview", async () => {
+    const errorToast = vi
+      .spyOn(toastService, "error")
+      .mockImplementation(() => "id");
+    const unlock = vi.fn().mockResolvedValue(undefined);
+    let reads = 0;
+    fetchResourceContent.mockImplementation(async () => {
+      reads += 1;
+      if (reads === 1) throw new ProjectLockedError("locked");
+      return {
+        revisions: [
+          { id: "34205ec3-fe37-41ee-96f9-e331e95e5475", isCanonical: true },
+        ],
+      };
+    });
+    renderHost(unlock);
+    openWith(8 + 5);
+    act(() => {
+      openSplitDialog();
+    });
+    const passphrase = await screen.findByLabelText(/passphrase/i);
+    expect(errorToast).not.toHaveBeenCalled();
+    fireEvent.change(passphrase, { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+    await screen.findByLabelText("Name of the new document");
+    expect(unlock).toHaveBeenCalledWith("secret");
+    expect(reads).toBe(2);
+    expect(errorToast).not.toHaveBeenCalled();
+  });
+
+  it("opens the unlock prompt when the revision text read hits a locked project", async () => {
+    const unlock = vi.fn().mockResolvedValue(undefined);
+    let reads = 0;
+    fetchRevisionContent.mockImplementation(async () => {
+      reads += 1;
+      if (reads === 1) throw new ProjectLockedError("locked");
+      return stored;
+    });
+    renderHost(unlock);
+    openWith(8 + 5);
+    act(() => {
+      openSplitDialog();
+    });
+    await screen.findByLabelText(/passphrase/i);
+    fireEvent.change(screen.getByLabelText(/passphrase/i), {
+      target: { value: "secret" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Unlock" }));
+    await screen.findByLabelText("Name of the new document");
+    expect(reads).toBe(2);
+  });
+
+  it("still shows the read-failed message when the stored text read fails for another reason", async () => {
+    const errorToast = vi
+      .spyOn(toastService, "error")
+      .mockImplementation(() => "id");
+    fetchRevisionContent.mockResolvedValue(null);
+    renderHost();
+    openWith(8 + 5);
+    act(() => {
+      openSplitDialog();
+    });
+    await waitFor(() =>
+      expect(errorToast).toHaveBeenCalledWith(SPLIT_READ_FAILED_MESSAGE),
+    );
+    expect(screen.queryByLabelText(/passphrase/i)).toBeNull();
   });
 
   it("ends with a message and no change when the unlock prompt is declined", async () => {

@@ -22,9 +22,9 @@ import {
 import { isUnlockPromptAllowed } from "../Sharing/unlock-prompt-gate";
 import { openProject } from "../../src/lib/api/projects";
 import {
-  fetchResourceContent,
-  fetchRevisionContent,
-} from "../../src/lib/api/resources";
+  fetchSplitResourceContent,
+  fetchSplitRevisionContent,
+} from "../../src/lib/api/split-stored-read";
 import {
   hashSplitContent,
   requestSplit,
@@ -118,15 +118,22 @@ function parseDocument(content: string): TipTapDocument | null {
   }
 }
 
-/** Reads the canonical revision's stored text; `null` when it cannot be read. */
+/**
+ * Reads the canonical revision's stored text; `null` when it cannot be read.
+ * A locked project throws the locked-access error (the caller offers the
+ * unlock prompt).
+ */
 async function readStoredCanonical(
   projectDirectoryId: string,
   resourceId: string,
 ): Promise<StoredCanonical | null> {
-  const resource = await fetchResourceContent(projectDirectoryId, resourceId);
+  const resource = await fetchSplitResourceContent(
+    projectDirectoryId,
+    resourceId,
+  );
   const canonical = resource?.revisions?.find((r) => r.isCanonical);
   if (!canonical) return null;
-  const content = await fetchRevisionContent(
+  const content = await fetchSplitRevisionContent(
     resourceId,
     projectDirectoryId,
     canonical.id,
@@ -320,7 +327,14 @@ export default function SplitHost({ unlock }: SplitHostProps): JSX.Element {
       endWithToast(SPLIT_SAVE_FAILED_MESSAGE);
       return;
     }
-    const stored = await readStoredCanonical(projectDirectoryId, resourceId);
+    const read = await withUnlock(() =>
+      readStoredCanonical(projectDirectoryId, resourceId),
+    );
+    if (read === null) {
+      endWithToast(SPLIT_REFUSAL_MESSAGES[SPLIT_REFUSAL_REASONS.lockedProject]);
+      return;
+    }
+    const stored = read.value;
     const storedDocument = stored ? parseDocument(stored.content) : null;
     if (!stored || !storedDocument) {
       endWithToast(SPLIT_READ_FAILED_MESSAGE);

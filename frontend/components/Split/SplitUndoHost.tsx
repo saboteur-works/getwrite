@@ -99,7 +99,8 @@ function projectResources(
  * opened (the editor releases itself on a document switch, as for Task 25).
  *
  * A locked project is reported, not unlocked from here: the unlock prompt of
- * the split host is not reused.
+ * the split host is not reused. A locked project met only when the stored text
+ * is read back after a committed Undo is reported as the failed read-back.
  */
 export default function SplitUndoHost(): JSX.Element {
   const store = useStore<RootState>();
@@ -190,7 +191,14 @@ export default function SplitUndoHost(): JSX.Element {
     if (openId !== result.originalDocumentId) {
       return { alerts: [], notes: [], isHeld: false };
     }
-    const after = await readStoredCanonicalText(projectDirectoryId, openId);
+    // The Undo has already committed, so a locked project here is a failed
+    // read-back (shown as such), not "the split was not undone".
+    let after: Awaited<ReturnType<typeof readStoredCanonicalText>> = null;
+    try {
+      after = await readStoredCanonicalText(projectDirectoryId, openId);
+    } catch (error: unknown) {
+      if (!isLockedAccessError(error)) throw error;
+    }
     const doc = after ? parseStoredDocument(after.content) : null;
     if (!doc) {
       return {

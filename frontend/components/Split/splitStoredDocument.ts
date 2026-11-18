@@ -8,9 +8,9 @@ import type { Editor } from "@tiptap/core";
 import type { Content } from "@tiptap/react";
 import { normalizeStoredContent } from "../Editor/loadDocumentIntoEditor";
 import {
-  fetchResourceContent,
-  fetchRevisionContent,
-} from "../../src/lib/api/resources";
+  fetchSplitResourceContent,
+  fetchSplitRevisionContent,
+} from "../../src/lib/api/split-stored-read";
 import type { TipTapDocument } from "../../src/lib/models";
 
 /** The canonical revision of a document and its stored text. */
@@ -38,15 +38,22 @@ export function parseStoredDocument(content: string): TipTapDocument | null {
   }
 }
 
-/** Reads the canonical revision's stored text; `null` when it cannot be read. */
+/**
+ * Reads the canonical revision's stored text; `null` when it cannot be read.
+ * A locked project throws the locked-access error; the caller decides how to
+ * surface it.
+ */
 export async function readStoredCanonicalText(
   projectDirectoryId: string,
   resourceId: string,
 ): Promise<StoredCanonical | null> {
-  const resource = await fetchResourceContent(projectDirectoryId, resourceId);
+  const resource = await fetchSplitResourceContent(
+    projectDirectoryId,
+    resourceId,
+  );
   const canonical = resource?.revisions?.find((r) => r.isCanonical);
   if (!canonical) return null;
-  const content = await fetchRevisionContent(
+  const content = await fetchSplitRevisionContent(
     resourceId,
     projectDirectoryId,
     canonical.id,
