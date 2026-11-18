@@ -28,7 +28,7 @@ import {
 
 const PREVIEW: SplitPreviewData = {
   outcome: "preview",
-  revisionId: "v-1",
+  revisionId: "34205ec3-fe37-41ee-96f9-e331e95e5475",
   contentHash: "a".repeat(64),
   offset: 12,
   documentName: "Chapter",

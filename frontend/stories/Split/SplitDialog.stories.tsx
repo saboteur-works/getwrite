@@ -5,7 +5,7 @@ import { SPLIT_REFUSAL_REASONS } from "../../src/lib/models/split-types";
 
 const PREVIEW: SplitPreviewData = {
   outcome: "preview",
-  revisionId: "v-1",
+  revisionId: "34205ec3-fe37-41ee-96f9-e331e95e5475",
   contentHash: "c".repeat(64),
   offset: 1800,
   documentName: "Chapter 3",

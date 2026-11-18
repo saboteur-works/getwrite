@@ -94,7 +94,6 @@ export const SPLIT_TRANSPORT_STATE_UNKNOWN_MESSAGE = `The split request did not 
 // --- request validation -------------------------------------------------
 
 const CONTENT_HASH_PATTERN = /^[0-9a-f]{64}$/;
-const REVISION_ID_PATTERN = /^v-[0-9]{1,9}$/;
 
 /** Outcome of a body validator; carries no input on failure. */
 export type SplitBodyParse<T> = { ok: true; value: T } | { ok: false };
@@ -127,8 +126,8 @@ function parseCursor(
 ): SplitPreviewRequest | null {
   const { resourceId, revisionId, contentHash, offset } = body;
   if (!isResourceId(resourceId)) return null;
-  if (typeof revisionId !== "string" || !REVISION_ID_PATTERN.test(revisionId))
-    return null;
+  // A revision id is a generated UUID (`v-1` is only the folder name).
+  if (!isResourceId(revisionId)) return null;
   if (
     typeof contentHash !== "string" ||
     !CONTENT_HASH_PATTERN.test(contentHash)

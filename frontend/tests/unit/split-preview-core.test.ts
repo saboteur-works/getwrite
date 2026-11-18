@@ -460,7 +460,7 @@ describe("split preview on a real project", () => {
       });
       const result = await previewSplit(projectId, {
         resourceId: source.id,
-        revisionId: "v-1",
+        revisionId: generateUUID(),
         contentHash: "0".repeat(64),
         offset: 3,
       });
@@ -478,7 +478,7 @@ describe("split preview on a real project", () => {
       });
       const result = await previewSplit(projectId, {
         resourceId: image.id,
-        revisionId: "v-1",
+        revisionId: generateUUID(),
         contentHash: "0".repeat(64),
         offset: 0,
       });
@@ -585,7 +585,7 @@ describe("split preview on a real project", () => {
     it("returns a failed outcome, distinct from a refusal, for a resource with no sidecar", async () => {
       const result = await previewSplit(projectId, {
         resourceId: generateUUID(),
-        revisionId: "v-1",
+        revisionId: generateUUID(),
         contentHash: "0".repeat(64),
         offset: 3,
       });

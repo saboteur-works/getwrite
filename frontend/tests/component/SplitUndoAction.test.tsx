@@ -292,7 +292,9 @@ beforeEach(() => {
   flushPendingSaves.mockReset();
   flushPendingSaves.mockResolvedValue(true);
   fetchResourceContent.mockImplementation(async () => ({
-    revisions: [{ id: "v-1", isCanonical: true }],
+    revisions: [
+      { id: "34205ec3-fe37-41ee-96f9-e331e95e5475", isCanonical: true },
+    ],
   }));
   fetchRevisionContent.mockImplementation(async () => stored);
   openProject.mockResolvedValue({ resources: TREE, folders: [] });

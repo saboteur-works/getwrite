@@ -83,7 +83,7 @@ let savedAuthUrl: string | undefined;
 
 const CURSOR = {
   resourceId: RESOURCE,
-  revisionId: "v-1",
+  revisionId: "34205ec3-fe37-41ee-96f9-e331e95e5475",
   contentHash: HASH,
   offset: 9,
 };
@@ -92,7 +92,7 @@ const CARRY = { annotationIds: ["a1"], fields: ["status"], newName: "Part 2" };
 const SPLIT_BODY = { projectId: PROJECT, ...CURSOR, carryOver: CARRY };
 const PREVIEW: SplitPreviewResult = {
   outcome: "preview",
-  revisionId: "v-1",
+  revisionId: "34205ec3-fe37-41ee-96f9-e331e95e5475",
   contentHash: HASH,
   offset: 9,
   documentName: "Doc",
@@ -107,7 +107,7 @@ const APPLIED = {
   outcome: "applied" as const,
   newDocumentId: NEW_ID,
   notices: [],
-  snapshotRevisionId: "v-2",
+  snapshotRevisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
   snapshotRevisionNumber: 2,
 };
 
@@ -196,6 +196,7 @@ describe.each(ROUTES)(
       ["an offset that is a string", { ...ok, offset: "9" }],
       ["an empty revision id", { ...ok, revisionId: "" }],
       ["a revision id with a path", { ...ok, revisionId: "../v-1" }],
+      ["a folder-name style revision id", { ...ok, revisionId: "v-1" }],
     ])(
       "returns 400 with one fixed text for %s, before the core runs, echoing nothing",
       async (_label, body) => {

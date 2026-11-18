@@ -47,7 +47,7 @@ const NEW_ID = "77777777-7777-4777-8777-777777777777";
 const HASH = "a".repeat(64);
 const PREVIEW_REQUEST = {
   resourceId: RID,
-  revisionId: "v-1",
+  revisionId: "34205ec3-fe37-41ee-96f9-e331e95e5475",
   contentHash: HASH,
   offset: 12,
 };
@@ -57,7 +57,7 @@ const APPLY_REQUEST = {
 };
 const PREVIEW_BODY = {
   outcome: "preview",
-  revisionId: "v-1",
+  revisionId: "34205ec3-fe37-41ee-96f9-e331e95e5475",
   contentHash: HASH,
   offset: 12,
   documentName: "Doc",
@@ -76,7 +76,7 @@ const APPLIED = {
   outcome: "applied",
   newDocumentId: NEW_ID,
   notices: [],
-  snapshotRevisionId: "v-2",
+  snapshotRevisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
   snapshotRevisionNumber: 2,
 };
 
@@ -129,7 +129,11 @@ describe("requestUndoSplit (Feature 120 Task 31)", () => {
     splitOffDocumentId: NEW_ID,
     splitOffState: "moved-to-trash",
     preservedRevisions: [
-      { documentId: RID, revisionId: "v-3", revisionNumber: 3 },
+      {
+        documentId: RID,
+        revisionId: "9d2f4a6c-1b7e-4e08-a3c5-7e1d0b4f8a63",
+        revisionNumber: 3,
+      },
     ],
     movedAnnotationIds: ["a1"],
   };
@@ -300,7 +304,11 @@ describe("requestLatestSplitOperation (Feature 120 Task 31)", () => {
     kind: "split",
     affectedDocumentIds: [RID, NEW_ID],
     snapshotRevisions: [
-      { documentId: RID, revisionId: "v-2", revisionNumber: 2 },
+      {
+        documentId: RID,
+        revisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
+        revisionNumber: 2,
+      },
     ],
     newDocumentId: NEW_ID,
     date: "2026-11-17T10:00:00.000Z",
@@ -512,6 +520,11 @@ describe("requestSplitPreview", () => {
     ["a negative offset", PID, { ...PREVIEW_REQUEST, offset: -1 }],
     ["a fractional offset", PID, { ...PREVIEW_REQUEST, offset: 1.5 }],
     ["an empty revision id", PID, { ...PREVIEW_REQUEST, revisionId: "" }],
+    [
+      "a folder-name style revision id",
+      PID,
+      { ...PREVIEW_REQUEST, revisionId: "v-1" },
+    ],
   ])("does not send %s and reports it as failed", async (_n, pid, req) => {
     const spy = vi.spyOn(globalThis, "fetch");
     const result = await requestSplitPreview(pid, req);
@@ -537,7 +550,7 @@ describe("requestSplit", () => {
       kind: "applied",
       newDocumentId: NEW_ID,
       notices: [],
-      snapshotRevisionId: "v-2",
+      snapshotRevisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
       snapshotRevisionNumber: 2,
     });
     const [url, init] = spy.mock.calls[0];
@@ -570,7 +583,7 @@ describe("requestSplit", () => {
       kind: "index-failed",
       newDocumentId: NEW_ID,
       notices: [],
-      snapshotRevisionId: "v-2",
+      snapshotRevisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
       snapshotRevisionNumber: 2,
       failures,
       message: describeSplitIndexFailure(["inverted-index"]),

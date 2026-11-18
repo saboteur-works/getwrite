@@ -90,7 +90,11 @@ const APPLIED_RESULT = {
   splitOffDocumentId: SPLIT_OFF,
   splitOffState: "moved-to-trash" as const,
   preservedRevisions: [
-    { documentId: ORIGINAL, revisionId: "v-3", revisionNumber: 3 },
+    {
+      documentId: ORIGINAL,
+      revisionId: "9d2f4a6c-1b7e-4e08-a3c5-7e1d0b4f8a63",
+      revisionNumber: 3,
+    },
   ],
   movedAnnotationIds: ["a1"],
 };
@@ -99,7 +103,11 @@ const RECORD: LatestOperationRecord = {
   kind: "split",
   affectedDocumentIds: [ORIGINAL, SPLIT_OFF],
   snapshotRevisions: [
-    { documentId: ORIGINAL, revisionId: "v-2", revisionNumber: 2 },
+    {
+      documentId: ORIGINAL,
+      revisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
+      revisionNumber: 2,
+    },
   ],
   newDocumentId: SPLIT_OFF,
   date: "2026-11-17T10:00:00.000Z",

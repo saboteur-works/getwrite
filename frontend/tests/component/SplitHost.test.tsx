@@ -170,7 +170,7 @@ function makeEditor(initial: TipTapDocument, head: number): FakeEditor {
 
 const previewData = {
   outcome: "preview" as const,
-  revisionId: "v-1",
+  revisionId: "34205ec3-fe37-41ee-96f9-e331e95e5475",
   contentHash: "x",
   offset: 0,
   documentName: "Chapter",
@@ -228,7 +228,11 @@ beforeEach(() => {
   stored = JSON.stringify(ORIGINAL);
   fetchResourceContent.mockImplementation(async () => {
     calls.push("fetchResourceContent");
-    return { revisions: [{ id: "v-1", isCanonical: true }] };
+    return {
+      revisions: [
+        { id: "34205ec3-fe37-41ee-96f9-e331e95e5475", isCanonical: true },
+      ],
+    };
   });
   fetchRevisionContent.mockImplementation(async () => {
     calls.push("fetchRevisionContent");
@@ -245,7 +249,7 @@ beforeEach(() => {
       kind: "applied",
       newDocumentId: NEW_ID,
       notices: [],
-      snapshotRevisionId: "v-2",
+      snapshotRevisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
       snapshotRevisionNumber: 2,
     };
   });
@@ -347,7 +351,7 @@ describe("SplitHost open request", () => {
     ];
     expect(projectId).toBe(PROJECT_DIR);
     expect(request.resourceId).toBe(RESOURCE_ID);
-    expect(request.revisionId).toBe("v-1");
+    expect(request.revisionId).toBe("34205ec3-fe37-41ee-96f9-e331e95e5475");
     expect(request.offset).toBe(6 + 5);
   });
 
@@ -624,7 +628,7 @@ describe("SplitHost apply", () => {
         kind: "index-failed",
         newDocumentId: NEW_ID,
         notices: ["Excluded notice text"],
-        snapshotRevisionId: "v-2",
+        snapshotRevisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
         snapshotRevisionNumber: 2,
         failures: [{ documentId: NEW_ID, step: "inverted-index" }],
         message: "The split was saved, but some data was not updated.",
@@ -652,7 +656,7 @@ describe("SplitHost apply", () => {
         kind: "applied",
         newDocumentId: NEW_ID,
         notices: [],
-        snapshotRevisionId: "v-2",
+        snapshotRevisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
         snapshotRevisionNumber: 2,
       };
     });
