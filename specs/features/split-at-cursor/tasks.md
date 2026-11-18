@@ -412,7 +412,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** LEAD-RUN with the owner, outside the sandbox from the main checkout. A unit test or an emulator run is never reported as a device run.
 **POS:** task_9a2d76bf
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 36: LEAD-RUN: hosted web run with the owner, including a second tenant
 **What:** Run the same checks on hosted web with the owner and check that a second tenant cannot reach the first's project.
