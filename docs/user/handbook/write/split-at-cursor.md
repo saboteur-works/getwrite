@@ -18,7 +18,7 @@ Split is for the desktop app and GetWrite on the web. It is not offered on Andro
 2. Choose **Split** from the editor's context menu, or press **Cmd+K** or **Ctrl+K** and choose **Split at cursor**.
 3. In the **Split document** window, choose what travels with the text that moves (see below), check the name, and choose **Split**.
 
-You can also use the shortcut **Cmd+Shift+Enter** on a Mac or **Ctrl+Shift+Enter** on Windows or Linux. GetWrite binds this key itself. Whether your browser or the desktop app's own menu takes the key before GetWrite sees it has not been checked, so if the shortcut does nothing, use the context menu or the command palette instead. The shortcut does nothing while a window is open or while you are typing in a text box outside the editor.
+You can also use the shortcut **Cmd+Shift+Enter** on a Mac or **Ctrl+Shift+Enter** on Windows or Linux. If the shortcut does nothing, use the context menu or the command palette instead. The shortcut does nothing while a window is open or while you are typing in a text box outside the editor.
 
 Split is not in the Resource Tree's menu, because a row in the tree has no cursor.
 
@@ -52,7 +52,7 @@ GetWrite refuses a split and tells you why. A refusal changes nothing: no revisi
 - The cursor is inside a table cell or a code block. Move it out and try again.
 - There is no text before the cursor, or none after it. A part that holds only spaces or empty paragraphs counts as empty.
 - The document changed after you placed the cursor.
-- The project is locked. GetWrite offers the unlock prompt where that is allowed, and tries the split once more after you unlock. If you decline, nothing is changed.
+- The project is locked. In the desktop app, GetWrite offers the unlock prompt and tries the split once more after you unlock. If you decline, GetWrite tells you the project is locked and nothing is changed. Locking is not offered on the hosted web version.
 
 A cursor inside the text of a paragraph, heading, quote or list item is fine. GetWrite splits that block in two.
 
