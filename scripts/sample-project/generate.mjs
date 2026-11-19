@@ -12,7 +12,12 @@
  * (timestamps come from the clock). The default seed is 121, the feature number.
  * A project directory that already holds files is refused before any write.
  * `project.json` carries `rootPath` (the absolute project directory), so the
- * Start page can open it. Prints one JSON line: path, project id, seed, counts.
+ * Start page can open it. Prints one JSON line: path, project id, seed, counts,
+ * and `merge` (Task 10): the ids of the documents arranged for the merge checks
+ * (cross-folder selection, annotated absorbed document, differing metadata,
+ * empty document, compile-excluded and Inbox targets, refusal cases, an already
+ * merged document, and 50 documents of about 5000 words for 2/10/50 timing).
+ * The merged mark is hand-written through the real mark store; no merge ran.
  *
  * How it builds (decision in specs/features/merge-documents/experiments/task-8.md):
  * this wrapper bundles `driver.ts` with the declared `cli` esbuild into an OS

@@ -13,6 +13,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadProjectCore } from "../../src/lib/models/project-crud-core";
 import { ProjectSchema } from "../../src/lib/models/schemas";
 import { collectAnnotationMarkIds } from "../../src/lib/models/annotation-mark-ids";
+import { readMergedMark } from "../../src/lib/models/merge-mark-core";
+import { MERGED_MARK_SIDECAR_KEY } from "../../src/lib/models/merge-types";
 
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 const SCRIPT = path.join(
@@ -23,11 +25,32 @@ const SCRIPT = path.join(
 );
 const DEFAULT_SEED = 121;
 
+/** The ids the JSON line names for the merge checks (Task 10). */
+interface MergeSummary {
+  crossFolder: { selection: string[]; treeOrder: string[] };
+  absorbedWithAnnotations: { id: string; targetId: string };
+  metadataDiffers: string[];
+  emptyDocument: string;
+  excludedTarget: string;
+  inboxTarget: string;
+  refusals: {
+    source: string;
+    entity: string;
+    folder: string;
+    image: string;
+    audio: string;
+    marked: string;
+  };
+  markedDocument: { id: string; targetId: string };
+  timing: { folderId: string; two: string[]; ten: string[]; fifty: string[] };
+}
+
 interface Summary {
   path: string;
   projectId: string;
   seed: number;
   counts: Record<string, number>;
+  merge: MergeSummary;
 }
 
 function runGenerator(out: string, extra: string[] = []): Summary {
@@ -305,6 +328,156 @@ describe("sample-project generator", () => {
       claims: true,
       citations: true,
       folklore: true,
+    });
+  });
+
+  describe("merge-specific coverage (Task 10)", () => {
+    const sidecarOf = (id: string): Sidecar => {
+      const s = sidecars.find((x) => x.id === id);
+      if (!s) throw new Error(`no sidecar for ${id}`);
+      return s;
+    };
+    const metaOf = (id: string): Record<string, unknown> =>
+      (sidecarOf(id).userMetadata ?? {}) as Record<string, unknown>;
+    const plainOf = (id: string): string =>
+      fs.readFileSync(
+        path.join(projectDir, "resources", id, "content.txt"),
+        "utf8",
+      );
+    const wordCount = (id: string): number =>
+      plainOf(id).split(/\s+/).filter(Boolean).length;
+    const compileExcluded = (): string[] =>
+      (
+        readJson(path.join(projectDir, "project.json")).config as {
+          compileDefaults?: { excludedResourceIds?: string[] };
+        }
+      ).compileDefaults?.excludedResourceIds ?? [];
+    const folderIndex = (folderId: unknown): number =>
+      (loaded.folders as FolderRow[]).findIndex((f) => f.id === folderId);
+
+    it("names a cross-folder selection of three or more eligible documents, first selected not first in tree order", () => {
+      const { selection, treeOrder } = summary.merge.crossFolder;
+      expect(selection.length).toBeGreaterThanOrEqual(3);
+      expect([...selection].sort()).toEqual([...treeOrder].sort());
+      for (const id of selection) {
+        expect(sidecarOf(id).type).toBe("text");
+        expect(sidecarOf(id)[MERGED_MARK_SIDECAR_KEY]).toBeUndefined();
+        expect(sidecarOf(id).entityKind).toBeUndefined();
+      }
+      expect(
+        new Set(selection.map((id) => sidecarOf(id).folderId)).size,
+      ).toBeGreaterThanOrEqual(3);
+      expect(selection[0]).not.toBe(treeOrder[0]);
+      // The named tree order matches the folder order the project loads in.
+      const byFolder = [...treeOrder].sort(
+        (a, b) =>
+          folderIndex(sidecarOf(a).folderId) -
+          folderIndex(sidecarOf(b).folderId),
+      );
+      expect(treeOrder).toEqual(byFolder);
+    });
+
+    it("names an absorbed document with a note, a citation and a claim", () => {
+      const { id, targetId } = summary.merge.absorbedWithAnnotations;
+      expect(sidecarOf(targetId).type).toBe("text");
+      const rows = (sidecarOf(id).annotations ?? []) as AnnotationRow[];
+      expect(
+        rows.some((a) => a.target === undefined && a.claim === undefined),
+      ).toBe(true);
+      expect(
+        rows.some((a) => a.target !== undefined && a.claim === undefined),
+      ).toBe(true);
+      expect(rows.some((a) => a.claim !== undefined)).toBe(true);
+    });
+
+    it("names documents whose status and multiselect values differ", () => {
+      const ids = summary.merge.metadataDiffers;
+      expect(ids.length).toBeGreaterThanOrEqual(2);
+      const statuses = new Set(ids.map((id) => metaOf(id).status));
+      expect(statuses.size).toBeGreaterThanOrEqual(2);
+      const themes = new Set(
+        ids.map((id) => JSON.stringify(metaOf(id).themes ?? null)),
+      );
+      expect(themes.size).toBeGreaterThanOrEqual(2);
+      expect(ids.every((id) => Array.isArray(metaOf(id).themes))).toBe(true);
+    });
+
+    it("names a fully empty document", () => {
+      const id = summary.merge.emptyDocument;
+      expect(sidecarOf(id).type).toBe("text");
+      expect(plainOf(id).trim()).toBe("");
+      expect(sidecarOf(id).annotations ?? []).toEqual([]);
+    });
+
+    it("names a target excluded from compile", () => {
+      const id = summary.merge.excludedTarget;
+      expect(sidecarOf(id).type).toBe("text");
+      expect(compileExcluded()).toContain(id);
+    });
+
+    it("names a target in the Inbox", () => {
+      const inboxId = (
+        readJson(path.join(projectDir, "project.json")).config as {
+          inboxFolderId?: string;
+        }
+      ).inboxFolderId;
+      const id = summary.merge.inboxTarget;
+      expect(sidecarOf(id).type).toBe("text");
+      expect(sidecarOf(id).folderId).toBe(inboxId);
+    });
+
+    it("names a Source, an entity document and a folder for refusals", () => {
+      const r = summary.merge.refusals;
+      expect(sidecarOf(r.source).type).toBe("source");
+      expect(typeof sidecarOf(r.entity).entityKind).toBe("string");
+      expect(
+        (loaded.folders as FolderRow[]).some((f) => f.id === r.folder),
+      ).toBe(true);
+    });
+
+    it("names an image resource and an audio resource for refusals", () => {
+      const r = summary.merge.refusals;
+      expect(sidecarOf(r.image).type).toBe("image");
+      expect(sidecarOf(r.audio).type).toBe("audio");
+    });
+
+    it("names a document already marked as merged, read back by the real mark store", async () => {
+      const { id, targetId } = summary.merge.markedDocument;
+      expect(summary.merge.refusals.marked).toBe(id);
+      expect(sidecarOf(id).type).toBe("text");
+      expect(sidecarOf(id)[MERGED_MARK_SIDECAR_KEY]).toBeDefined();
+      const read = await readMergedMark(projectDir, id);
+      expect(read.outcome).toBe("found");
+      if (read.outcome !== "found") return;
+      expect(read.mark.targetDocumentId).toBe(targetId);
+      expect(sidecarOf(targetId).type).toBe("text");
+      const revisionsDir = path.join(projectDir, "revisions", targetId);
+      const revisionIds = fs
+        .readdirSync(revisionsDir)
+        .map(
+          (d) =>
+            readJson(path.join(revisionsDir, d, "metadata.json")).id as string,
+        );
+      expect(revisionIds).toContain(read.mark.targetSnapshotRevisionId);
+      expect(Number.isNaN(Date.parse(read.mark.date))).toBe(false);
+    });
+
+    it("names 50 further eligible text documents of about 5000 words, grouped for 2, 10 and 50", () => {
+      const t = summary.merge.timing;
+      expect(t.fifty).toHaveLength(50);
+      expect(t.ten).toEqual(t.fifty.slice(0, 10));
+      expect(t.two).toEqual(t.fifty.slice(0, 2));
+      for (const id of t.fifty) {
+        const sc = sidecarOf(id);
+        expect(sc.type).toBe("text");
+        expect(sc.folderId).toBe(t.folderId);
+        expect(sc[MERGED_MARK_SIDECAR_KEY]).toBeUndefined();
+        expect(sc.entityKind).toBeUndefined();
+        expect(compileExcluded()).not.toContain(id);
+        const n = wordCount(id);
+        expect(n).toBeGreaterThanOrEqual(4500);
+        expect(n).toBeLessThanOrEqual(5500);
+      }
     });
   });
 

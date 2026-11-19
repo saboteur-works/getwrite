@@ -177,6 +177,12 @@ async function main(): Promise<void> {
     await import("../../frontend/src/lib/models/indexer-queue");
   const { rebuildDerivedIndexes } =
     await import("../../frontend/src/lib/models/derived-index-rebuild");
+  const { seedCompileExclusion, CAPTURE_NOT_EXCLUDED_MESSAGES } =
+    await import("../../frontend/src/lib/models/saved-defaults-core");
+  const { writeMergedMark } =
+    await import("../../frontend/src/lib/models/merge-mark-core");
+  const { listRevisions } =
+    await import("../../frontend/src/lib/models/revision");
 
   // The directory name is the id the cores take as `projectId`; the id inside
   // `project.json` is a different one (`experiments/task-8.md`).
@@ -197,6 +203,7 @@ async function main(): Promise<void> {
         { name: "Manuscript" },
         { name: "Story Elements" },
         { name: "Research" },
+        { name: "Merge checks" },
       ],
       statuses: ["Idea", "Draft", "Revising", "Final"],
       subtypes: ["Scene", "Character", "Reference", "Narrative", "Variant"],
@@ -211,6 +218,7 @@ async function main(): Promise<void> {
   const manuscript = topFolder("Manuscript");
   const elements = topFolder("Story Elements");
   const research = topFolder("Research");
+  const mergeChecks = topFolder("Merge checks");
 
   const newFolder = async (name: string, folderId: string): Promise<string> =>
     (await createResourceCore(projectId, { name, type: "folder", folderId }))
@@ -469,6 +477,220 @@ async function main(): Promise<void> {
     },
   });
 
+  // ---- Merge-specific coverage (Task 10) -----------------------------------
+  // Every id below is named in the JSON line so an owner can find it.
+  const longBody = (words: number): ReturnType<typeof doc> => {
+    const paragraphs: Node[] = [];
+    let left = words;
+    while (left > 0) {
+      const n = Math.min(left, 100);
+      const parts: string[] = [];
+      for (let i = 0; i < n; i += 10) {
+        parts.push(sentence(Math.min(10, n - i)));
+      }
+      paragraphs.push(para(parts.join(" ")));
+      left -= n;
+    }
+    return doc(...paragraphs);
+  };
+
+  // A cross-folder selection: three documents in three sibling folders. Tree
+  // order is folder A, B, C; the selection starts with the document in C.
+  const crossA = await newFolder("Cross A", mergeChecks);
+  const crossB = await newFolder("Cross B", mergeChecks);
+  const crossC = await newFolder("Cross C", mergeChecks);
+  const crossDocA = await makeText(
+    "Cross A document",
+    crossA,
+    doc(para(sentence(12))),
+    { status: "Draft" },
+  );
+  const crossDocB = await makeText(
+    "Cross B document",
+    crossB,
+    doc(para(sentence(12))),
+    { status: "Draft" },
+  );
+  const crossDocC = await makeText(
+    "Cross C document",
+    crossC,
+    doc(para(sentence(12))),
+    { status: "Draft" },
+  );
+
+  // An absorbed document with a note, a citation and a claim, and its target.
+  const absorbFolder = await newFolder("Absorb", mergeChecks);
+  const absorbTarget = await makeText(
+    "Absorb target",
+    absorbFolder,
+    doc(para(sentence(10))),
+    { status: "Draft" },
+  );
+  const absorbNoteId = nextId();
+  const absorbCitationId = nextId();
+  const absorbClaimId = nextId();
+  const absorbed = await makeText(
+    "Absorbed with notes",
+    absorbFolder,
+    doc(
+      para(
+        sentence(6),
+        " ",
+        marked("A passage with a note.", absorbNoteId),
+        " ",
+        marked("A passage that cites the field notes.", absorbCitationId),
+        " ",
+        marked("A passage that makes a claim.", absorbClaimId),
+      ),
+    ),
+    { status: "Draft" },
+  );
+  await addAnnotationCore(projectId, absorbed, {
+    id: absorbNoteId,
+    body: "A note that must travel with the passage.",
+    quote: "A passage with a note.",
+  });
+  await addAnnotationCore(projectId, absorbed, {
+    id: absorbCitationId,
+    body: "",
+    quote: "A passage that cites the field notes.",
+    target: {
+      sourceId: source.id,
+      sourceName: "Field notes",
+      locator: { type: "page", value: "3" },
+    },
+  });
+  await addClaimCore(projectId, absorbed, {
+    id: absorbClaimId,
+    statement: "A claim that must travel with the passage.",
+    quote: "A passage that makes a claim.",
+  });
+
+  // Documents whose metadata differs: status, select and multiselect values.
+  const metaFolder = await newFolder("Metadata differs", mergeChecks);
+  const metaDocs = [
+    await makeText("Metadata one", metaFolder, doc(para(sentence(8))), {
+      status: "Draft",
+      genre: "Fantasy",
+      themes: ["Loss", "Memory"],
+    }),
+    await makeText("Metadata two", metaFolder, doc(para(sentence(8))), {
+      status: "Final",
+      genre: "Mystery",
+      themes: ["Memory", "Home"],
+    }),
+    await makeText("Metadata three", metaFolder, doc(para(sentence(8))), {
+      status: "Revising",
+      themes: ["Betrayal"],
+    }),
+  ];
+
+  // A fully empty document, a target left out of compile, a target in the Inbox.
+  const edgeFolder = await newFolder("Edge cases", mergeChecks);
+  const emptyDocument = await makeText(
+    "Empty document",
+    edgeFolder,
+    doc(para()),
+    {},
+  );
+  const excludedTarget = await makeText(
+    "Target left out of compile",
+    edgeFolder,
+    doc(para(sentence(9))),
+    { status: "Draft" },
+  );
+  const seeded = await seedCompileExclusion(
+    projectRoot,
+    excludedTarget,
+    CAPTURE_NOT_EXCLUDED_MESSAGES,
+  );
+  if (seeded.notice !== undefined) {
+    throw new Error(`compile exclusion not saved: ${seeded.notice}`);
+  }
+  const inboxTarget = await makeText(
+    "Target in the Inbox",
+    capture.inboxFolderId,
+    doc(para(sentence(9))),
+    { status: "Idea" },
+  );
+
+  // An audio resource for refusals (the Source, entity document, folder and
+  // image resource already exist above).
+  const audio = await uploadMediaResourceCore(projectId, {
+    fileBytes: MP3_BYTES,
+    fileName: "sample-recording.mp3",
+    mimeType: "audio/mpeg",
+    fileSize: MP3_BYTES.length,
+    title: "Sample recording",
+    folderId: research,
+  });
+
+  // A document already marked as merged. No merge core exists yet, so the mark
+  // is written by the real mark store with the target's existing revision id.
+  const markedFolder = await newFolder("Already merged", mergeChecks);
+  const markTarget = await makeText(
+    "Mark target",
+    markedFolder,
+    doc(para(sentence(8))),
+    { status: "Draft" },
+  );
+  const markedDocument = await makeText(
+    "Already merged document",
+    markedFolder,
+    doc(para(sentence(8))),
+    { status: "Draft" },
+  );
+  const targetRevisions = await listRevisions(projectRoot, markTarget);
+  if (targetRevisions.length === 0) {
+    throw new Error("the mark target has no revision to name");
+  }
+  await writeMergedMark(projectRoot, markedDocument, {
+    targetDocumentId: markTarget,
+    targetSnapshotRevisionId: targetRevisions[0].id,
+    date: new Date().toISOString(),
+  });
+
+  // 50 further eligible documents of about 5000 words in one folder; the first
+  // 2 and the first 10 are the smaller selections for the timing check.
+  const timingFolder = await newFolder("Timing 50", mergeChecks);
+  const timingIds: string[] = [];
+  for (let i = 1; i <= 50; i += 1) {
+    timingIds.push(
+      await makeText(
+        `Timing ${String(i).padStart(2, "0")}`,
+        timingFolder,
+        longBody(5000),
+        { status: "Draft" },
+      ),
+    );
+  }
+  const mergeSummary = {
+    crossFolder: {
+      selection: [crossDocC, crossDocA, crossDocB],
+      treeOrder: [crossDocA, crossDocB, crossDocC],
+    },
+    absorbedWithAnnotations: { id: absorbed, targetId: absorbTarget },
+    metadataDiffers: metaDocs,
+    emptyDocument,
+    excludedTarget,
+    inboxTarget,
+    refusals: {
+      source: source.id,
+      entity: entityDoc,
+      folder: scenes,
+      image: image.id,
+      audio: audio.id,
+      marked: markedDocument,
+    },
+    markedDocument: { id: markedDocument, targetId: markTarget },
+    timing: {
+      folderId: timingFolder,
+      two: timingIds.slice(0, 2),
+      ten: timingIds.slice(0, 10),
+      fifty: timingIds,
+    },
+  };
+
   // Saves queued index tasks; they are drained (and any watcher stopped) before
   // the from-scratch rebuild, so no write is still running when the process ends.
   await shutdownIndexer();
@@ -490,7 +712,13 @@ async function main(): Promise<void> {
   }
   createdRoot = null;
   process.stdout.write(
-    `${JSON.stringify({ path: projectRoot, projectId, seed: SEED, counts })}\n`,
+    `${JSON.stringify({
+      path: projectRoot,
+      projectId,
+      seed: SEED,
+      counts,
+      merge: mergeSummary,
+    })}\n`,
   );
   process.exit(0);
 }
