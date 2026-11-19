@@ -9,6 +9,7 @@ import EntityCompileResourceList, {
 } from "./EntityCompileResourceList";
 import {
   buildCompileTree,
+  excludeMergedDocuments,
   initAllChecked,
   getDescendantLeafIds,
   ROOT_ITEM_ID,
@@ -118,6 +119,10 @@ export interface CompilePreviewModalProps {
   ) => Promise<CitationCheckResult>;
 }
 
+/** FR-17: the dialog's statement of the merged-away rule (owner reviews wording). */
+const COMPILE_MERGED_NOTICE =
+  "Documents merged into another document are left out of every compile.";
+
 /** Why the citations switch is disabled, or undefined when it is usable. */
 function citationsDisabledReason(
   availability: CitationsAvailability,
@@ -171,7 +176,7 @@ function CompileModalBody(
   const {
     isOpen,
     projectId,
-    resources = [],
+    resources: allResources = [],
     onClose,
     onConfirmCompile,
     resource,
@@ -187,6 +192,13 @@ function CompileModalBody(
     setShouldIncludeHeaders,
   } = props;
 
+  // FR-17: a document marked as merged is never offered, whatever the saved
+  // defaults say and with no per-run override. Read from the mark each render.
+  const resources = useMemo(
+    () => excludeMergedDocuments(allResources),
+    [allResources],
+  );
+  const hasMergedDocuments = resources.length !== allResources.length;
   const tree = useMemo(() => buildCompileTree(resources), [resources]);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() =>
     initAllChecked(tree),
@@ -316,6 +328,15 @@ function CompileModalBody(
               "Every resource associated with this entity, in resource-tree order."
             : "Select which resources to include in the compiled output."}
         </p>
+
+        {hasMergedDocuments ? (
+          <p
+            className="compile-modal-meta-text mt-2"
+            data-testid="compile-merged-notice"
+          >
+            {COMPILE_MERGED_NOTICE}
+          </p>
+        ) : null}
 
         {props.isSourceEncrypted ? (
           <p className="mt-2 text-[12px] leading-relaxed text-gw-primary">

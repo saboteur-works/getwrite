@@ -12,7 +12,10 @@ import {
   selectSelectedProjectId,
 } from "../../src/store/projectsSlice";
 import { useEntityMentions } from "./EntityMentionsContext";
-import { orderResourceIdsByTreePosition } from "../common/compileSelection";
+import {
+  excludeMergedDocuments,
+  orderResourceIdsByTreePosition,
+} from "../common/compileSelection";
 import CompilePreviewModal, {
   type EntityCompileEntry,
   type CompileOptions,
@@ -72,9 +75,16 @@ export default function EntityCompileSection(): JSX.Element | null {
   // FR-3: ordered against the project's full resource tree. Ids not present
   // in the tree (e.g. a stale backlink to a deleted resource) are dropped by
   // `orderResourceIdsByTreePosition` itself.
+  // FR-17: a document marked as merged is left out of the entity compile too,
+  // read from the mark before the tree is built; nothing is written.
+  const compilableTreeItems = useMemo(
+    () => excludeMergedDocuments(projectTreeItems),
+    [projectTreeItems],
+  );
   const orderedResourceIds = useMemo(
-    () => orderResourceIdsByTreePosition(projectTreeItems, mergedResourceIds),
-    [projectTreeItems, mergedResourceIds],
+    () =>
+      orderResourceIdsByTreePosition(compilableTreeItems, mergedResourceIds),
+    [compilableTreeItems, mergedResourceIds],
   );
 
   const compileEntries: EntityCompileEntry[] = useMemo(
