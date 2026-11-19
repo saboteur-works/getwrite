@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import {
   Plus,
   Copy,
@@ -8,6 +8,7 @@ import {
   Pencil,
   Search,
   FolderInput,
+  Merge,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -34,6 +35,16 @@ export type ResourceContextAction =
  */
 export type ResourceMenuAction = ResourceContextAction | "file-to";
 
+/**
+ * The state of the Merge item (Feature 121, FR-13), given by the tree only when
+ * the right-clicked row is one of two or more selected rows. `reason` is the
+ * stated reason the selection cannot be merged, or `null` when it can.
+ */
+export interface ResourceMergeItem {
+  reason: string | null;
+  onMerge: () => void;
+}
+
 export interface ResourceContextMenuProps {
   resourceId?: string;
   /** Prefer `resourceName` (canonical). `resourceTitle` kept for backwards compatibility. */
@@ -41,6 +52,8 @@ export interface ResourceContextMenuProps {
   resourceTitle?: string;
   onClose?: () => void;
   onAction?: (action: ResourceMenuAction, resourceId?: string) => void;
+  /** Merge item state; absent or `null` means the item is not offered. */
+  merge?: ResourceMergeItem | null;
   className?: string;
   children: ReactNode;
 }
@@ -51,6 +64,7 @@ export default function ResourceContextMenu({
   resourceTitle,
   onClose,
   onAction,
+  merge = null,
   className = "",
   children,
 }: ResourceContextMenuProps) {
@@ -134,6 +148,12 @@ export default function ResourceContextMenu({
           <Files size={14} className="resource-context-menu-item-icon" />
           Duplicate
         </ContextMenuItem>
+        {/* Feature 121: the merge routes do not exist in the Android build.
+            The inline comparison is what the bundler replaces. */}
+        {merge !== null &&
+        process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native" ? (
+          <MergeMenuItem merge={merge} />
+        ) : null}
         <ContextMenuSeparator className="resource-context-menu-separator" />
         <ContextMenuItem
           className="resource-context-menu-item resource-context-menu-item-danger"
@@ -151,5 +171,38 @@ export default function ResourceContextMenu({
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
+  );
+}
+
+/**
+ * The Merge item (Feature 121, FR-13). Enabled, it asks the merge host to open
+ * the dialog. Disabled, it shows its stated reason as visible secondary text
+ * that the item also names with `aria-describedby`, so the reason is read with
+ * the item and is never hidden. The accessible name stays "Merge".
+ */
+function MergeMenuItem({ merge }: { merge: ResourceMergeItem }) {
+  const reasonId = useId();
+  const { reason } = merge;
+  return (
+    <ContextMenuItem
+      className="resource-context-menu-item"
+      aria-label="Merge"
+      aria-describedby={reason === null ? undefined : reasonId}
+      disabled={reason !== null}
+      onSelect={() => merge.onMerge()}
+    >
+      <Merge size={14} className="resource-context-menu-item-icon" />
+      <span>
+        Merge
+        {reason !== null && (
+          <span
+            id={reasonId}
+            className="block text-gw-label text-fg-tertiary font-normal"
+          >
+            {reason}
+          </span>
+        )}
+      </span>
+    </ContextMenuItem>
   );
 }

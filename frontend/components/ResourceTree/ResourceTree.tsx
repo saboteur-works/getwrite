@@ -47,12 +47,18 @@ import {
 import { selectActiveProjectDirectoryId } from "../../src/store/projectsSlice";
 import ResourceContextMenu, {
   ResourceContextAction,
+  type ResourceMergeItem,
 } from "./ResourceContextMenu";
 import ResourceRowMenu from "./ResourceRowMenu";
 import MoveResourceModal from "./MoveResourceModal";
 import { computeMovePayload, collectDescendantIds } from "./moveResource";
 import type { Folder } from "../../src/lib/models/types";
 import { useMemo, useEffect, useState } from "react";
+import { openMergeDialog } from "../Merge/mergeOpenRequest";
+import { mergeEligibility } from "../../src/lib/models/merge-eligibility";
+import { MERGE_REFUSAL_MESSAGES } from "../../src/lib/models/merge-messages";
+import { MERGED_MARK_SIDECAR_KEY } from "../../src/lib/models/merge-types";
+import type { AnyResource } from "../../src/lib/models/types";
 import { shallowEqual } from "react-redux";
 import {
   ChevronDown,
@@ -101,7 +107,11 @@ const customClickBehavior: FeatureImplementation = {
         }
 
         item.setFocused();
-        prev?.()?.onClick?.(e);
+        // The library's own handler makes the same selection change again.
+        // For Ctrl/Cmd that is a toggle, so running it undid the first one
+        // (Feature 121, `experiments/task-2.md`); it runs for the others.
+        const isToggleOnly = !e.shiftKey && (e.ctrlKey || e.metaKey);
+        if (!isToggleOnly) prev?.()?.onClick?.(e);
         return {
           selectedItems: tree.getSelectedItems(),
           focusedItem: item.getItemMeta().itemId,
@@ -110,6 +120,72 @@ const customClickBehavior: FeatureImplementation = {
     }),
   },
 };
+
+/**
+ * The selected rows in the order they were selected (Feature 121, FR-13: the
+ * first is the merge target). A plain click starts a selection; Ctrl/Cmd adds
+ * the row after the earlier ones; Shift gives the first selected row first and
+ * the rest of the range in tree order; Ctrl+Shift adds the range's new rows
+ * after the earlier ones. `selected` is the tree's selection after the click,
+ * in tree order. Nothing here reorders rows that were already selected.
+ */
+function orderAfterClick(
+  previous: readonly string[],
+  selected: readonly string[],
+  clickedId: string,
+  modifiers: { shift: boolean; toggle: boolean },
+): string[] {
+  if (!modifiers.shift && !modifiers.toggle) return [clickedId];
+  const kept = previous.filter((id) => selected.includes(id));
+  if (modifiers.shift && !modifiers.toggle) {
+    const first = kept[0] ?? clickedId;
+    return [first, ...selected.filter((id) => id !== first)];
+  }
+  const added = selected.filter((id) => !kept.includes(id));
+  const clickedFirst = added.includes(clickedId)
+    ? [clickedId, ...added.filter((id) => id !== clickedId)]
+    : added;
+  return [...kept, ...clickedFirst];
+}
+
+/** Rows of `order` that are still selected, then any selected row not in it (tree order). */
+function reconcileOrder(
+  order: readonly string[],
+  selected: readonly string[],
+): string[] {
+  return [
+    ...order.filter((id) => selected.includes(id)),
+    ...selected.filter((id) => !order.includes(id)),
+  ];
+}
+
+/**
+ * The stated reason the selection cannot be merged, or `null` when it can
+ * (the one pure decision of FR-2, over what the client holds for each row).
+ */
+function mergeRefusalText(
+  orderedIds: readonly string[],
+  resources: readonly AnyResource[],
+): string | null {
+  const byId = new Map(resources.map((r) => [r.id, r]));
+  const result = mergeEligibility(
+    orderedIds.map((id) => {
+      const r = byId.get(id) as unknown as Record<string, unknown> | undefined;
+      return {
+        id,
+        inTrash: false,
+        sidecar: r
+          ? {
+              type: r["type"],
+              entityKind: r["entityKind"],
+              [MERGED_MARK_SIDECAR_KEY]: r[MERGED_MARK_SIDECAR_KEY],
+            }
+          : null,
+      };
+    }),
+  );
+  return result.eligible ? null : MERGE_REFUSAL_MESSAGES[result.reason];
+}
 
 /**
  * Returns the appropriate icon element for a tree node based on resource type.
@@ -230,6 +306,11 @@ export default function ResourceTree({
   // same source `useResourceReorder` uses (never `currentProject.id`).
   const projectDirectoryId = useAppSelector(selectActiveProjectDirectoryId);
 
+  // The selected rows in the order they were selected; the first is the merge
+  // target (Feature 121, FR-13). Reconciled with the tree's own selection at
+  // render, so a change made some other way still gives a complete list.
+  const [selectionOrder, setSelectionOrder] = useState<string[]>([]);
+
   // "Move to…" (touch reparenting) — replaces drag-and-drop on touch.
   const [moveTarget, setMoveTarget] = useState<{
     id: string;
@@ -328,15 +409,23 @@ export default function ResourceTree({
     item.setFocused();
 
     const modificationData = item.getProps().onClick?.(e);
+    const clickedId = item.getId();
+    const selectedIds: string[] = (
+      modificationData.selectedItems as ItemInstance<ResourceItemData>[]
+    ).map((selected) => selected.getId());
+    // A click always leaves the clicked row selected when it would otherwise
+    // leave nothing (Ctrl-click on the only selected row).
+    const kept = selectedIds.length === 0 ? [clickedId] : selectedIds;
 
-    if (modificationData.selectedItems.length === 1) {
-      tree.setSelectedItems([item.getItemMeta().itemId]);
-      dispatch(setSelectedResourceId(item.getId()));
-    } else {
-      tree.setSelectedItems(modificationData.selectedItems);
-      item.selectUpTo(e.ctrlKey || e.metaKey);
-      dispatch(setSelectedResourceId(modificationData.focusedItem));
-    }
+    tree.setSelectedItems(kept);
+    setSelectionOrder((previous) =>
+      orderAfterClick(previous, kept, clickedId, {
+        shift: e.shiftKey,
+        toggle: e.ctrlKey || e.metaKey,
+      }),
+    );
+    // The clicked row opens unless the click took it out of the selection.
+    if (kept.includes(clickedId)) dispatch(setSelectedResourceId(clickedId));
   };
 
   const tree = useTree<ResourceItemData>({
@@ -385,9 +474,29 @@ export default function ResourceTree({
     tree.rebuildTree();
   }, [transformedResourceData]);
 
+  // The opened document is selected. A selection that already holds it (a
+  // multi-selection made by Ctrl/Cmd or Shift clicks) is left as it is; any
+  // other change of the opened document replaces the selection with it.
   useEffect(() => {
-    tree.setSelectedItems(selectedResourceId ? [selectedResourceId] : []);
+    const selected = tree.getSelectedItems().map((i) => i.getId());
+    if (selectedResourceId === null) {
+      tree.setSelectedItems([]);
+    } else if (!selected.includes(selectedResourceId)) {
+      tree.setSelectedItems([selectedResourceId]);
+    }
   }, [selectedResourceId]);
+
+  const selectedRowIds = tree.getSelectedItems().map((i) => i.getId());
+  const orderedSelection = reconcileOrder(selectionOrder, selectedRowIds);
+  const mergeItem: ResourceMergeItem = {
+    reason:
+      orderedSelection.length >= 2
+        ? mergeRefusalText(orderedSelection, rawResources)
+        : null,
+    onMerge: () => {
+      openMergeDialog(orderedSelection);
+    },
+  };
 
   const draggedItems = tree.getState().dnd?.draggedItems;
   return (
@@ -412,6 +521,9 @@ export default function ResourceTree({
             }
             onResourceAction?.(action, resourceId, item.getItemName());
           }}
+          merge={
+            orderedSelection.length >= 2 && item.isSelected() ? mergeItem : null
+          }
           onClose={() => {}}
         >
           <div
