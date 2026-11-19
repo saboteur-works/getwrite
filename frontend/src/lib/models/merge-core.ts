@@ -5,9 +5,9 @@
  * the decided order (Feature 121, FR-3 to FR-10, FR-6 forward path, FR-8,
  * FR-21): the stale and eligibility refusals, then the ordered writes. A
  * sibling of `split-core.ts` taking N+1 locks, not a generalisation of it.
- * Reverse compensation is a later task: on a failure this module returns
- * `failed` naming the step that stopped it and what it knows is on disk, and
- * does not undo anything or claim that it did.
+ * A step that throws is undone by reverse compensation (FR-6, below) and the
+ * result is `failed`, naming the step that stopped and the state that remains
+ * after the undo.
  *
  * Writer model: the claim that nothing else writes between the staleness
  * check and the last write holds under one writer instance per tenant
@@ -47,8 +47,25 @@
  * lock, that the value it replaces is the one that was read, so a concurrent
  * change is a failure and not a lost update.
  *
+ * Reverse compensation (FR-6): a step that throws undoes the earlier steps in
+ * reverse (the record, the append, each strip, each mark, the moved notes,
+ * the snapshots), each undo idempotent so it is also safe for the step that
+ * threw after writing, and returns `failed` naming the step and the state
+ * that remains. The undo steps put back what the forward steps changed: the
+ * raw text files a step rewrote, the sidecar keys it set, the latest-operation
+ * file. A snapshot is removed by clearing its preserve flag first, because
+ * `deleteRevision` refuses a preserved revision. They are kept when any other
+ * undo failed (they hold the earlier text). `project.json`'s
+ * `metadataRevision` counter may stay higher: every sidecar write advances it
+ * and nothing writes it back. A locked-access error with nothing written is
+ * rethrown. The derived-index update is outside this operation and its
+ * rollback.
+ *
  * No React, JSX or JSON.
  */
+import { atomicWriteFile, readFile, rm } from "./io";
+import { flushIndexer } from "./indexer-queue";
+import { withMetaLock } from "./meta-locks";
 import { readFolderTree } from "./folder-utils";
 import { isLockedAccessError } from "./locked-access";
 import { acquireLock } from "./locks";
@@ -58,7 +75,7 @@ import {
 } from "./merge-annotations";
 import { composeMergedDocument, orderAbsorbedDocuments } from "./merge-compose";
 import { MERGE_DOCUMENT_CAP } from "./merge-limits";
-import { writeMergedMark } from "./merge-mark-core";
+import { removeMergedMark, writeMergedMark } from "./merge-mark-core";
 import { applyMergeMetadataCarry } from "./merge-metadata";
 import {
   evaluateMergeRequest,
@@ -74,13 +91,19 @@ import {
 } from "./merge-types";
 import { resolveResourceProjectRootOrThrow } from "./resource-crud-core";
 import { isResourceId } from "./resource-id";
+import { listRevisions, revisionDir } from "./revision";
 import {
   createRevision,
+  deleteRevision,
+  setRevisionPreserve,
   writeCanonicalContentWithoutLog,
 } from "./revision-core";
-import { mutateSidecar } from "./sidecar";
+import { mutateSidecar, SIDECAR_UNCHANGED } from "./sidecar";
 import { revisionContentLockKey } from "./split-preview-core";
-import { writeLatestOperation } from "./split-records-core";
+import {
+  LATEST_OPERATION_FILE_NAME,
+  writeLatestOperation,
+} from "./split-records-core";
 import type {
   Annotation,
   AnyResource,
@@ -126,11 +149,50 @@ interface Plan {
   movedFrom: Map<string, Set<string>>;
 }
 
-/** What has been written so far; decides the state reported on a failure. */
+/** A file's raw text before a step rewrote it; `null` when it did not exist. */
+interface RawFile {
+  path: string;
+  raw: string | null;
+}
+
+/** What a text write changes, so it can be put back exactly. */
+interface TextBackup {
+  contentPath: string;
+  content: string;
+  derived: RawFile[];
+}
+
+/** Which kind of undo step failed; the set decides the state reported. */
+type UndoKind =
+  | "record"
+  | "append"
+  | "strip"
+  | "marks"
+  | "annotations"
+  | "snapshot";
+
+/**
+ * What has been written so far. Compensation undoes exactly what was
+ * attempted; the backups are taken before the first write.
+ */
 interface Progress {
   step: MergeStep;
   snapshotsDone: number;
   hasOtherWrite: boolean;
+  targetId: string;
+  /** Revision ids of each document before the snapshots; null until taken. */
+  revisionIdsBefore: Map<string, Set<string>> | null;
+  /** Each document's sidecar as read under the locks. */
+  sidecarsBefore: Map<string, Record<string, MetadataValue>>;
+  textBackups: Map<string, TextBackup>;
+  recordFile: RawFile | null;
+  /** Documents whose notes were being rewritten, in order. */
+  annotationDocs: string[];
+  markedDocs: string[];
+  strippedDocs: string[];
+  isAppendAttempted: boolean;
+  isMetadataAttempted: boolean;
+  isRecordAttempted: boolean;
 }
 
 class PlanFailure extends Error {
@@ -381,9 +443,14 @@ async function writeSnapshots(
 }
 
 /** Step 3: the chosen annotations leave their documents and join the target. */
-async function moveAnnotations(projectRoot: string, p: Plan): Promise<void> {
+async function moveAnnotations(
+  projectRoot: string,
+  p: Plan,
+  progress: Progress,
+): Promise<void> {
   const isAnyMoved = [...p.movedFrom.values()].some((ids) => ids.size > 0);
   if (!isAnyMoved) return;
+  progress.annotationDocs.push(p.target.resourceId);
   await replaceSidecarKey(
     projectRoot,
     p.target.resourceId,
@@ -394,6 +461,7 @@ async function moveAnnotations(projectRoot: string, p: Plan): Promise<void> {
   for (const result of p.partition.absorbed) {
     const doc = p.absorbed.find((d) => d.resourceId === result.documentId);
     if (!doc || (p.movedFrom.get(result.documentId)?.size ?? 0) === 0) continue;
+    progress.annotationDocs.push(result.documentId);
     await replaceSidecarKey(
       projectRoot,
       result.documentId,
@@ -405,7 +473,12 @@ async function moveAnnotations(projectRoot: string, p: Plan): Promise<void> {
 }
 
 /** Step 6: the composed text, then the carried metadata, on the target. */
-async function appendToTarget(projectRoot: string, p: Plan): Promise<void> {
+async function appendToTarget(
+  projectRoot: string,
+  p: Plan,
+  progress: Progress,
+): Promise<void> {
+  progress.isAppendAttempted = true;
   await writeCanonicalContentWithoutLog(
     projectRoot,
     p.target.resourceId,
@@ -415,6 +488,7 @@ async function appendToTarget(projectRoot: string, p: Plan): Promise<void> {
   );
   const before = userMetadataOf(p.target.sidecar);
   if (sameJson(before, p.targetUserMetadata)) return;
+  progress.isMetadataAttempted = true;
   await mutateSidecar(projectRoot, p.target.resourceId, (current) => {
     if (current === null || !sameJson(userMetadataOf(current), before))
       throw new StaleSidecarError("userMetadata");
@@ -432,12 +506,13 @@ async function writeAfterSnapshots(
 ): Promise<void> {
   progress.hasOtherWrite = true;
   progress.step = "move-annotations";
-  await moveAnnotations(projectRoot, p);
+  await moveAnnotations(projectRoot, p, progress);
 
   progress.step = "write-marks";
   const targetSnapshot = snapshots.get(p.target.resourceId);
   if (!targetSnapshot) throw new Error("missing target snapshot");
   for (const doc of p.absorbed) {
+    progress.markedDocs.push(doc.resourceId);
     await writeMergedMark(projectRoot, doc.resourceId, {
       targetDocumentId: p.target.resourceId,
       targetSnapshotRevisionId: targetSnapshot.id,
@@ -449,6 +524,7 @@ async function writeAfterSnapshots(
   for (const result of p.partition.absorbed) {
     const doc = p.absorbed.find((d) => d.resourceId === result.documentId);
     if (!doc || (p.movedFrom.get(result.documentId)?.size ?? 0) === 0) continue;
+    progress.strippedDocs.push(result.documentId);
     await writeCanonicalContentWithoutLog(
       projectRoot,
       result.documentId,
@@ -459,10 +535,11 @@ async function writeAfterSnapshots(
   }
 
   progress.step = "append-to-target";
-  await appendToTarget(projectRoot, p);
+  await appendToTarget(projectRoot, p, progress);
 
   progress.step = "write-records";
   const affected = [p.target, ...p.absorbed].map((d) => d.resourceId);
+  progress.isRecordAttempted = true;
   await writeLatestOperation(projectRoot, {
     kind: "merge",
     affectedDocumentIds: affected,
@@ -479,13 +556,223 @@ async function writeAfterSnapshots(
   });
 }
 
-/** What is known to remain after a failure at `progress`; never "restored" once a write began. */
-function remainingStateOf(progress: Progress): MergeRemainingState {
-  if (progress.hasOtherWrite) return "partially-written";
-  if (progress.snapshotsDone > 0) return "snapshot-revisions-kept";
-  return progress.step === "lock-documents"
-    ? "documents-restored"
-    : "state-unknown";
+// --- backups and reverse compensation -----------------------------------
+
+function isNotFound(err: unknown): boolean {
+  return isRecord(err) && err.code === "ENOENT";
+}
+
+/** Raw text of a file, or `null` when it does not exist; any other failure is thrown. */
+async function readRawOrNull(path: string): Promise<RawFile> {
+  try {
+    return { path, raw: await readFile(path, "utf8") };
+  } catch (err) {
+    if (isNotFound(err)) return { path, raw: null };
+    throw err;
+  }
+}
+
+async function putBack(file: RawFile): Promise<void> {
+  if (file.raw === null) await rm(file.path, { force: true });
+  else await atomicWriteFile(file.path, file.raw, "utf8");
+}
+
+/**
+ * Takes, inside the locks and before the first write, what compensation
+ * needs: each document's revision ids and sidecar, the raw text files of the
+ * documents whose text will be rewritten, and the latest-operation file.
+ */
+async function backUp(
+  projectRoot: string,
+  p: Plan,
+  progress: Progress,
+): Promise<void> {
+  const documents = [p.target, ...p.absorbed];
+  const idsBefore = new Map<string, Set<string>>();
+  for (const d of documents) {
+    const revisions = await listRevisions(projectRoot, d.resourceId);
+    idsBefore.set(d.resourceId, new Set(revisions.map((r) => r.id)));
+    progress.sidecarsBefore.set(d.resourceId, structuredClone(d.sidecar));
+  }
+  const rewritten = [
+    p.target,
+    ...p.absorbed.filter((d) => (p.movedFrom.get(d.resourceId)?.size ?? 0) > 0),
+  ];
+  for (const d of rewritten) {
+    const base = `${projectRoot}/resources/${d.resourceId}`;
+    progress.textBackups.set(d.resourceId, {
+      contentPath: `${revisionDir(projectRoot, d.resourceId, d.revision.versionNumber)}/content.bin`,
+      content: d.content,
+      derived: [
+        await readRawOrNull(`${base}/content.tiptap.json`),
+        await readRawOrNull(`${base}/content.txt`),
+      ],
+    });
+  }
+  progress.recordFile = await readRawOrNull(
+    `${projectRoot}/meta/${LATEST_OPERATION_FILE_NAME}`,
+  );
+  progress.targetId = p.target.resourceId;
+  progress.revisionIdsBefore = idsBefore;
+}
+
+function restoreKey(
+  next: Record<string, MetadataValue>,
+  before: Record<string, MetadataValue>,
+  key: string,
+): void {
+  if (key in before) next[key] = before[key];
+  else delete next[key];
+}
+
+/** One sidecar rewrite for an undo; leaves the file alone when nothing differs. */
+async function restoreSidecar(
+  projectRoot: string,
+  documentId: string,
+  apply: (next: Record<string, MetadataValue>) => void,
+): Promise<void> {
+  await mutateSidecar(projectRoot, documentId, (current) => {
+    if (current === null) throw new Error("sidecar missing");
+    const next: Record<string, MetadataValue> = { ...current };
+    apply(next);
+    return sameJson(next, current) ? SIDECAR_UNCHANGED : next;
+  });
+}
+
+function sidecarBeforeOf(
+  progress: Progress,
+  documentId: string,
+): Record<string, MetadataValue> {
+  const before = progress.sidecarsBefore.get(documentId);
+  if (!before) throw new Error("missing sidecar backup");
+  return before;
+}
+
+/** Puts a rewritten text back with its derived files, `updatedAt` and `wordCount`. */
+async function restoreText(
+  projectRoot: string,
+  documentId: string,
+  progress: Progress,
+  isMetadataIncluded: boolean,
+): Promise<void> {
+  const backup = progress.textBackups.get(documentId);
+  if (!backup) throw new Error("missing text backup");
+  const before = sidecarBeforeOf(progress, documentId);
+  await atomicWriteFile(backup.contentPath, backup.content, "utf8");
+  for (const file of backup.derived) await putBack(file);
+  await restoreSidecar(projectRoot, documentId, (next) => {
+    restoreKey(next, before, "updatedAt");
+    restoreKey(next, before, "wordCount");
+    if (isMetadataIncluded) restoreKey(next, before, "userMetadata");
+  });
+}
+
+/**
+ * Puts the notes back: the earlier order, the current version of any that is
+ * still there, and any note added since kept at the end.
+ */
+async function restoreAnnotations(
+  projectRoot: string,
+  documentId: string,
+  progress: Progress,
+  chosen: ReadonlySet<string>,
+): Promise<void> {
+  const before = sidecarBeforeOf(progress, documentId);
+  const beforeList = annotationsOf(before);
+  await restoreSidecar(projectRoot, documentId, (next) => {
+    const now = annotationsOf(next);
+    const byId = new Map(now.map((a) => [a.id, a]));
+    const known = new Set(beforeList.map((a) => a.id));
+    const restored = beforeList.map((a) => byId.get(a.id) ?? a);
+    for (const a of now)
+      if (!known.has(a.id) && !chosen.has(a.id)) restored.push(a);
+    if (!("annotations" in before) && restored.length === 0)
+      delete next.annotations;
+    else next.annotations = restored as unknown as MetadataValue;
+  });
+}
+
+/**
+ * Removes every snapshot this merge created: clear the preserve flag, then
+ * delete (a preserved revision is refused), last document first.
+ */
+async function removeSnapshots(
+  projectRoot: string,
+  idsBefore: ReadonlyMap<string, Set<string>>,
+): Promise<void> {
+  for (const [documentId, before] of [...idsBefore].reverse()) {
+    const revisions = await listRevisions(projectRoot, documentId);
+    for (const revision of revisions) {
+      if (before.has(revision.id) || revision.metadata?.mergeSnapshot !== true)
+        continue;
+      await setRevisionPreserve(projectRoot, documentId, revision.id, false);
+      await deleteRevision(projectRoot, documentId, revision.id);
+    }
+  }
+}
+
+/**
+ * Undoes the steps that were attempted, in reverse. Every undo is attempted;
+ * one that fails is recorded and decides the state returned. The snapshots
+ * are removed last and only when every other undo succeeded, because they
+ * hold the earlier text. Never throws.
+ */
+async function compensate(
+  projectRoot: string,
+  progress: Progress,
+  chosen: ReadonlySet<string>,
+): Promise<MergeRemainingState> {
+  const failed = new Set<UndoKind>();
+  const attempt = async (
+    kind: UndoKind,
+    undo: () => Promise<void>,
+  ): Promise<void> => {
+    try {
+      await undo();
+    } catch {
+      failed.add(kind);
+    }
+  };
+  const recordFile = progress.recordFile;
+  if (progress.isRecordAttempted && recordFile)
+    await attempt("record", () =>
+      withMetaLock(projectRoot, () => putBack(recordFile)),
+    );
+  if (progress.isAppendAttempted)
+    await attempt("append", () =>
+      restoreText(
+        projectRoot,
+        progress.targetId,
+        progress,
+        progress.isMetadataAttempted,
+      ),
+    );
+  for (const id of [...progress.strippedDocs].reverse())
+    await attempt("strip", () => restoreText(projectRoot, id, progress, false));
+  for (const id of [...progress.markedDocs].reverse())
+    await attempt("marks", () => removeMergedMark(projectRoot, id));
+  for (const id of [...progress.annotationDocs].reverse())
+    await attempt("annotations", () =>
+      restoreAnnotations(projectRoot, id, progress, chosen),
+    );
+  const idsBefore = progress.revisionIdsBefore;
+  if (idsBefore && failed.size === 0)
+    await attempt("snapshot", () => removeSnapshots(projectRoot, idsBefore));
+  await flushIndexer();
+  return remainingStateOf(failed, progress);
+}
+
+/** The state that remains once the undo steps ran; "restored" only when none failed. */
+function remainingStateOf(
+  failed: ReadonlySet<UndoKind>,
+  progress: Progress,
+): MergeRemainingState {
+  if (failed.size === 0) return "documents-restored";
+  if (failed.size === 1 && failed.has("snapshot"))
+    return progress.snapshotsDone > 0
+      ? "snapshot-revisions-kept"
+      : "state-unknown";
+  return "partially-written";
 }
 
 /** Everything from the staleness check to the record, with the locks already held. */
@@ -521,6 +808,7 @@ async function applyUnderLocks(
   }
   if ("outcome" in planned) return planned;
 
+  await backUp(projectRoot, planned, progress);
   const date = (options.now ?? (() => new Date()))().toISOString();
   progress.step = "snapshot";
   const documents = [planned.target, ...planned.absorbed];
@@ -562,6 +850,17 @@ export async function applyMerge(
     step: "lock-documents",
     snapshotsDone: 0,
     hasOtherWrite: false,
+    targetId: "",
+    revisionIdsBefore: null,
+    sidecarsBefore: new Map(),
+    textBackups: new Map(),
+    recordFile: null,
+    annotationDocs: [],
+    markedDocs: [],
+    strippedDocs: [],
+    isAppendAttempted: false,
+    isMetadataAttempted: false,
+    isRecordAttempted: false,
   };
   const releases: Array<() => void> = [];
   try {
@@ -569,10 +868,14 @@ export async function applyMerge(
       releases.push(await acquireLock(key));
     return await applyUnderLocks(projectRoot, request, options, progress);
   } catch (err) {
-    const remaining = remainingStateOf(progress);
     const isNothingWritten =
       progress.snapshotsDone === 0 && !progress.hasOtherWrite;
     if (isLockedAccessError(err) && isNothingWritten) throw err;
+    const remaining = await compensate(
+      projectRoot,
+      progress,
+      new Set(request.carryOver.annotationIds),
+    );
     return failedResult(
       progress.step,
       remaining,

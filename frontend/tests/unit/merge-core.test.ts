@@ -824,15 +824,15 @@ describe("merge apply on a real project", () => {
       expect(result).toMatchObject({
         outcome: "failed",
         failedStep: "write-marks",
-        remainingState: "partially-written",
+        remainingState: "documents-restored",
       });
-      // A copy of each text precedes any change (the message promises it).
+      // Task 26: the compensation removed the snapshots it had made.
       for (const id of [t, a, b])
         expect(
           (await listRevisions(projectPath, id)).filter(
             (r) => r.metadata?.mergeSnapshot,
           ),
-        ).toHaveLength(1);
+        ).toHaveLength(0);
       // The locks were released: taking each again does not wait.
       for (const id of [t, a, b]) {
         const release = await Promise.race([
