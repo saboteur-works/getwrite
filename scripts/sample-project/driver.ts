@@ -158,6 +158,9 @@ const MP3_BYTES = Uint8Array.from([
   ...new Array<number>(48).fill(0),
 ]);
 
+/** Upper bound for the index queue drain; see the call in `main`. */
+const INDEXER_DRAIN_TIMEOUT_MS = 10 * 60 * 1000;
+
 /** The project directory this run began writing, for cleanup on failure. */
 let createdRoot: string | null = null;
 
@@ -700,7 +703,10 @@ async function main(): Promise<void> {
 
   // Saves queued index tasks; they are drained (and any watcher stopped) before
   // the from-scratch rebuild, so no write is still running when the process ends.
-  await shutdownIndexer();
+  // The wait is `shutdownIndexer`'s timeout, which resolves without error when
+  // it expires; the default 5 s was shorter than the drain under CPU load
+  // (`experiments/task-9b.md`), so the bound here is far above any real drain.
+  await shutdownIndexer(INDEXER_DRAIN_TIMEOUT_MS);
   await rebuildDerivedIndexes(projectRoot);
 
   const loaded = await loadProjectCore(projectId);

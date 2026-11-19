@@ -462,6 +462,18 @@ describe("sample-project generator", () => {
       expect(Number.isNaN(Date.parse(read.mark.date))).toBe(false);
     });
 
+    it("has a diagnostics entry for every document the saves queued for indexing", () => {
+      // Saves queue per-document index tasks that the generator drains before
+      // it exits; an entry missing here means the drain ended early
+      // (`experiments/task-9b.md`).
+      const diagnostics = readJson(
+        path.join(projectDir, "meta", "index", "diagnostics.json"),
+      );
+      for (const id of summary.merge.timing.fifty) {
+        expect(diagnostics[id]).toBeDefined();
+      }
+    });
+
     it("names 50 further eligible text documents of about 5000 words, grouped for 2, 10 and 50", () => {
       const t = summary.merge.timing;
       expect(t.fifty).toHaveLength(50);
