@@ -26,6 +26,7 @@ import {
   MissingProjectKeyError,
   ProjectLockedError,
 } from "../../src/lib/models/locked-access";
+import { MERGE_UNDO_REFUSAL_MESSAGES } from "../../src/lib/models/merge-undo-messages";
 import { hashSplitContent as contentHashModule } from "../../src/lib/models/split-content-hash";
 import { hashSplitContent as serverHash } from "../../src/lib/models/split-preview-core";
 import {
@@ -175,8 +176,8 @@ describe("requestUndoSplit (Feature 120 Task 31)", () => {
     const bodies = [
       [{ outcome: "nothing-to-undo" }, { kind: "nothing-to-undo" }],
       [
-        { outcome: "unsupported-operation", kind: "merge" },
-        { kind: "unsupported-operation", operationKind: "merge" },
+        { outcome: "unsupported-operation", kind: "future-kind" },
+        { kind: "unsupported-operation", operationKind: "future-kind" },
       ],
       [
         { outcome: "could-not-be-checked", cause: "record-malformed" },
@@ -298,6 +299,145 @@ describe("requestUndoSplit (Feature 120 Task 31)", () => {
       expect(parseSplitUndoBody(bad)).toEqual({ ok: false });
   });
 });
+
+describe("requestUndoSplit: the merge outcomes (Feature 121 Task 40)", () => {
+  const MERGE_APPLIED_BODY = {
+    outcome: "applied",
+    operation: "merge",
+    targetDocumentId: RID,
+    targetName: "Chapter 1",
+    absorbedDocumentIds: [NEW_ID, "88888888-8888-4888-8888-888888888888"],
+    skippedDocuments: [],
+    preservedRevisions: [
+      {
+        documentId: RID,
+        revisionId: "9d2f4a6c-1b7e-4e08-a3c5-7e1d0b4f8a63",
+        revisionNumber: 3,
+      },
+    ],
+    movedAnnotationIds: ["a1"],
+  };
+
+  it("maps an applied merge to its own kind with the target's name and the number of absorbed documents", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, MERGE_APPLIED_BODY),
+    );
+    const result = await requestUndoSplit(PID);
+    expect(result).toEqual({
+      kind: "merge-applied",
+      targetDocumentId: RID,
+      targetName: "Chapter 1",
+      absorbedCount: 2,
+      absorbedDocumentIds: MERGE_APPLIED_BODY.absorbedDocumentIds,
+      skippedDocuments: [],
+      preservedRevisions: MERGE_APPLIED_BODY.preservedRevisions,
+      movedAnnotationIds: ["a1"],
+    });
+  });
+
+  it("carries a null target name as null", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, { ...MERGE_APPLIED_BODY, targetName: null }),
+    );
+    const result = await requestUndoSplit(PID);
+    expect(result.kind).toBe("merge-applied");
+    expect((result as { targetName: string | null }).targetName).toBeNull();
+  });
+
+  it("maps index-failed of a merge to a success kind carrying the failures", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, {
+        ...MERGE_APPLIED_BODY,
+        outcome: "index-failed",
+        failures: [{ documentId: RID, step: "inverted-index" }],
+      }),
+    );
+    const result = await requestUndoSplit(PID);
+    expect(result.kind).toBe("merge-index-failed");
+    expect((result as { failures: unknown[] }).failures).toEqual([
+      { documentId: RID, step: "inverted-index" },
+    ]);
+  });
+
+  it("maps a merge refusal to its reason and the Undo merge text, not the server's text", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, {
+        outcome: "refused",
+        operation: "merge",
+        reason: "target-in-trash",
+        message: "SERVER TEXT",
+        documentId: RID,
+      }),
+    );
+    expect(await requestUndoSplit(PID)).toEqual({
+      kind: "merge-refused",
+      reason: "target-in-trash",
+      message: MERGE_UNDO_REFUSAL_MESSAGES["target-in-trash"],
+      documentId: RID,
+    });
+  });
+
+  it("maps a failed merge Undo to the step and the state that remains", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, {
+        outcome: "failed",
+        operation: "merge",
+        failedStep: "clear-marks",
+        cause: "Error",
+        remainingState: "marks-not-restored",
+      }),
+    );
+    expect(await requestUndoSplit(PID)).toEqual({
+      kind: "merge-failed",
+      failedStep: "clear-marks",
+      remainingState: "marks-not-restored",
+      cause: "Error",
+    });
+  });
+
+  it("does not map an unsupported-operation body for a merge to a split kind: it is a check that did not complete", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, { outcome: "unsupported-operation", kind: "merge" }),
+    );
+    expect(await requestUndoSplit(PID)).toEqual({
+      kind: "could-not-be-checked",
+      cause: "unsupported-operation",
+    });
+  });
+
+  it("maps a merge body with an unknown remaining state or step to failed with an unknown state and reports it", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, {
+        outcome: "failed",
+        operation: "merge",
+        failedStep: "no-such-step",
+        cause: "Error",
+        remainingState: "merge-restored",
+      }),
+    );
+    const result = await requestUndoSplit(PID);
+    expect(result).toMatchObject({
+      kind: "failed",
+      remainingState: "state-unknown",
+    });
+  });
+
+  it("still maps a split body as before", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, UNDO_APPLIED_FOR_MERGE_SUITE),
+    );
+    expect((await requestUndoSplit(PID)).kind).toBe("applied");
+  });
+});
+
+const UNDO_APPLIED_FOR_MERGE_SUITE = {
+  outcome: "applied",
+  originalDocumentId: RID,
+  splitOffDocumentId: NEW_ID,
+  splitOffState: "moved-to-trash",
+  preservedRevisions: [],
+  movedAnnotationIds: [],
+};
 
 describe("requestLatestSplitOperation (Feature 120 Task 31)", () => {
   const RECORD = {

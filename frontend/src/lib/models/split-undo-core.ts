@@ -1162,6 +1162,8 @@ export type MergeUndoStep = (typeof MERGE_UNDO_STEPS)[number];
 export interface MergeUndoAppliedFields {
   operation: "merge";
   targetDocumentId: string;
+  /** The target's name read after the Undo; `null` when that read failed (Undo itself is not affected). */
+  targetName: string | null;
   absorbedDocumentIds: string[];
   /** Absorbed documents that were in Trash or purged and so were left alone. */
   skippedDocuments: { documentId: string; state: "in-trash" | "purged" }[];
@@ -1654,12 +1656,15 @@ async function compensateMergeUndo(
   return MERGE_REMAINING_BY_KIND[kind];
 }
 
+/** What the write steps report; the name is read after the locks are released. */
+type MergeUndoStepFields = Omit<MergeUndoAppliedFields, "targetName">;
+
 async function runMergeUndoSteps(
   projectRoot: string,
   facts: MergeUndoFacts,
   date: string,
   progress: MergeUndoProgress,
-): Promise<MergeUndoAppliedFields> {
+): Promise<MergeUndoStepFields> {
   const live = facts.absorbed.filter((a) => a.state === "live");
   const liveIds = [facts.targetId, ...live.map((a) => a.ref.documentId)];
   progress.record = await readRawOrNull(
@@ -1734,7 +1739,7 @@ async function runMergeUndoSteps(
 }
 
 type MergeUndoLocked =
-  | { kind: "applied"; fields: MergeUndoAppliedFields }
+  | { kind: "applied"; fields: MergeUndoStepFields }
   | { kind: "result"; result: MergeUndoResult };
 
 async function undoMergeUnderLocks(
@@ -1789,7 +1794,26 @@ async function undoMergeUnderLocks(
   }
 }
 
-async function undoLatestMerge(
+/** The target's name, or `null` when the sidecar cannot be read. */
+async function readTargetName(
+  projectRoot: string,
+  documentId: string,
+): Promise<string | null> {
+  try {
+    const name = (await readSidecar(projectRoot, documentId))?.name;
+    return typeof name === "string" ? name : null;
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
+    return null;
+  }
+}
+
+/**
+ * Undoes the merge a stored record describes. `record` is the one the caller
+ * read; it is read again inside the locks and a difference is
+ * `could-not-be-checked` (`record-changed`). Exported for the Undo route.
+ */
+export async function undoLatestMerge(
   projectId: string,
   record: LatestOperationRecord,
   options: SplitUndoOptions,
@@ -1815,8 +1839,14 @@ async function undoLatestMerge(
     for (const release of releases.reverse()) release();
   }
   if (outcome.kind === "result") return outcome.result;
-  const fields = outcome.fields;
   await flushIndexer();
+  const fields: MergeUndoAppliedFields = {
+    ...outcome.fields,
+    targetName: await readTargetName(
+      projectRoot,
+      outcome.fields.targetDocumentId,
+    ),
+  };
   const skipped = new Set(fields.skippedDocuments.map((s) => s.documentId));
   const changed = [
     fields.targetDocumentId,

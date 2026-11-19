@@ -314,6 +314,13 @@ describe("undo of a merge on a real project", () => {
       ).toBe(plain);
     });
 
+    it("reports the target's name (Task 40: the route and client show it)", async () => {
+      const { t, a } = await trio();
+      await mergeOk([t, a]);
+      const result = await undoOk();
+      expect(result.targetName).toBe("T");
+    });
+
     it("keeps an edit made to the target since the merge in a preserved revision of the target", async () => {
       const { t, a } = await trio();
       await mergeOk([t, a]);

@@ -274,6 +274,17 @@ export default function SplitUndoHost(): JSX.Element {
       case "could-not-be-checked":
         alert = UNDO_SPLIT_COULD_NOT_BE_CHECKED_MESSAGE;
         break;
+      // Task 40 placeholder, replaced by Task 41: this host only runs while
+      // the stored record is a split, so a merge kind arrives only when the
+      // record changed between the availability read and the request. It is
+      // not shown as an Undo result here.
+      case "merge-applied":
+      case "merge-index-failed":
+      case "merge-refused":
+      case "merge-failed":
+        setSplitUndoAvailability({ kind: "none" });
+        alert = UNDO_SPLIT_COULD_NOT_BE_CHECKED_MESSAGE;
+        break;
       case "failed":
         alert = describeUndoSplitFailure(
           result.failedStep,
