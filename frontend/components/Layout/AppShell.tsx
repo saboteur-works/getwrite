@@ -61,6 +61,7 @@ import ShellModalCoordinator from "./ShellModalCoordinator";
 import CaptureBoxHost from "../Capture/CaptureBoxHost";
 import ShareCaptureHost from "../Capture/ShareCaptureHost";
 import SplitHost from "../Split/SplitHost";
+import MergeHost from "../Merge/MergeHost";
 import SplitUndoHost from "../Split/SplitUndoHost";
 import { openSplitDialog } from "../Split/splitOpenRequest";
 import type { ProjectGoalSavedHandler } from "./ProjectSettingsDialog";
@@ -1267,6 +1268,12 @@ export default function AppShell({
           native build, so it is not mounted there. */}
       {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native" ? (
         <SplitHost />
+      ) : null}
+      {/* Feature 121, Task 34: the merge host takes the open request from the
+          tree's context menu (Task 35). Its routes do not exist in the native
+          build, so it is not mounted there. */}
+      {process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native" ? (
+        <MergeHost />
       ) : null}
       {/* Feature 120, Task 32: Undo split's host (palette row, editor menu
           item, status and alert regions); not mounted on native. */}
