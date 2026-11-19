@@ -28,6 +28,25 @@ export class MergeMarkTargetMissingError extends Error {
   }
 }
 
+/** Thrown when a mark's date is not a full ISO 8601 instant. */
+export class MergeMarkInvalidDateError extends Error {
+  constructor(date: string) {
+    super(
+      `Cannot write a merged mark: date ${JSON.stringify(date)} is not a full ISO 8601 instant (date, time and zone).`,
+    );
+    this.name = "MergeMarkInvalidDateError";
+  }
+}
+
+/** Date, time (minutes required) and a zone designator (Z or +/-HH:MM). */
+const FULL_INSTANT =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/** True for a full ISO 8601 instant that also parses to a real time. */
+function isFullInstant(value: string): boolean {
+  return FULL_INSTANT.test(value) && !Number.isNaN(Date.parse(value));
+}
+
 /** Result of reading one merged mark. `failed` is never `none`. */
 export type MergedMarkReadResult =
   | { outcome: "found"; mark: MergedMark }
@@ -47,7 +66,7 @@ function parseMark(value: unknown): MergedMark | null {
     !isNonEmptyString(v.targetDocumentId) ||
     !isNonEmptyString(v.targetSnapshotRevisionId) ||
     typeof v.date !== "string" ||
-    Number.isNaN(Date.parse(v.date))
+    !isFullInstant(v.date)
   ) {
     return null;
   }
@@ -61,6 +80,8 @@ function parseMark(value: unknown): MergedMark | null {
 /**
  * Writes the mark on an absorbed document, keeping every other sidecar key.
  *
+ * @throws {MergeMarkInvalidDateError} When the date is not a full ISO 8601
+ *   instant (date-only or unparseable); nothing is written.
  * @throws {MergeMarkTargetMissingError} When the document has no sidecar.
  * @throws A locked-access error when the project is locked.
  */
@@ -69,6 +90,7 @@ export async function writeMergedMark(
   absorbedDocumentId: string,
   mark: MergedMark,
 ): Promise<void> {
+  if (!isFullInstant(mark.date)) throw new MergeMarkInvalidDateError(mark.date);
   await mutateSidecar(projectRoot, absorbedDocumentId, (current) => {
     if (current === null) {
       throw new MergeMarkTargetMissingError(absorbedDocumentId);

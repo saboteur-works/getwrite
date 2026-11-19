@@ -42,6 +42,7 @@ import { generateUUID } from "../../src/lib/models/uuid";
 import { MERGED_MARK_SIDECAR_KEY } from "../../src/lib/models/merge-types";
 import type { MergedMark } from "../../src/lib/models/merge-types";
 import {
+  MergeMarkInvalidDateError,
   MergeMarkTargetMissingError,
   readMergedMark,
   removeMergedMark,
@@ -138,6 +139,47 @@ describe("merged mark on a real directory", () => {
         writeMergedMark(projectPath, generateUUID(), mark()),
       ).rejects.toBeInstanceOf(MergeMarkTargetMissingError);
     });
+
+    it("refuses a date-only value on write and writes nothing", async () => {
+      const id = await newDoc("Absorbed");
+      const before = await readSidecar(projectPath, id);
+      await expect(
+        writeMergedMark(projectPath, id, { ...mark(), date: "2026-11-18" }),
+      ).rejects.toBeInstanceOf(MergeMarkInvalidDateError);
+      expect(await readSidecar(projectPath, id)).toEqual(before);
+    });
+
+    it("refuses an unparseable date on write and writes nothing", async () => {
+      const id = await newDoc("Absorbed");
+      const before = await readSidecar(projectPath, id);
+      await expect(
+        writeMergedMark(projectPath, id, { ...mark(), date: "not a date" }),
+      ).rejects.toBeInstanceOf(MergeMarkInvalidDateError);
+      expect(await readSidecar(projectPath, id)).toEqual(before);
+    });
+
+    it("accepts a full ISO 8601 instant with a zone and reads it back unchanged", async () => {
+      const id = await newDoc("Absorbed");
+      const withOffset = { ...mark(), date: "2026-11-18T10:00:00+02:00" };
+      await writeMergedMark(projectPath, id, withOffset);
+      expect(await readMergedMark(projectPath, id)).toEqual({
+        outcome: "found",
+        mark: withOffset,
+      });
+    });
+
+    it.each(["2026-11-18", "not a date", "2026-11-18T10:00:00"])(
+      "reads a stored date of %j as failed, never none and never a mark",
+      async (date) => {
+        const id = await newDoc("Absorbed");
+        const sidecar = (await readSidecar(projectPath, id)) ?? {};
+        await writeSidecar(projectPath, id, {
+          ...sidecar,
+          [MERGED_MARK_SIDECAR_KEY]: { ...mark(), date },
+        });
+        expect((await readMergedMark(projectPath, id)).outcome).toBe("failed");
+      },
+    );
 
     it("returns failed, never none, for a stored mark of the wrong shape", async () => {
       const id = await newDoc("Absorbed");
