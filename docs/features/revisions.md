@@ -87,6 +87,25 @@ In `revision-core.ts`. Sets `metadata.preserve = true`, or deletes the `preserve
 
 ---
 
+## Split snapshot (Feature 120)
+
+Spec: [specs/features/split-at-cursor.md](../../specs/features/split-at-cursor.md) (FR-4). Records: `specs/features/split-at-cursor/experiments/task-20.md`, `task-21.md`, `task-29.md`, `task-30.md`. Writer-facing guide: [docs/user/handbook/write/split-at-cursor.md](../user/handbook/write/split-at-cursor.md).
+
+A split of a document (`split-core.ts`, `applySplit`) first saves its full stored text as a revision, then truncates it. That revision is the Split snapshot.
+
+- Created with `createRevision(projectRoot, resourceId, { content, isCanonical: false, metadata: { name: "Before split YYYY-MM-DD", preserve: true, splitSnapshot: true } })`. The text is the stored canonical text read inside the operation, not text from the client. The date is the UTC date. So the snapshot is non-canonical and preserved (protected from pruning and from `deleteRevision`), and `metadata.splitSnapshot` marks it. Measured (task-20): after a split the original has every revision it had plus this one, exactly one canonical revision, and no revision with `automaticSnapshot`.
+- `createRevision` takes no lock, and two callers can pick one version number; the second to rename fails with `ENOTEMPTY`, and no trial left a repeated number or lost a revision (`experiments/task-2.md`, 200 trials per pair). The split therefore holds the `revision-content:<root>:<id>` lock across the snapshot and the truncation (one `acquireLock` call, asserted in task-20). The truncation is `writeCanonicalContentWithoutLog` (`revision-core.ts`, a sibling of `updateRevisionInPlace`): it writes the canonical content, syncs `content.txt`, `content.tiptap.json`, and writes `wordCount` and `updatedAt`, and it takes no automatic snapshot and appends no writing-log entry (task-16). Its `{ lockHeld: true }` option skips taking the lock for a caller that already holds it (`acquireLock` is not reentrant).
+- The lineage record of the new document names the snapshot's revision id and number (`meta/lineage.json`, see the `CLAUDE.md` glossary: Lineage record).
+- Deleting the snapshot is refused like any protected revision (`PROTECTED_REVISION_DELETE_MESSAGE`; measured in task-20 and task-21). Only a split that is being rolled back deletes it: compensation calls `setRevisionPreserve(false)` and then `deleteRevision`, and finds it as the revision not in the earlier id set with `metadata.splitSnapshot === true` (task-21).
+- The new document gets one new initial canonical revision `v-1`; none of the original's revisions are copied (task-20). `v-1` is the revision's folder name; revision ids are UUIDs, and the split checks them with `isResourceId` (`4a138565`).
+- Known limit (owner decision, task-28): the lock key is built from the project root and needs an absolute path (`revisionContentLockKey`, `split-preview-core.ts`). A relative root, which only a hand-set `GETWRITE_PROJECTS_DIR` or `GETWRITE_DATA_ROOT` can produce, throws `SplitLockKeyError`: `POST /api/project/split` answers with a typed `failed` body (`failedStep: "lock-original"`, `remainingState: "original-restored"`, `cause: "SplitLockKeyError"`), and the undo route answers `{ outcome: "could-not-be-checked", cause: "project-root-not-absolute" }`. Every shipped setup sets an absolute root. Set both variables to absolute paths if you set them by hand.
+
+Undo split (`split-undo-core.ts`, `undoLatestSplit`) does not use `setCanonicalRevision`. It overwrites the original's canonical content from the snapshot's stored text with `writeCanonicalContentWithoutLog`, so `content.txt` and `wordCount` follow it (task-29). Before that it saves the current text of each live affected document as its own non-canonical revision, `metadata: { name: "Before undo split YYYY-MM-DD", preserve: true, splitUndoSave: true }`, so edits made since the split stay reachable. The split-off document goes to Trash through `deleteResourceCore`, which moves its revisions to `.trash/revisions/<id>`; if it is already in Trash, no revision is saved for it and its trashed revisions are left as stored. Undo does not delete the snapshot or change its `preserve` flag, and the lineage entry is not cleared (task-29). A rolled-back Undo clears `preserve` on the revisions it made and deletes them, in that order (task-30).
+
+Not measured: revision pruning during Undo (if saving Undo's revision pruned an older unprotected revision, the rollback does not bring it back; task-30); several server instances (the lock is per process).
+
+---
+
 ## Pruning
 
 Pruning removes old revisions to enforce a `maxRevisions` cap.

@@ -74,6 +74,7 @@ import NormalizePastedText from "./Editor/Extensions/NormalizePastedText";
 import MediaDropExtension from "./Editor/Extensions/MediaDropExtension";
 import GetWriteImage from "./Editor/Extensions/GetWriteImage";
 import MentionJumpHighlightExtension from "./Editor/Extensions/MentionJumpHighlightExtension";
+import SplitShortcutExtension from "./Editor/Extensions/SplitShortcutExtension";
 import DialogueHighlightExtension, {
   DIALOGUE_HIGHLIGHT_KEY,
 } from "./Editor/Extensions/DialogueHighlightExtension";
@@ -358,6 +359,8 @@ export default function TipTapEditor({
 
   // Keep the latest callback in a ref so the editor's (init-time) handlers can
   // call it without being re-created when the prop identity changes.
+  const readonlyRef = useRef(readonly);
+  readonlyRef.current = readonly;
   const onNodeTypesChangeRef = useRef(onNodeTypesChange);
   onNodeTypesChangeRef.current = onNodeTypesChange;
   // Keep the latest onChange in a ref so the debounced source-mode autosave can
@@ -464,6 +467,7 @@ export default function TipTapEditor({
           isEnabled: spellGate.isEnabled,
         }),
         MentionJumpHighlightExtension,
+        SplitShortcutExtension,
         AnnotationHighlightExtension,
         AnnotationClipboard.configure({
           getResourceId: () => annotationResourceIdRef.current,
@@ -807,6 +811,9 @@ export default function TipTapEditor({
       // had only opened (note_68cf31b0).
       positionMemoryRef.current?.beginLoad();
       loadDocumentIntoEditor(editor, (value as Content) || "");
+      // A document the split host could not read back is held read-only;
+      // opening another document releases it (Feature 120, Task 25).
+      editor.setEditable(!readonlyRef.current, false);
       // Back to where the writer left this document, or the start.
       positionMemoryRef.current?.restore(editor);
       // A resource load gets a full spell check (FR-21).

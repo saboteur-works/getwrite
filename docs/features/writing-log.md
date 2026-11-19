@@ -27,6 +27,14 @@ What is logged
 - There is **no backfill**: history from before the log shipped is not reconstructed.
 - The log is not rebuildable from resources, so `getwrite-cli reindex` does not clear or rebuild it ([cli.md](./cli.md#reindex)).
 
+Split and Undo split (Feature 120)
+
+A split of a document at the cursor and its Undo add no entry to the log, for either document. Spec: [specs/features/split-at-cursor.md](../../specs/features/split-at-cursor.md) (FR-8). Records: `specs/features/split-at-cursor/experiments/task-2.md`, `task-16.md`, `task-20.md`, `task-29.md`.
+
+- `updateRevisionInPlace` appends a log entry on every canonical save that changes a word (`logCanonicalSave`), and takes an "Auto-backup before large deletion" revision on a destructive truncation (task-2). A split therefore does not truncate through it. It writes the original's text with `writeCanonicalContentWithoutLog` (`revision-core.ts`), which calls neither `snapshotBeforeDestructiveWrite` nor `logCanonicalSave` (task-16). The new document is written through the initial-revision path, which does not log either.
+- Measured: with the `meta/writing-log` directory compared before and after a split, its contents were identical and `config.dailyWordGoal` was unchanged (task-20). The same comparison before and after Undo, with entries present from two earlier ordinary edits, was identical (task-29). In `revision-core-no-log-write.test.ts` a later ordinary `updateRevisionInPlace` logged only its own words (2 added, 0 deleted) and the truncating write left the directory as it was (task-16).
+- So the log holds no entry for the text that moved: it is not recorded as words deleted from the original or words added to the new document.
+
 Word diff and blind spots
 
 `diffWords` (`frontend/src/lib/models/word-diff.ts`) computes a word-bag (multiset) difference between the previous and new plain text (`tiptapToPlainText`). Tokenization mirrors `countWords`. `added` is the words in the new text not matched in the old text; `deleted` is the reverse. Known blind spots:

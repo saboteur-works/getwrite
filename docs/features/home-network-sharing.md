@@ -202,6 +202,27 @@ Measured on branch `feat/two-client-save-measurement`; **merged to `main` (PR #2
 - **Observed, with no pass or fail:** a device holding an older copy replaces the other device's text when it saves; the overwritten device is told nothing; an open page does not refresh itself; overwritten text survived only as an "Auto-backup before large deletion" revision when a large passage was dropped; no save failed; no save was sent without typing. The owner's phone run agreed in kind with the sequential scenarios; it was not a near-simultaneous run and says nothing about S2.
 - **Owner decision (2026-10-12), "Keep as recorded for now":** sharing ships without the "last save wins" statement; Feature 79's sentence is not written; no save-path change is started; better sync is a later goal. The held scenarios (S6, S7, S8, S10) were not run and no pinning test was written.
 
+## Split routes (Feature 120)
+
+Spec: [specs/features/split-at-cursor.md](../../specs/features/split-at-cursor.md) (FR-14, OQ-23). Records: `specs/features/split-at-cursor/experiments/task-7.md` (k), `task-23.md`, `task-31.md`.
+
+Feature 120 (split a document at the cursor) adds four routes, all under `app/api/project/split/` and all wrapped in `withStorageContext`:
+
+| Route                        | Method | What it does                                                          |
+| ---------------------------- | ------ | --------------------------------------------------------------------- |
+| `/api/project/split/preview` | POST   | Checks a cursor against the stored document; returns the dialog data  |
+| `/api/project/split`         | POST   | Applies the split                                                     |
+| `/api/project/split/undo`    | POST   | Undoes the latest split                                               |
+| `/api/project/split/latest`  | GET    | Reads the latest-operation record (`projectId` query, writes nothing) |
+
+- Classification: each route is classified by the gate like every other `/api` route. `sharing-gate-enumeration.test.ts` walks every `route.ts`, so the four are enumerated with no list edit. Tests assert that exactly these four are found, that none is an exception, that each is refused for an unconfirmed request and passed for a request with a paired-device cookie (`runGate` with sharing on, beside `POST /api/project/capture` as a reference), and that no route file contains `checkLimit`, `limits-check` or `refusalFor` (task-23, task-31; the paired cookie in those tests is a test fixture, not a second device).
+- A confirmed paired device is allowed on all four routes with no `checkLimit`, as the capture and claims routes are (`tests/unit/sharing-gate-enumeration.test.ts` asserts the capture route has none). No sixth limit switch was added and `EXCEPTION_COUNT` stays 4. No claim is made for a paired device (spec FR-20); a request from a paired device to these routes was not run.
+- Counts, as recorded: the enumeration test's floors `MIN_ROUTE_FILES` and `MIN_ENTRIES` are 90 and 132 (`MIN_PAGE_FILES` stays 5). They were measured by setting each floor to 999 and reading the assertion message after task-31: 90 route files and 132 entries including 6 pages. After task-23 the figures were 88 route files, 124 route/method pairs and 6 pages, 130 entries (task-23, task-31). The floors are floors, not exact counts. `scripts/sharing-refusal-smoke.mjs` stores no count of its own (it computes `entries.length` at run time); it carries the same `MIN_ENTRIES = 132` floor as a check and a check that its enumeration includes the four split routes. The "126 route/method pairs" figure in a comment there is 124 plus the two single-method routes of task-31, not recounted.
+- Smoke: `pnpm test:sharing-smoke` was NOT RUN for these routes (it needs `next build` and a standalone server, built only from the main checkout); only `node --check scripts/sharing-refusal-smoke.mjs` was run (task-23, task-31). The smoke figures recorded above (91, 92 entries) predate this feature.
+- Hosted tenancy is tested over fakes behind the real `withStorageContext` and a mocked tenant (a split by the signed-in tenant writes only under that tenant's root; a tenant with no such project writes nothing; a cross-site `Origin` is 403 before the core runs). That is not a run on a hosted deployment or with a second real tenant.
+- Error bodies: a malformed body, an unknown key (a `path` or `projectRoot` key included) or a bad id is 400 with one fixed text that echoes no client input. A locked project is 401 or 409 through `withStorageContext` (task-23, task-31).
+- Android: the transport is HTTP-only, with no native backend pair and no `createTransport` in `lib/api/split.ts`. `scripts/build-native-static.mjs` removes `app/api/**` from the native build, so the routes are not in the Android build (read, task-7 (k)). See `android/CLAUDE.md`.
+
 ## Environment variables the desktop app sets
 
 `GETWRITE_SHARING`, `GETWRITE_SHARING_DIR`, `GETWRITE_BIND`, `GETWRITE_WINDOW_SECRET` and, since Feature 80, `GETWRITE_READINESS_KEY` are set by the Electron main process for its own server. They are not meant to be set by hand. Only `GETWRITE_SHARING=1` turns the gate on in the server (`readSharingEnv`); any other value, or unset, leaves it off. `GETWRITE_BIND` unset means undeclared, so `pnpm dev`, hosted deployments and tests are unaffected.

@@ -133,6 +133,8 @@ export interface ShellModalCoordinatorProps {
   setIsResourcePaletteOpen: (open: boolean) => void;
   /** Opens the Capture box from the palette's "Capture..." row. */
   onOpenCapture?: () => void;
+  /** The open document's id, for the palette's Split row (Feature 120). */
+  openResourceId?: string | null;
   isProjectTypesLoading: boolean;
   projectTypesLoadError: string | null;
   projectTypeTemplates: ProjectTypeTemplateFile[];
@@ -243,6 +245,7 @@ export default function ShellModalCoordinator({
   isResourcePaletteOpen,
   setIsResourcePaletteOpen,
   onOpenCapture,
+  openResourceId,
   isProjectTypesLoading,
   projectTypesLoadError,
   projectTypeTemplates,
@@ -350,6 +353,7 @@ export default function ShellModalCoordinator({
         resources={resources ?? []}
         onClose={() => setIsResourcePaletteOpen(false)}
         onCapture={onOpenCapture}
+        openResourceId={openResourceId}
         onSelectResource={(resourceId) => {
           onSelectResource?.(resourceId);
         }}

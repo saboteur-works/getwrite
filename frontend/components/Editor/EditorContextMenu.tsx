@@ -98,6 +98,7 @@ import {
   Code,
   Check,
   TextSelect,
+  Split,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -126,7 +127,17 @@ import { applyReplacement } from "../../src/lib/spelling/apply-replacement";
 import { addProjectWord, ignoreWord } from "../../src/store/spellingSlice";
 import { addToUserList } from "../../src/store/userWordListSlice";
 import { useUserListAvailable } from "../../src/hooks/useUserListAvailable";
-import type { AppDispatch } from "../../src/store/store";
+import type { AppDispatch, RootState } from "../../src/store/store";
+import { selectResource } from "../../src/store/resourcesSlice";
+import { openSplitDialog } from "../Split/splitOpenRequest";
+import { requestSplitUndoRefresh } from "../Split/splitUndoRequest";
+import SplitUndoMenuItem from "../Split/SplitUndoMenuItem";
+import { splitEligibility } from "../../src/lib/models/split-eligibility";
+import { SPLIT_REFUSAL_MESSAGES } from "../../src/lib/models/split-messages";
+import {
+  SPLIT_REFUSAL_REASONS,
+  type SplitRefusalReason,
+} from "../../src/lib/models/split-types";
 import { toastService } from "../../src/lib/toast-service";
 
 /**
@@ -176,6 +187,41 @@ type SuggestionsState =
   | { status: "pending" }
   | { status: "ok"; suggestions: string[] }
   | { status: "unavailable" };
+
+/**
+ * Refusals decided by the kind of document alone (Feature 120, FR-2). The
+ * cursor-dependent ones (table cell, code block, empty half) are shown in the
+ * split dialog, never by disabling the menu item.
+ */
+const SPLIT_KIND_REASONS: ReadonlySet<SplitRefusalReason> = new Set([
+  SPLIT_REFUSAL_REASONS.mediaResource,
+  SPLIT_REFUSAL_REASONS.folder,
+  SPLIT_REFUSAL_REASONS.source,
+  SPLIT_REFUSAL_REASONS.entityDocument,
+  SPLIT_REFUSAL_REASONS.mergedDocument,
+]);
+
+/**
+ * What the Split item shows: `null` is no item (Android runtime, no store, no
+ * selected document); `{ reason: null }` an enabled item; otherwise a disabled
+ * item carrying its stated reason.
+ */
+type SplitItemState = { reason: string | null } | null;
+
+/** Reads the selected document's kind from the store; no I/O. */
+function readSplitItemState(state: Partial<RootState>): SplitItemState {
+  if (process.env.NEXT_PUBLIC_GETWRITE_RUNTIME === "native") return null;
+  // A store without a resources slice (a partial store) offers no item.
+  if (!state.resources) return null;
+  const selected = selectResource(state.resources);
+  if (!selected) return null;
+  const sidecar: Record<string, unknown> = { ...selected };
+  const result = splitEligibility({ document: null, sidecar, offset: 0 });
+  if (!result.eligible && SPLIT_KIND_REASONS.has(result.reason)) {
+    return { reason: SPLIT_REFUSAL_MESSAGES[result.reason] };
+  }
+  return { reason: null };
+}
 
 /** A snapshot of the editor's ProseMirror selection at a point in time. */
 export interface CapturedEditorSelection {
@@ -290,6 +336,12 @@ export default function EditorContextMenu({
     [requestSuggestions],
   );
 
+  // The store is read from context rather than `useDispatch` so the menu still
+  // renders (spelling items inert) where no Provider is mounted.
+  const reduxContext = React.useContext(ReactReduxContext);
+  // The Split item's state, frozen when the menu opens (Feature 120, FR-13).
+  const [splitItem, setSplitItem] = React.useState<SplitItemState>(null);
+
   const handlePointerDown = React.useCallback(
     (event: React.PointerEvent<HTMLSpanElement>) => {
       const isTouch = event.pointerType === "touch";
@@ -346,6 +398,15 @@ export default function EditorContextMenu({
         );
       }
       setCaptured(captureEditorSelection(editor));
+      setSplitItem(
+        reduxContext
+          ? readSplitItemState(
+              reduxContext.store.getState() as Partial<RootState>,
+            )
+          : null,
+      );
+      // Undo split reads the stored latest-operation record at each open.
+      requestSplitUndoRefresh();
       setFlaggedRange(range);
       onFlaggedWordFrozen?.(range);
       if (range) {
@@ -357,12 +418,8 @@ export default function EditorContextMenu({
         suggestionRequestRef.current++;
       }
     },
-    [editor, onFlaggedWordFrozen, requestSuggestionsFor],
+    [editor, onFlaggedWordFrozen, requestSuggestionsFor, reduxContext],
   );
-
-  // The store is read from context rather than `useDispatch` so the menu still
-  // renders (spelling items inert) where no Provider is mounted.
-  const reduxContext = React.useContext(ReactReduxContext);
 
   // Ignore / Add write the project's config, not the document (FR-32), so they
   // are not gated on read-only. No optimistic update: the slice replaces both
@@ -622,8 +679,49 @@ export default function EditorContextMenu({
           <TextSelect size={14} className="resource-context-menu-item-icon" />
           Select All
         </ContextMenuItem>
+        {splitItem && (
+          <>
+            <ContextMenuSeparator className="resource-context-menu-separator" />
+            <SplitMenuItem reason={splitItem.reason} />
+          </>
+        )}
+        <SplitUndoMenuItem />
       </ContextMenuContent>
     </ContextMenu>
+  );
+}
+
+/**
+ * The Split item (Feature 120, FR-13). Enabled, it asks the split host to open
+ * the dialog. Disabled, it shows its stated reason as visible secondary text
+ * that the item also names with `aria-describedby`, so the reason is read with
+ * the item and is never hidden. The accessible name stays "Split".
+ */
+function SplitMenuItem({ reason }: { reason: string | null }) {
+  const reasonId = React.useId();
+  return (
+    <ContextMenuItem
+      className="resource-context-menu-item"
+      aria-label="Split"
+      aria-describedby={reason === null ? undefined : reasonId}
+      disabled={reason !== null}
+      onSelect={() => {
+        openSplitDialog();
+      }}
+    >
+      <Split size={14} className="resource-context-menu-item-icon" />
+      <span>
+        Split
+        {reason !== null && (
+          <span
+            id={reasonId}
+            className="block text-gw-label text-fg-tertiary font-normal"
+          >
+            {reason}
+          </span>
+        )}
+      </span>
+    </ContextMenuItem>
   );
 }
 

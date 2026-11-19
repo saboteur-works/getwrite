@@ -12,6 +12,11 @@ export interface ListboxOption {
   meta?: string;
   /** Optional content rendered below the label (accepts React nodes for rich text like <mark>). */
   description?: React.ReactNode;
+  /**
+   * Marks the option `aria-disabled` and makes a click on it do nothing. It
+   * stays in the list; give it a `description` that states why.
+   */
+  disabled?: boolean;
 }
 
 export interface ListboxProps {
@@ -73,13 +78,17 @@ export default function Listbox({
             ref={isHighlighted ? highlightedRef : null}
             role="option"
             aria-selected={isHighlighted}
+            aria-disabled={opt.disabled ? true : undefined}
             className={cn(
               "listbox-option",
               opt.description && "listbox-option--stacked",
+              opt.disabled && "listbox-option--disabled",
               isHighlighted && "listbox-option--highlighted",
             )}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => onSelect(opt.value)}
+            onClick={() => {
+              if (!opt.disabled) onSelect(opt.value);
+            }}
             onMouseEnter={() => onHighlightChange?.(i)}
           >
             <div className="listbox-option-top">
