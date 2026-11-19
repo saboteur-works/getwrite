@@ -5,6 +5,7 @@
  * from or written to the repo's `projects/` unless `--out` points there.
  *
  * Usage: node scripts/sample-project/generate.mjs --out <dir> [--seed <int>]
+ *          [--encrypted <passphrase-file>]
  *
  * The project lands in `<dir>/<projectId>/` (the directory name is the project's
  * UUID, as the loader expects). The project id and every id the app's core
@@ -19,13 +20,29 @@
  * merged document, and 50 documents of about 5000 words for 2/10/50 timing).
  * The merged mark is hand-written through the real mark store; no merge ran.
  *
+ * `--encrypted <passphrase-file>` (Task 11) also writes an encrypted copy of
+ * the same project (same seed, same ids and text) in `<dir>-encrypted/`, a
+ * workspace root of its own because the keyring file is written in the root.
+ * The passphrase is read from the file (one line, a trailing newline dropped),
+ * never from the command line, and is never printed. The JSON line then gains
+ * `encrypted: { path, projectId, keyringFile }`; without the option the line
+ * is unchanged. The copy opens only after unlocking the workspace with that
+ * passphrase. Encryption is refused in hosted mode, which this script is not.
+ *
  * How it builds (decision in specs/features/merge-documents/experiments/task-8.md):
  * this wrapper bundles `driver.ts` with the declared `cli` esbuild into an OS
  * temp directory and runs the bundle with plain node. The driver calls the real
  * core functions, so the output stays schema-valid as the app changes.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -75,32 +92,77 @@ function bundleDriver(workDir) {
   return outfile;
 }
 
+function readPassphraseFile(file) {
+  let raw;
+  try {
+    raw = readFileSync(file, "utf8");
+  } catch (error) {
+    throw new Error(
+      `cannot read the passphrase file: ${error instanceof Error ? (error.code ?? "error") : "error"}`,
+    );
+  }
+  if (raw.replace(/\r?\n$/, "").length === 0) {
+    throw new Error("the passphrase file is empty");
+  }
+}
+
+function runDriver(bundle, out, seed, passphraseFile) {
+  const args = [bundle, "--out", out, "--seed", String(seed)];
+  if (passphraseFile) args.push("--passphrase-file", passphraseFile);
+  return spawnSync(process.execPath, args, {
+    stdio: ["ignore", "pipe", "inherit"],
+    encoding: "utf8",
+  });
+}
+
 function main() {
   const { values } = parseArgs({
     options: {
       out: { type: "string" },
       seed: { type: "string", default: String(DEFAULT_SEED) },
+      encrypted: { type: "string" },
     },
   });
   if (!values.out) {
-    throw new Error("usage: generate.mjs --out <dir> [--seed <int>]");
+    throw new Error(
+      "usage: generate.mjs --out <dir> [--seed <int>] [--encrypted <passphrase-file>]",
+    );
   }
   const seed = parseSeed(values.seed);
   const out = path.resolve(values.out);
+  const passphraseFile =
+    values.encrypted === undefined ? null : path.resolve(values.encrypted);
+  const encryptedOut = `${out}-encrypted`;
+  if (passphraseFile !== null) {
+    // Both refusals come before any write.
+    readPassphraseFile(passphraseFile);
+    if (existsSync(encryptedOut) && readdirSync(encryptedOut).length > 0) {
+      throw new Error(`refusing to write into non-empty ${encryptedOut}`);
+    }
+  }
 
   const workDir = mkdtempSync(path.join(os.tmpdir(), "gw-sample-driver-"));
   try {
     const bundle = bundleDriver(workDir);
-    const run = spawnSync(
-      process.execPath,
-      [bundle, "--out", out, "--seed", String(seed)],
-      { stdio: ["ignore", "pipe", "inherit"], encoding: "utf8" },
-    );
+    const run = runDriver(bundle, out, seed, null);
     if (run.status !== 0) {
       process.exitCode = run.status ?? 1;
       return;
     }
-    process.stdout.write(run.stdout);
+    if (passphraseFile === null) {
+      process.stdout.write(run.stdout);
+      return;
+    }
+    const copy = runDriver(bundle, encryptedOut, seed, passphraseFile);
+    if (copy.status !== 0) {
+      rmSync(encryptedOut, { recursive: true, force: true });
+      process.exitCode = copy.status ?? 1;
+      return;
+    }
+    const plainLine = JSON.parse(run.stdout.trim());
+    const encryptedLine = JSON.parse(copy.stdout.trim());
+    plainLine.encrypted = encryptedLine.encrypted;
+    process.stdout.write(`${JSON.stringify(plainLine)}\n`);
   } finally {
     rmSync(workDir, { recursive: true, force: true });
   }

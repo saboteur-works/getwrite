@@ -9,7 +9,7 @@
  * Arguments: `--out <dir> --seed <int>`, both already checked by the wrapper.
  * Every name, text and value is synthetic. Nothing is read from a real project.
  */
-import { existsSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 
 // The cores resolve the projects directory from this variable and fall back to
@@ -23,7 +23,14 @@ const argValue = (flag: string): string => {
   }
   return argv[at + 1];
 };
+const optionalArg = (flag: string): string | null => {
+  const at = argv.indexOf(flag);
+  return at < 0 ? null : argValue(flag);
+};
 const OUT_DIR = path.resolve(argValue("--out"));
+// Task 11: a file holding the passphrase of an encrypted copy. Only the path is
+// an argument; the passphrase itself is read from the file and never printed.
+const PASSPHRASE_FILE = optionalArg("--passphrase-file");
 const SEED = Number(argValue("--seed"));
 process.env.GETWRITE_PROJECTS_DIR = OUT_DIR;
 
@@ -710,6 +717,32 @@ async function main(): Promise<void> {
       counts.annotations += (await listAnnotationsCore(projectId, r.id)).length;
     }
   }
+  let encrypted: Record<string, string> | undefined;
+  if (PASSPHRASE_FILE !== null) {
+    // The sweep runs last, once every read above has seen plain text. The
+    // keyring file lands in the workspace root (`OUT_DIR`), which is why the
+    // wrapper gives this run a directory of its own.
+    const passphrase = readFileSync(PASSPHRASE_FILE, "utf8").replace(
+      /\r?\n$/,
+      "",
+    );
+    if (passphrase.length === 0)
+      throw new Error("the passphrase file is empty");
+    const { enableProjectEncryption } =
+      await import("../../frontend/src/lib/models/crypto/enable-encryption");
+    const { KEYRING_FILENAME } =
+      await import("../../frontend/src/lib/models/crypto/keyring-store");
+    await enableProjectEncryption({
+      projectId,
+      projectName: "Sample project",
+      passphrase,
+    });
+    encrypted = {
+      path: projectRoot,
+      projectId,
+      keyringFile: path.join(OUT_DIR, KEYRING_FILENAME),
+    };
+  }
   createdRoot = null;
   process.stdout.write(
     `${JSON.stringify({
@@ -718,6 +751,7 @@ async function main(): Promise<void> {
       seed: SEED,
       counts,
       merge: mergeSummary,
+      ...(encrypted ? { encrypted } : {}),
     })}\n`,
   );
   process.exit(0);
