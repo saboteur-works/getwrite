@@ -204,3 +204,18 @@ Spec: [specs/features/split-at-cursor.md](../../specs/features/split-at-cursor.m
 - Undo split runs the same function for the original only, after commit, and reports `index-failed` with the failure list and no split-specific text (task-29).
 
 Not measured: whether the mention-index and backlinks writes interleave safely with a background `enqueueIndex` of the same project running at the same time (task-17); an encrypted project; several server instances.
+
+Per-document update after a merge and Undo merge (Feature 121)
+
+Spec: [specs/features/merge-documents.md](../../specs/features/merge-documents.md) (FR-12). Records: `specs/features/merge-documents/experiments/task-27.md`, `task-38.md`.
+
+A merge uses the same awaited per-document update as the split, not a whole-project reindex.
+
+- `applyMerge` (`merge-core.ts`) calls `updateDocumentIndexes` after commit and after the latest-operation record is written, outside the rollback, with the target and each absorbed document whose sidecar or text changed (task-27: one call, ids `[target, absorbed document that lost a note]`, spy on `rebuildDerivedIndexes` not called). The inverted index, annotation-body index, backlinks, mentions (recomputed, not copied) and diagnostics reflect the target when `applyMerge` resolves (task-27). A link in an appended passage resolves from the target, a link to an absorbed document still resolves, and the absorbed document stays in search and keeps its mentions (task-27).
+- `wordCount`: the target's is written by the merge's no-log text write, as `countWords(tiptapToPlainText(text))` (task-27, true already from task-25).
+- A failed update leaves the merge applied and returns `index-failed` naming the failing steps, with no `failedStep`; the compensation of task-26 is not run (task-27). The text (`MERGE_INDEX_FAILURE_MESSAGE`) says `reindex` repairs the search index, the notes search index, links and mentions, and that prose diagnostics refresh the next time the document is saved.
+- What `reindex` repairs: after an injected `inverted-index` failure the four index files of a rebuild of the failed project equal those of a rebuild of a copy, compared with sorted keys. That compares a rebuild with a rebuild of the same files, as the split test does; `reindex` was not run as the CLI (task-27). A failed `diagnostics` step is not repaired by the rebuild and the next save writes it (task-27).
+- The merge does not await the indexer queue's background drain. Measured (task-27, 5 runs on a fresh project each, documents of 5000 words, 3 and 25 documents): the index files were the same right after the merge returned and after the drain; the drain after the return was 26 to 27 ms at 3 documents and 388 to 431 ms at 25. Not supported: the same at the roughly 8 s drain at 50 documents recorded in `task-13.md`, whose cause was not established, with annotations or entities, or when a background task fails (the failure is logged and swallowed by `enqueueIndex`).
+- Undo merge runs the same function after commit for the target and each absorbed document that was not skipped, and reports `index-failed` with the failure list (task-38, `undoLatestMerge`; its test with an injected `updateDocumentIndexes` failure shows the failure reported without undoing the Undo).
+
+Not measured for a merge: the same interleaving of the mention-index and backlinks writes with a background `enqueueIndex` (the split's record names it, task-17; the merge records did not run it); an encrypted project; several server instances; an index failure thrown, not returned, by `updateDocumentIndexes` (task-27).

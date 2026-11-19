@@ -223,6 +223,25 @@ Feature 120 (split a document at the cursor) adds four routes, all under `app/ap
 - Error bodies: a malformed body, an unknown key (a `path` or `projectRoot` key included) or a bad id is 400 with one fixed text that echoes no client input. A locked project is 401 or 409 through `withStorageContext` (task-23, task-31).
 - Android: the transport is HTTP-only, with no native backend pair and no `createTransport` in `lib/api/split.ts`. `scripts/build-native-static.mjs` removes `app/api/**` from the native build, so the routes are not in the Android build (read, task-7 (k)). See `android/CLAUDE.md`.
 
+## Merge routes (Feature 121)
+
+Spec: [specs/features/merge-documents.md](../../specs/features/merge-documents.md) (FR-15, FR-22, FR-24). Records: `specs/features/merge-documents/experiments/task-32.md`, `task-40.md`.
+
+Feature 121 (merge documents) adds two routes under `app/api/project/merge/`, both `POST` and both wrapped in `withStorageContext`; Undo merge adds none.
+
+| Route                        | Method | What it does                                                               |
+| ---------------------------- | ------ | -------------------------------------------------------------------------- |
+| `/api/project/merge/preview` | POST   | Checks the selection against the stored documents; returns the dialog data |
+| `/api/project/merge`         | POST   | Applies the merge                                                          |
+
+- Undo of a merge goes through the existing `POST /api/project/split/undo`, which reads the stored record and sends a merge record to `undoLatestMerge`, and the record is read through the existing `GET /api/project/split/latest`. The route table of the split routes above is unchanged: no route was added by the Undo work, so the enumeration and smoke counts did not change for it (task-40: `sharing-gate-enumeration.test.ts` passed unmodified).
+- Classification: `sharing-gate-enumeration.test.ts` walks every `route.ts`, so the two merge routes are enumerated with no list edit. Its floors were raised, never loosened: `MIN_ROUTE_FILES` 90 to 92 and `MIN_ENTRIES` 132 to 134, which task-32 recorded as 92 route files, 128 route/method pairs and 6 pages. Two tests were added: the walk lists both routes, and neither route file has `checkLimit`, `limits-check`, `refusalFor` or `lib/sharing`. `scripts/sharing-refusal-smoke.mjs` carries `MIN_ENTRIES` 134 and a check that its walk lists both routes (task-32).
+- A confirmed paired device is allowed on both routes with no `checkLimit`, as the split and capture routes are; `runGate` passes a request with a paired-device cookie and refuses an unpaired one, beside `POST /api/project/capture` (task-32, a test fixture, not a second device). No sixth limit switch was added. No claim is made for a paired device.
+- Smoke: `pnpm test:sharing-smoke` was NOT RUN for these routes in task-32 (it needs a built standalone server, built only from the main checkout); only `node --check` on the script was run. The lead's run is recorded separately.
+- Request bodies: a malformed body, an unknown key (a `path` or `projectRoot` key included) or a malformed id is 400 with one fixed text that echoes nothing; a document count over the cap of 25 is a typed `refused` body with the reason `too-many-documents`; a locked project is 401 or 409 through `withStorageContext` (task-32).
+- Hosted tenancy is tested over fakes behind the real `withStorageContext` and a mocked tenant, for the merge routes (task-32) and for the Undo route with a merge record (task-40): the signed-in tenant's directory is the only one written, and a tenant with no such project writes nothing. That is not a run on a hosted deployment or with a second real tenant.
+- Android: the transport is HTTP-only. `lib/api/merge.ts` has no `createTransport` and no native backend pair, and `app/api/**` is not in the native build. See `android/CLAUDE.md`.
+
 ## Environment variables the desktop app sets
 
 `GETWRITE_SHARING`, `GETWRITE_SHARING_DIR`, `GETWRITE_BIND`, `GETWRITE_WINDOW_SECRET` and, since Feature 80, `GETWRITE_READINESS_KEY` are set by the Electron main process for its own server. They are not meant to be set by hand. Only `GETWRITE_SHARING=1` turns the gate on in the server (`readSharingEnv`); any other value, or unset, leaves it off. `GETWRITE_BIND` unset means undeclared, so `pnpm dev`, hosted deployments and tests are unaffected.
