@@ -55,7 +55,10 @@ import { computeMovePayload, collectDescendantIds } from "./moveResource";
 import type { Folder } from "../../src/lib/models/types";
 import { useMemo, useEffect, useState } from "react";
 import { openMergeDialog } from "../Merge/mergeOpenRequest";
+import MergedMarkLabel from "../Merge/MergedMarkLabel";
+import { useMergedMarkViews } from "../Merge/useMergedMarkState";
 import { mergeEligibility } from "../../src/lib/models/merge-eligibility";
+import { isMergedDocument } from "../../src/lib/models/split-eligibility";
 import { MERGE_REFUSAL_MESSAGES } from "../../src/lib/models/merge-messages";
 import { MERGED_MARK_SIDECAR_KEY } from "../../src/lib/models/merge-types";
 import type { AnyResource } from "../../src/lib/models/types";
@@ -146,6 +149,11 @@ function orderAfterClick(
     ? [clickedId, ...added.filter((id) => id !== clickedId)]
     : added;
   return [...kept, ...clickedFirst];
+}
+
+/** Id of a merged row's hidden rule text, named by the row's `aria-describedby`. */
+function mergedRuleId(resourceId: string): string {
+  return `merged-rule-${resourceId}`;
 }
 
 /** Rows of `order` that are still selected, then any selected row not in it (tree order). */
@@ -285,6 +293,24 @@ export default function ResourceTree({
     );
     return computed.ok ? countInboxItems(computed.subtree, rawResources) : 0;
   }, [rawResources, inboxFolderId]);
+
+  // Feature 121 FR-16: each merged document's mark, resolved from its target
+  // id (`useMergedMarkViews` reads once per distinct target and snapshot).
+  const mergedEntries = useMemo(
+    () =>
+      rawResources
+        .filter((r) =>
+          isMergedDocument(r as unknown as Record<string, unknown>),
+        )
+        .map((r) => ({
+          id: r.id,
+          mark: (r as unknown as Record<string, unknown>)[
+            MERGED_MARK_SIDECAR_KEY
+          ],
+        })),
+    [rawResources],
+  );
+  const mergedMarkViews = useMergedMarkViews(mergedEntries);
 
   const isInboxRow = (item: ItemInstance<ResourceItemData>): boolean =>
     inboxCount > 0 && item.getId() === inboxFolderId;
@@ -558,6 +584,9 @@ export default function ResourceTree({
                     "aria-label": `${item.getItemName()}, ${inboxCount} ${inboxCount === 1 ? "item" : "items"}`,
                   }
                 : {})}
+              {...(mergedMarkViews.has(item.getId())
+                ? { "aria-describedby": mergedRuleId(item.getId()) }
+                : {})}
               className={`resource-tree-button ${item.isSelected() ? "resource-tree-button--selected" : ""} ${item.isFolder() ? "text-gw-label text-gw-secondary" : ""}`}
             >
               {item.isFolder() && (
@@ -584,6 +613,12 @@ export default function ResourceTree({
               >
                 {renderResourceIcon(item)}
                 <div className="truncate">{item.getItemName()}</div>
+                {mergedMarkViews.has(item.getId()) ? (
+                  <MergedMarkLabel
+                    view={mergedMarkViews.get(item.getId())!}
+                    ruleId={mergedRuleId(item.getId())}
+                  />
+                ) : null}
                 {isInboxRow(item) ? (
                   <span
                     data-testid="inbox-count"
