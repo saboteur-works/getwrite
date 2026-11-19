@@ -1,4 +1,5 @@
 import type { AnyResource } from "./models/types";
+import { isMergedDocument } from "./models/split-eligibility";
 
 type StatusRollupRowKind = "configured" | "unknown" | "unset";
 
@@ -66,7 +67,10 @@ export function computeStatusRollup(
       if (!existing) byStatus.set(status, tally);
     }
     tally.resourceCount += 1;
-    tally.words += getResourceWordCount(r);
+    // FR-20: a merged-away document keeps its row count but adds no words.
+    if (!isMergedDocument(r as unknown as Record<string, unknown>)) {
+      tally.words += getResourceWordCount(r);
+    }
   }
 
   const zero: Tally = { resourceCount: 0, words: 0 };
