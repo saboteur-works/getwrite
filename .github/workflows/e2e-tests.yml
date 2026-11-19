@@ -9,7 +9,11 @@ on:
 jobs:
     playwright:
         name: Playwright (Storybook)
-        runs-on: ubuntu-latest
+        # Pinned: on ubuntu-latest the runner reported ubuntu26.04-x64, and
+        # Playwright 1.60.0 refused to install Chromium there ("Playwright does
+        # not support chromium on ubuntu26.04-x64"). Unpin after upgrading
+        # Playwright to a release that supports the newer image.
+        runs-on: ubuntu-24.04
         # The suite builds Storybook, serves it, and runs 215 tests; locally the
         # whole thing lands around 3 minutes. The ceiling is generous so a slow
         # runner reports failures rather than a timeout.
