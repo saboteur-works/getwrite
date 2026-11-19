@@ -432,7 +432,7 @@ Hot files and the only tasks allowed to edit them (file conflicts for wave plann
 **Estimate:** 5
 **Notes:** LEAD-RUN. The last task before the PR. Only this task and Task 1 edit `experiments.md`.
 **POS:** task_95a7bac7
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 37
