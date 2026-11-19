@@ -188,6 +188,12 @@ export function describeSplitSuccess(newName: string): string {
 /** The action's name in the palette and the editor menu. */
 export const UNDO_SPLIT_LABEL = "Undo split";
 
+/**
+ * The Dismiss button of an Undo toast, split or merge (Feature 121 Task 41;
+ * drafted, not reviewed by the owner).
+ */
+export const UNDO_TOAST_DISMISS_LABEL = "Dismiss";
+
 /** What stands in for the split-off document's name when the project tree has no document with its id. */
 export const UNDO_SPLIT_UNKNOWN_NAME_PHRASE =
   "the new document made by the split (its name could not be found in the project)";

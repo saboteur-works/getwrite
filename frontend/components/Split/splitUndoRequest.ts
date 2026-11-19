@@ -25,8 +25,17 @@ export type SplitUndoAvailability =
   | { kind: "none" }
   /** The latest operation is a split; its new document is named by id. */
   | { kind: "split"; splitOffDocumentId: string }
-  /** The read failed; `message` says so. This is not "no split". */
-  | { kind: "read-failed"; message: string };
+  /**
+   * The latest operation is a merge (Feature 121): the target by id and the
+   * number of documents that were merged into it.
+   */
+  | { kind: "merge"; targetDocumentId: string; absorbedCount: number }
+  /**
+   * The read failed; `message` says so for a split and `mergeMessage` for a
+   * merge (absent: the merge text for a failed read). This is not "no split"
+   * and not "no merge".
+   */
+  | { kind: "read-failed"; message: string; mergeMessage?: string };
 
 /** What an Undo request did at once; the report is the host's. */
 export type SplitUndoRequestOutcome =

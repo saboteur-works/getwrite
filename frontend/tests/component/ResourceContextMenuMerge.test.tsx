@@ -376,12 +376,19 @@ describe("no other entry point", () => {
     ]) {
       expect(source(path), path).not.toMatch(/openMergeDialog/);
     }
-    expect(source("components/common/ResourceCommandPalette.tsx")).not.toMatch(
-      /Merge/,
-    );
-    expect(source("components/Editor/EditorContextMenu.tsx")).not.toMatch(
-      /Merge/,
-    );
+    // Feature 121 Task 41 adds "Undo merge" to the palette and the editor menu
+    // (FR-22); that wording is allowed, any other Merge entry point is not.
+    const withoutUndoMerge = (text: string): string =>
+      text.replace(
+        /Undo[ -]?[Mm]erge|UNDO_MERGE_\w+|undo-merge|merge-undo-messages|merge-messages|describeUndoMergeAction/g,
+        "",
+      );
+    expect(
+      withoutUndoMerge(source("components/common/ResourceCommandPalette.tsx")),
+    ).not.toMatch(/Merge/);
+    expect(
+      withoutUndoMerge(source("components/Editor/EditorContextMenu.tsx")),
+    ).not.toMatch(/Merge/);
   });
 
   it("calls the host's open request from the tree and nowhere else in components", () => {
