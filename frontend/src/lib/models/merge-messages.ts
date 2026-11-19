@@ -20,6 +20,7 @@ import {
   type MergeRemainingState,
   type MergeStep,
 } from "./merge-types";
+import type { SplitIndexStep } from "./split-index-update";
 
 /** Refusals known before or at a merge. One per reason code of the contract. */
 export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusalReason, string> = {
@@ -107,6 +108,35 @@ export function describeMergeFailure(
   remaining: MergeRemainingState,
 ): string {
   return `The merge did not finish. It stopped while ${MERGE_FAILED_STEP_LABELS[step]}. ${MERGE_FAILED_REMAINING_STATE_MESSAGES[remaining]}`;
+}
+
+/**
+ * The text for an index failure after a saved merge (FR-12). The merge is
+ * applied and stays applied. `reindex` rewrites four indexes and not prose
+ * diagnostics, so the text says the diagnostics refresh on the next save.
+ */
+export const MERGE_INDEX_FAILURE_MESSAGE =
+  "The merge was saved, but some search and link data for the merged documents could not be brought up to date. Running reindex repairs the search index, the notes search index, links and mentions. Prose diagnostics refresh the next time you save the document.";
+
+/** What was not brought up to date, in words. One label per failing step. */
+export const MERGE_INDEX_STEP_LABELS: Record<SplitIndexStep, string> = {
+  "read-content": "reading the saved text",
+  "read-sidecar": "reading the document's details",
+  "inverted-index": "the search index",
+  "annotation-index": "the notes search index",
+  backlinks: "links between documents",
+  "mention-index": "name mentions",
+  diagnostics: "prose diagnostics",
+};
+
+/** The text for an index failure after a saved merge: the general text, then what was not updated. */
+export function describeMergeIndexFailure(
+  steps: readonly SplitIndexStep[],
+): string {
+  const labels = [...new Set(steps)].map(
+    (step) => MERGE_INDEX_STEP_LABELS[step],
+  );
+  return `${MERGE_INDEX_FAILURE_MESSAGE} Not brought up to date: ${labels.join(", ")}.`;
 }
 
 /** Warning (OQ-12): the target is left out of compile while an absorbed document is not. The merge proceeds. */

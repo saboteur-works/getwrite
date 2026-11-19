@@ -27,7 +27,7 @@
  *    `lockHeld: true`, because `acquireLock` is not reentrant;
  * 4. the latest-operation record takes `withMetaLock(root)` alone, last.
  * No step nests a non-reentrant lock inside itself. `withIndexingSuspended`
- * is not used. The derived-index update runs after commit (a later task) and
+ * is not used. The derived-index update runs after commit (`finishAfterCommit`) and
  * is outside this operation.
  *
  * Order of writes (FR-6): (1) lock; (2) a preserved, non-canonical snapshot of
@@ -61,6 +61,15 @@
  * rethrown. The derived-index update is outside this operation and its
  * rollback.
  *
+ * After the commit and with every lock released, `updateDocumentIndexes`
+ * (shared with Split, imported, not edited) brings the inverted index, the
+ * annotation-body index, backlinks, the mention index and prose diagnostics of
+ * the target and of each absorbed document that lost a note up to date. It is
+ * awaited and reports its own failures; a failure is returned as
+ * `index-failed` and never undoes the merge. It does not wait for the indexer
+ * queue to drain (`experiments/task-27.md`). The sidecar `wordCount` of every
+ * rewritten text is written by the no-log text write itself.
+ *
  * No React, JSX or JSON.
  */
 import { atomicWriteFile, readFile, rm } from "./io";
@@ -75,6 +84,7 @@ import {
 } from "./merge-annotations";
 import { composeMergedDocument, orderAbsorbedDocuments } from "./merge-compose";
 import { MERGE_DOCUMENT_CAP } from "./merge-limits";
+import { describeMergeIndexFailure } from "./merge-messages";
 import { removeMergedMark, writeMergedMark } from "./merge-mark-core";
 import { applyMergeMetadataCarry } from "./merge-metadata";
 import {
@@ -100,6 +110,10 @@ import {
 } from "./revision-core";
 import { mutateSidecar, SIDECAR_UNCHANGED } from "./sidecar";
 import { revisionContentLockKey } from "./split-preview-core";
+import {
+  updateDocumentIndexes,
+  type SplitIndexFailure,
+} from "./split-index-update";
 import {
   LATEST_OPERATION_FILE_NAME,
   writeLatestOperation,
@@ -129,10 +143,26 @@ export interface MergeApplyOptions {
  */
 export type MergeApplyResult =
   | Exclude<MergeResult, { outcome: "failed" }>
+  | MergeIndexFailedResult
   | (Extract<MergeResult, { outcome: "failed" }> & {
       /** A stable cause string (an error name or a fixed word); never client input. */
       cause: string;
     });
+
+/**
+ * The merge was applied and stays applied, but the awaited derived-data update
+ * reported failures. Carries the fields of `applied` so a caller can still
+ * reload the documents, plus what failed and the writer-facing text.
+ */
+export type MergeIndexFailedResult = Omit<
+  Extract<MergeResult, { outcome: "applied" }>,
+  "outcome"
+> & {
+  outcome: "index-failed";
+  failures: SplitIndexFailure[];
+  /** The writer-facing text, from `merge-messages.ts`. */
+  message: string;
+};
 
 type Failed = Extract<MergeApplyResult, { outcome: "failed" }>;
 
@@ -193,6 +223,8 @@ interface Progress {
   isAppendAttempted: boolean;
   isMetadataAttempted: boolean;
   isRecordAttempted: boolean;
+  /** Documents whose derived data the post-commit update refreshes. */
+  changedDocumentIds: string[];
 }
 
 class PlanFailure extends Error {
@@ -819,6 +851,12 @@ async function applyUnderLocks(
     progress,
   );
   await writeAfterSnapshots(projectRoot, planned, snapshots, date, progress);
+  progress.changedDocumentIds = [
+    planned.target.resourceId,
+    ...planned.absorbed
+      .filter((d) => (planned.movedFrom.get(d.resourceId)?.size ?? 0) > 0)
+      .map((d) => d.resourceId),
+  ];
   return {
     outcome: "applied",
     targetDocumentId: planned.target.resourceId,
@@ -861,7 +899,42 @@ export async function applyMerge(
     isAppendAttempted: false,
     isMetadataAttempted: false,
     isRecordAttempted: false,
+    changedDocumentIds: [],
   };
+  const result = await applyLocked(projectRoot, request, options, progress);
+  if (result.outcome !== "applied") return result;
+  return finishAfterCommit(result, projectRoot, progress.changedDocumentIds);
+}
+
+/**
+ * After the commit: the awaited per-document index update. `updateDocumentIndexes`
+ * reports its own step failures and does not throw; a failure is returned and
+ * does not undo the merge.
+ */
+async function finishAfterCommit(
+  applied: Extract<MergeApplyResult, { outcome: "applied" }>,
+  projectRoot: string,
+  changedDocumentIds: readonly string[],
+): Promise<MergeApplyResult> {
+  const update = await updateDocumentIndexes(projectRoot, changedDocumentIds);
+  if (update.outcome === "updated") return applied;
+  return {
+    targetDocumentId: applied.targetDocumentId,
+    absorbedDocumentIds: applied.absorbedDocumentIds,
+    notices: applied.notices,
+    outcome: "index-failed",
+    failures: update.failures,
+    message: describeMergeIndexFailure(update.failures.map((f) => f.step)),
+  };
+}
+
+/** The locks, the operation and its compensation; the locks are released before it returns. */
+async function applyLocked(
+  projectRoot: string,
+  request: MergeApplyRequest,
+  options: MergeApplyOptions,
+  progress: Progress,
+): Promise<MergeApplyResult> {
   const releases: Array<() => void> = [];
   try {
     for (const key of lockKeys(projectRoot, request))

@@ -9,6 +9,8 @@ import {
   MERGE_DOCUMENT_CAP_MESSAGE,
   MERGE_FAILED_REMAINING_STATE_MESSAGES,
   MERGE_FAILED_STEP_LABELS,
+  MERGE_INDEX_FAILURE_MESSAGE,
+  MERGE_INDEX_STEP_LABELS,
   MERGE_MARK_STATE_MESSAGES,
   MERGE_REFUSAL_MESSAGES,
   MERGE_TARGET_EXCLUDED_FROM_COMPILE_WARNING,
@@ -20,9 +22,11 @@ import {
   describeMergeAnnotationLimit,
   describeMergeDocumentCap,
   describeMergeFailure,
+  describeMergeIndexFailure,
   describeMergedMarkLabel,
   describeUndoMergeAction,
 } from "../../src/lib/models/merge-messages";
+import { SPLIT_INDEX_STEPS } from "../../src/lib/models/split-index-update";
 import {
   MERGE_MARK_STATES,
   MERGE_REFUSAL_REASONS,
@@ -113,6 +117,50 @@ describe("merge failure texts", () => {
   });
 });
 
+describe("merge index failure text", () => {
+  it("says the merge was saved and that reindex repairs the four indexes", () => {
+    expect(MERGE_INDEX_FAILURE_MESSAGE).toMatch(/merge was saved/i);
+    expect(MERGE_INDEX_FAILURE_MESSAGE).toMatch(/reindex/i);
+    for (const four of [
+      "search index",
+      "notes search index",
+      "links",
+      "mentions",
+    ])
+      expect(MERGE_INDEX_FAILURE_MESSAGE).toContain(four);
+  });
+
+  it("says prose diagnostics refresh on the next save and does not say reindex repairs them", () => {
+    expect(MERGE_INDEX_FAILURE_MESSAGE).toMatch(
+      /prose diagnostics refresh the next time you save/i,
+    );
+    const reindexSentence = MERGE_INDEX_FAILURE_MESSAGE.split(".").find((s) =>
+      /reindex/i.test(s),
+    );
+    expect(reindexSentence).toBeDefined();
+    expect(reindexSentence).not.toMatch(/diagnostics/i);
+  });
+
+  it("has a label for every step of the per-document update", () => {
+    for (const step of SPLIT_INDEX_STEPS)
+      expect(MERGE_INDEX_STEP_LABELS[step].length).toBeGreaterThan(3);
+  });
+
+  it("names what was not brought up to date, once each, and never reads as a failed merge", () => {
+    const text = describeMergeIndexFailure([
+      "backlinks",
+      "backlinks",
+      "diagnostics",
+    ]);
+    expect(text).toContain(MERGE_INDEX_FAILURE_MESSAGE);
+    expect(text).toContain(MERGE_INDEX_STEP_LABELS.backlinks);
+    expect(text).toContain(MERGE_INDEX_STEP_LABELS.diagnostics);
+    expect(text.split(MERGE_INDEX_STEP_LABELS.backlinks)).toHaveLength(2);
+    expect(text).not.toMatch(/did not finish/i);
+    expect(text).not.toMatch(/nothing was changed/i);
+  });
+});
+
 describe("merged mark texts", () => {
   it("has a distinct text for each state beyond available", () => {
     const states = MERGE_MARK_STATES.filter((s) => s !== "available");
@@ -195,6 +243,7 @@ describe("every text is distinct", () => {
       MERGE_DOCUMENT_CAP_MESSAGE,
       ...Object.values(MERGE_FAILED_REMAINING_STATE_MESSAGES),
       ...Object.values(MERGE_FAILED_STEP_LABELS),
+      MERGE_INDEX_FAILURE_MESSAGE,
       ...Object.values(MERGE_MARK_STATE_MESSAGES),
       ...Object.values(MERGED_RULE_TEXTS),
       MERGED_NOTICE_LINE,
