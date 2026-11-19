@@ -386,6 +386,7 @@ async function gatherWriteFacts(
   snapshot: SnapshotRevisionRef,
 ): Promise<Gathered> {
   const originalId = snapshot.documentId;
+  if (record.kind !== "split") return cannotCheck("unsupported-operation");
   const splitOffId = record.newDocumentId;
   const later = await laterSplitOf(projectRoot, splitOffId);
   if (later === "found") return refuse("split-off-split-since");

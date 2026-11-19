@@ -148,3 +148,33 @@ describe("split model files import graph (Feature 120)", () => {
     }
   });
 });
+
+/** Absolute paths of the merge model files present now (Feature 121). */
+function mergeFiles(): string[] {
+  return readdirSync(MODELS_DIR)
+    .filter((name) => /^merge-.*\.ts$/.test(name))
+    .sort()
+    .map((name) => path.join(MODELS_DIR, name));
+}
+
+describe("merge model files import graph (Feature 121)", () => {
+  it("finds at least merge-types.ts", () => {
+    const names = mergeFiles().map((f) => path.basename(f));
+    expect(names).toContain("merge-types.ts");
+  });
+
+  it("every merge file reaches no react, JSX, JSON or UI-registry file", () => {
+    for (const file of mergeFiles()) {
+      expect(walk(file).offenders, path.basename(file)).toEqual([]);
+    }
+  });
+
+  it("no merge file imports a node:* module or fs itself", () => {
+    for (const file of mergeFiles()) {
+      const own = runtimeSpecifiers(readFileSync(file, "utf8")).filter(
+        (s) => isNodeBuiltin(s) || /^fs(\/promises)?$/.test(s),
+      );
+      expect(own, path.basename(file)).toEqual([]);
+    }
+  });
+});
