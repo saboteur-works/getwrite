@@ -46,6 +46,7 @@ import {
   LINEAGE_FILE_NAME,
   SplitRecordsUnreadableError,
   clearLatestOperation,
+  isLatestOperationRecord,
   readLatestOperation,
   readLineageEntry,
   writeLatestOperation,
@@ -446,5 +447,171 @@ describe("split records on an encrypted project", () => {
     await expect(
       runInStorageContext(ctx, () => clearLatestOperation(projectRoot)),
     ).rejects.toSatisfy((e: unknown) => isLockedAccessError(e));
+  });
+});
+
+describe("isLatestOperationRecord (Feature 121, Task 23)", () => {
+  const DATE = "2026-11-16T10:00:00.000Z";
+  const ref = (documentId: string, revisionId: string, n: number) => ({
+    documentId,
+    revisionId,
+    revisionNumber: n,
+  });
+  const mergeRecord = (): Record<string, unknown> => ({
+    kind: "merge",
+    affectedDocumentIds: [DOC_A, DOC_B, DOC_C],
+    snapshotRevisions: [
+      ref(DOC_A, "opaque-id-a", 3),
+      ref(DOC_B, "x", 1),
+      ref(DOC_C, "rev/with/odd shape", 2),
+    ],
+    date: DATE,
+  });
+
+  it("accepts a split record with a valid new document id", () => {
+    expect(isLatestOperationRecord(operation(DOC_B))).toBe(true);
+  });
+
+  it("accepts a merge record with no new document id, target first", () => {
+    expect(isLatestOperationRecord(mergeRecord())).toBe(true);
+  });
+
+  it("does not compare a revision id with a v-<n> pattern", () => {
+    const record = mergeRecord();
+    record.snapshotRevisions = [
+      ref(DOC_A, "not-v-anything", 1),
+      ref(DOC_B, "v-1", 1),
+      ref(DOC_C, "0", 1),
+    ];
+    expect(isLatestOperationRecord(record)).toBe(true);
+  });
+
+  it("rejects a split record with no new document id", () => {
+    const rest: Record<string, unknown> = { ...operation(DOC_B) };
+    delete rest.newDocumentId;
+    expect(isLatestOperationRecord(rest)).toBe(false);
+    expect(
+      isLatestOperationRecord({ ...rest, newDocumentId: "not-a-uuid" }),
+    ).toBe(false);
+  });
+
+  it("rejects a malformed record of either kind", () => {
+    for (const base of [
+      mergeRecord(),
+      operation(DOC_B) as unknown as Record<string, unknown>,
+    ]) {
+      expect(isLatestOperationRecord({ ...base, date: "not-a-date" })).toBe(
+        false,
+      );
+      expect(
+        isLatestOperationRecord({ ...base, affectedDocumentIds: [] }),
+      ).toBe(false);
+      expect(isLatestOperationRecord({ ...base, date: undefined })).toBe(false);
+      expect(
+        isLatestOperationRecord({
+          ...base,
+          affectedDocumentIds: [DOC_A, "not-a-uuid"],
+        }),
+      ).toBe(false);
+    }
+  });
+
+  it("rejects a merge snapshot list shorter than the affected list", () => {
+    const record = mergeRecord();
+    record.snapshotRevisions = [ref(DOC_A, "a", 1), ref(DOC_B, "b", 1)];
+    expect(isLatestOperationRecord(record)).toBe(false);
+  });
+
+  it("rejects a merge snapshot list that misses an affected document", () => {
+    const record = mergeRecord();
+    record.snapshotRevisions = [
+      ref(DOC_A, "a", 1),
+      ref(DOC_B, "b", 1),
+      ref(DOC_B, "b2", 2),
+    ];
+    expect(isLatestOperationRecord(record)).toBe(false);
+  });
+
+  it("rejects a merge record carrying a bad new document id", () => {
+    expect(
+      isLatestOperationRecord({ ...mergeRecord(), newDocumentId: "nope" }),
+    ).toBe(false);
+  });
+});
+
+describe("merge record through the adapter (Feature 121, Task 23)", () => {
+  const previousEnv = process.env.GETWRITE_PROJECTS_DIR;
+  let tmp: string;
+  let projectPath: string;
+
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), "merge-records-"));
+    process.env.GETWRITE_PROJECTS_DIR = tmp;
+    projectPath = path.join(tmp, generateUUID());
+    await fs.mkdir(projectPath, { recursive: true });
+  });
+
+  afterEach(async () => {
+    if (previousEnv === undefined) delete process.env.GETWRITE_PROJECTS_DIR;
+    else process.env.GETWRITE_PROJECTS_DIR = previousEnv;
+    await removeDirRetry(tmp);
+  });
+
+  const merge = (n: number): LatestOperationRecord => ({
+    kind: "merge",
+    affectedDocumentIds: [DOC_A, DOC_B],
+    snapshotRevisions: [
+      { documentId: DOC_A, revisionId: `ra-${n}`, revisionNumber: n },
+      { documentId: DOC_B, revisionId: `rb-${n}`, revisionNumber: n },
+    ],
+    date: "2026-11-16T10:00:00.000Z",
+  });
+
+  it("writes, reads, is replaced by a split and a merge, and clears", async () => {
+    await writeLatestOperation(projectPath, merge(1));
+    expect(await readLatestOperation(projectPath)).toEqual({
+      outcome: "found",
+      record: merge(1),
+    });
+    await writeLatestOperation(projectPath, operation(DOC_C, 2));
+    expect(await readLatestOperation(projectPath)).toEqual({
+      outcome: "found",
+      record: operation(DOC_C, 2),
+    });
+    await writeLatestOperation(projectPath, merge(3));
+    expect(await readLatestOperation(projectPath)).toEqual({
+      outcome: "found",
+      record: merge(3),
+    });
+    await clearLatestOperation(projectPath);
+    expect(await readLatestOperation(projectPath)).toEqual({ outcome: "none" });
+  });
+
+  it("survives a reload: the stored file reads back after a fresh read", async () => {
+    await writeLatestOperation(projectPath, merge(4));
+    const raw = await fs.readFile(
+      path.join(projectPath, "meta", LATEST_OPERATION_FILE_NAME),
+      "utf8",
+    );
+    expect(JSON.parse(raw)).toEqual(merge(4));
+    expect(await readLatestOperation(projectPath)).toEqual({
+      outcome: "found",
+      record: merge(4),
+    });
+  });
+
+  it("refuses to write an invalid merge record", async () => {
+    const bad: LatestOperationRecord = { ...merge(1), snapshotRevisions: [] };
+    await expect(writeLatestOperation(projectPath, bad)).rejects.toThrow();
+  });
+
+  it("returns failed, never none, for a stored merge record that is malformed", async () => {
+    await fs.mkdir(path.join(projectPath, "meta"), { recursive: true });
+    await fs.writeFile(
+      path.join(projectPath, "meta", LATEST_OPERATION_FILE_NAME),
+      JSON.stringify({ ...merge(1), snapshotRevisions: [] }),
+      "utf8",
+    );
+    expect((await readLatestOperation(projectPath)).outcome).toBe("failed");
   });
 });

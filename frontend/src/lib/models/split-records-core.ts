@@ -97,20 +97,57 @@ function isSnapshotRef(value: unknown): value is SnapshotRevisionRef {
   );
 }
 
-function isLatestOperationRecord(
+/**
+ * True when every affected document has exactly one snapshot reference. A
+ * revision id is an opaque string and is never matched against a `v-<n>`
+ * pattern.
+ */
+function snapshotsCoverAffected(
+  affected: readonly string[],
+  snapshots: readonly SnapshotRevisionRef[],
+): boolean {
+  if (snapshots.length < affected.length) return false;
+  return affected.every(
+    (id) => snapshots.filter((ref) => ref.documentId === id).length === 1,
+  );
+}
+
+/**
+ * Runtime validator of the latest-operation record (Feature 120 FR-16,
+ * Feature 121 FR-21). A `split` record needs a UUID `newDocumentId`. A
+ * `merge` record has none: `affectedDocumentIds` lists the target first, then
+ * the absorbed documents, and each has a snapshot reference. Both kinds need
+ * a non-empty affected list of UUIDs and an ISO date.
+ *
+ * A stored record of kind `merge` that does carry a `newDocumentId` (the
+ * shape the Feature 120 test wrote before Feature 121) is accepted under the
+ * Feature 120 rule, a valid UUID and no snapshot-coverage requirement, so no
+ * stored record needs migrating.
+ */
+export function isLatestOperationRecord(
   value: unknown,
 ): value is LatestOperationRecord {
-  return (
-    isRecord(value) &&
-    (SPLIT_OPERATION_KINDS as readonly unknown[]).includes(value.kind) &&
-    Array.isArray(value.affectedDocumentIds) &&
-    value.affectedDocumentIds.every(
+  if (
+    !isRecord(value) ||
+    !(SPLIT_OPERATION_KINDS as readonly unknown[]).includes(value.kind) ||
+    !Array.isArray(value.affectedDocumentIds) ||
+    value.affectedDocumentIds.length === 0 ||
+    !value.affectedDocumentIds.every(
       (id) => typeof id === "string" && isValidUUID(id),
-    ) &&
-    Array.isArray(value.snapshotRevisions) &&
-    value.snapshotRevisions.every(isSnapshotRef) &&
-    isValidUUID(String(value.newDocumentId)) &&
-    isIsoDate(value.date)
+    ) ||
+    !Array.isArray(value.snapshotRevisions) ||
+    !value.snapshotRevisions.every(isSnapshotRef) ||
+    !isIsoDate(value.date)
+  ) {
+    return false;
+  }
+  const hasNewId = value.newDocumentId !== undefined;
+  if (hasNewId && !isValidUUID(String(value.newDocumentId))) return false;
+  if (value.kind === "split") return hasNewId;
+  if (hasNewId) return true;
+  return snapshotsCoverAffected(
+    value.affectedDocumentIds as string[],
+    value.snapshotRevisions as SnapshotRevisionRef[],
   );
 }
 
