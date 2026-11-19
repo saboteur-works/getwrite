@@ -36,6 +36,7 @@ import { PROJECT_FILENAME } from "./project-config";
 import type { QueryAST } from "./query-ast";
 import { evaluate } from "./query-evaluator";
 import { getIntrinsicField } from "./query-intrinsics";
+import { isMergedDocument } from "./split-eligibility";
 import { MetadataSchemaSchema } from "./schemas";
 import type { MetadataSchema } from "./types";
 
@@ -133,12 +134,17 @@ function findMissingFields(ast: QueryAST, schema: MetadataSchema): string[] {
  *
  * @param projectRoot - Absolute path to the project root.
  * @param evaluationTime - Fixed evaluation time carried into the evaluator.
+ * @param options - `includeMerged` keeps documents carrying the merged mark
+ *   (Feature 121, FR-19). Only the daily figure sets it, so that it can count a
+ *   marked document's entries dated before the mark; every other caller leaves
+ *   marked documents out of the selection.
  * @returns A {@link GoalMembershipResult}; never a bare list.
  * @throws Any error that is not a known read problem.
  */
 export async function evaluateGoalMembership(
   projectRoot: string,
   evaluationTime: Date,
+  options: { includeMerged?: boolean } = {},
 ): Promise<GoalMembershipResult> {
   try {
     const { goalFilter, schema } = await readStoredGoalConfig(projectRoot);
@@ -162,7 +168,13 @@ export async function evaluateGoalMembership(
     const input = await loadGoalEvaluationInput(projectRoot, evaluationTime);
     const matched = new Set(await evaluate(ast, input));
     const ids = input.resources
-      .filter((r) => isTextBodied(r.type) && matched.has(r.id))
+      .filter(
+        (r) =>
+          isTextBodied(r.type) &&
+          matched.has(r.id) &&
+          (options.includeMerged === true ||
+            !isMergedDocument(input.sidecars[r.id] ?? {})),
+      )
       .map((r) => r.id);
     return ids.length > 0 ? { status: "members", ids } : { status: "no-match" };
   } catch (err) {

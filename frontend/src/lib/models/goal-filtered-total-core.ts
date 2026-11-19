@@ -43,6 +43,7 @@ import {
 } from "./goal-filter-membership-core";
 import { classifyGoalReadError } from "./goal-read-error";
 import { readSidecar } from "./sidecar";
+import { isMergedDocument } from "./split-eligibility";
 
 export type GoalFilteredTotalResult =
   | { status: "not-filtered" }
@@ -173,6 +174,8 @@ async function sumOutsideInbox(
     const sidecar = await readSidecar(projectRoot, id);
     if (sidecar === null) return readFailed("missing-sidecar");
     if (sidecar.type !== "text") continue;
+    // Feature 121, FR-19: a document marked as merged is outside the total.
+    if (isMergedDocument(sidecar)) continue;
     const folderId =
       typeof sidecar.folderId === "string" ? sidecar.folderId : null;
     if (isInInbox(subtree, { id, type: "text", folderId })) continue;

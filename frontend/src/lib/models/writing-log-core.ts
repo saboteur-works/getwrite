@@ -26,6 +26,8 @@ import {
   type InboxSubtree,
 } from "./inbox-membership";
 import { classifyGoalReadError } from "./goal-read-error";
+import { isMergedDocument } from "./split-eligibility";
+import { MERGED_MARK_SIDECAR_KEY } from "./split-types";
 import {
   evaluateGoalMembership,
   type GoalMembershipResult,
@@ -176,7 +178,11 @@ async function resolveFilterMembers(
   config: ProjectConfig,
 ): Promise<Set<string> | null> {
   if (config.goalFilter === undefined) return null;
-  const result = await evaluateGoalMembership(projectRoot, new Date());
+  // A marked document stays in the selection here: its entries before the mark
+  // keep counting (Feature 121, FR-19); `readMergeCutoffs` skips the later ones.
+  const result = await evaluateGoalMembership(projectRoot, new Date(), {
+    includeMerged: true,
+  });
   switch (result.status) {
     case "not-filtered":
       return null;
@@ -294,6 +300,52 @@ async function findExcludedDocumentIds(
   return excluded;
 }
 
+const MARK_INSTANT_PATTERN = ISO_INSTANT_PATTERN;
+
+/** The mark's date as epoch ms, or `null` when it is not a full ISO instant. */
+function markInstantMs(mark: unknown): number | null {
+  if (mark === null || typeof mark !== "object") return null;
+  const date = (mark as Record<string, unknown>).date;
+  if (typeof date !== "string" || !MARK_INSTANT_PATTERN.test(date)) return null;
+  const ms = Date.parse(date);
+  return Number.isNaN(ms) ? null : ms;
+}
+
+/**
+ * Feature 121, FR-19: for each document the window names that carries the
+ * merged mark, the instant of the mark; its entries dated after it are left
+ * out of the daily figure, those at or before it keep counting. A mark whose
+ * date is not a full ISO instant makes the figure unavailable: a date-only
+ * value would leave the merge day ambiguous, and a guess is not a number the
+ * writer can trust.
+ * @throws GoalFilteredFigureUnavailableError on an unreadable sidecar or a
+ *   mark with no usable date.
+ */
+async function readMergeCutoffs(
+  projectRoot: string,
+  entries: readonly WritingLogEntry[],
+): Promise<Map<string, number>> {
+  const ids = new Set<string>();
+  for (const e of entries) {
+    if (!isImportEntry(e) && e.documentId !== undefined) ids.add(e.documentId);
+  }
+  const cutoffs = new Map<string, number>();
+  for (const id of ids) {
+    const sidecar = await readSidecarForFigure(projectRoot, id);
+    if (sidecar === null || !isMergedDocument(sidecar)) continue;
+    const ms = markInstantMs(sidecar[MERGED_MARK_SIDECAR_KEY]);
+    if (ms === null) {
+      throw new GoalFilteredFigureUnavailableError({
+        status: "failure",
+        reason: "read-failed",
+        cause: "corrupt",
+      });
+    }
+    cutoffs.set(id, ms);
+  }
+  return cutoffs;
+}
+
 /** Root-keyed aggregation (re-validates the window). Exported for tests. */
 async function aggregateForRoot(
   projectRoot: string,
@@ -310,8 +362,16 @@ async function aggregateForRoot(
     memberIds === null
       ? await findExcludedDocumentIds(projectRoot, config, entries)
       : new Set<string>();
+  const mergeCutoffs = await readMergeCutoffs(projectRoot, entries);
   let isIncomplete = false;
   for (const e of entries) {
+    if (!isImportEntry(e) && e.documentId !== undefined) {
+      const cutoff = mergeCutoffs.get(e.documentId);
+      if (cutoff !== undefined && Date.parse(e.timestamp) > cutoff) {
+        // Marked as merged: entries made after the merge are not counted.
+        continue;
+      }
+    }
     if (
       !isImportEntry(e) &&
       e.documentId !== undefined &&
