@@ -218,7 +218,7 @@ export function describeUndoMergeAction(
       ? "the first document (its name could not be found in the project)"
       : `“${targetName}”`;
   const noun = absorbedCount === 1 ? "document" : "documents";
-  return `Puts ${subject} back as it was before the merge and removes the merged mark from the ${absorbedCount === 1 ? "other" : `${absorbedCount} other`} ${noun}. Edits made since the merge are kept in saved revisions.`;
+  return `Puts ${subject} back as it was before the merge and removes the merged mark from the ${absorbedCount === 1 ? "other" : `${absorbedCount} other`} ${noun}, ${absorbedCount === 1 ? "which stays where it is" : "which stay where they are"} in the tree. Edits made since the merge are kept in saved revisions.`;
 }
 
 /** The Compile dialogs' statement of the merged-away rule (FR-17). Shown only when a document being compiled is merged. */

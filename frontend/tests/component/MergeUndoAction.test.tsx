@@ -363,6 +363,7 @@ describe("Undo merge in the command palette", () => {
   it("states that the merged mark is removed from the other documents and that edits made since are kept", () => {
     const text = describeUndoMergeAction("Chapter 3", 2);
     expect(text).toContain("removes the merged mark from the 2 other");
+    expect(text).toContain("which stay where they are in the tree");
     expect(text).toContain("Edits made since the merge are kept");
   });
 

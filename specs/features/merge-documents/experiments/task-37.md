@@ -29,3 +29,7 @@ Order: the code and tests were written in one pass, so the new tests were not sh
 - `pnpm typecheck`: green. `pnpm lint`: 0 errors (459 existing warnings). `pnpm test:ci`: 1050 files, 14977 passed, 8 expected fail, 3 skipped.
 - `pnpm --filter getwrite-electron typecheck` (both passes) and `pnpm --filter getwrite-cli typecheck`: green.
 - Stories: none pinned the old strings; not rebuilt (Storybook builds run from the main checkout).
+
+## Owner decision, Gate 5, 2026-11-19 (FR-22)
+
+`describeUndoMergeAction` now ends its first sentence "..., which stay where they are in the tree." (singular: "..., which stays where it is in the tree."), so the Undo merge action states that the other documents stay in the tree. The rest of the text is unchanged. Tests updated: `merge-messages.test.ts` (new singular and plural assertion, existing assertions adjusted to the comma), `MergeUndoAction.test.tsx`. No story pins the string.

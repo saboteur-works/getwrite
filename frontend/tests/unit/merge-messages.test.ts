@@ -239,13 +239,22 @@ describe("Undo merge texts", () => {
     );
   });
 
+  it("states that the other documents stay in the tree (FR-22)", () => {
+    expect(describeUndoMergeAction("Chapter 1", 1)).toContain(
+      "from the other document, which stays where it is in the tree. Edits",
+    );
+    expect(describeUndoMergeAction("Chapter 1", 3)).toContain(
+      "from the 3 other documents, which stay where they are in the tree. Edits",
+    );
+  });
+
   it("names the target and the number of absorbed documents", () => {
     const one = describeUndoMergeAction("Chapter 1", 1);
     const three = describeUndoMergeAction("Chapter 1", 3);
     expect(one).toContain("“Chapter 1”");
-    expect(one).toContain("removes the merged mark from the other document.");
+    expect(one).toContain("removes the merged mark from the other document,");
     expect(three).toContain(
-      "removes the merged mark from the 3 other documents.",
+      "removes the merged mark from the 3 other documents,",
     );
     expect(`${one}${three}`).not.toMatch(/absorbed/i);
     expect(describeUndoMergeAction(null, 2)).toMatch(/could not be found/i);
