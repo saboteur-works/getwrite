@@ -141,8 +141,8 @@ describe("MergeDialog target and order", () => {
       .filter((li: HTMLElement) => li.parentElement === list);
     expect(top).toHaveLength(3);
     expect(top[0].textContent).toMatch(/First document: Chapter 1/);
-    expect(top[1].textContent).toMatch(/Added no\. 2: Chapter 2/);
-    expect(top[2].textContent).toMatch(/Added no\. 3: Chapter 3/);
+    expect(top[1].textContent).toMatch(/Document 2: Chapter 2/);
+    expect(top[2].textContent).toMatch(/Document 3: Chapter 3/);
   });
 
   it("shows each document's folder path in text", () => {
@@ -244,7 +244,7 @@ describe("MergeDialog defaults", () => {
   it("shows a multiselect as united, with the values of each source", () => {
     render(dialog());
     const united = screen.getByRole("group", { name: /tags/i });
-    expect(united.textContent).toMatch(/united/i);
+    expect(united.textContent).toMatch(/combined with the first document/i);
     expect(within(united).getByText(/Chapter 2: sea, night/)).toBeTruthy();
     expect(within(united).getByText(/Chapter 3: night, storm/)).toBeTruthy();
   });

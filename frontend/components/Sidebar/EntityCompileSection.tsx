@@ -133,7 +133,11 @@ export default function EntityCompileSection(): JSX.Element | null {
           projectId={projectId}
           resources={projectResources}
           onClose={() => setIsCompileModalOpen(false)}
-          entityMode={{ entries: compileEntries, orderedResourceIds }}
+          entityMode={{
+            entries: compileEntries,
+            orderedResourceIds,
+            candidateResourceIds: mergedResourceIds,
+          }}
           onConfirmCompile={async (
             selectedIds: string[],
             options: CompileOptions,

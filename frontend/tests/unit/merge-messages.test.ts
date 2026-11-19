@@ -15,6 +15,14 @@ import {
   MERGE_REFUSAL_MESSAGES,
   MERGE_TARGET_EXCLUDED_FROM_COMPILE_WARNING,
   MERGE_TARGET_IN_INBOX_WARNING,
+  COMPILE_MERGED_NOTICE,
+  describeMergeSuccess,
+  MERGE_READ_FAILED_MESSAGE,
+  MERGE_RELOAD_FAILED_MESSAGE,
+  MERGE_SAVE_FAILED_MESSAGE,
+  MERGE_SUCCESS_TITLE,
+  MERGE_TREE_REFRESH_FAILED_MESSAGE,
+  MERGE_UNEXPECTED_FAILURE_MESSAGE,
   MERGED_NOTICE_LINE,
   MERGED_RULE_TEXTS,
   MERGED_TREE_LABEL_RULE,
@@ -202,6 +210,12 @@ describe("merged rule texts", () => {
     expect(MERGED_RULE_TEXTS.goals).toMatch(/goal/i);
     expect(MERGED_RULE_TEXTS.wordCounts).toMatch(/word/i);
     expect(MERGED_NOTICE_LINE).toMatch(/still edit/i);
+    expect(MERGED_RULE_TEXTS.goals).toBe(
+      "It no longer counts toward the project goal or the goal filter. For the daily goal, words written before the merge still count.",
+    );
+    expect(MERGED_NOTICE_LINE).toBe(
+      "It is left out of compile, goals and word totals, but it is still exported and found by search. You can still edit it.",
+    );
     expect(MERGED_TREE_LABEL_RULE.length).toBeGreaterThan(10);
   });
 });
@@ -229,9 +243,21 @@ describe("Undo merge texts", () => {
     const one = describeUndoMergeAction("Chapter 1", 1);
     const three = describeUndoMergeAction("Chapter 1", 3);
     expect(one).toContain("“Chapter 1”");
-    expect(one).toContain("1 absorbed document");
-    expect(three).toContain("3 absorbed documents");
+    expect(one).toContain("removes the merged mark from the other document.");
+    expect(three).toContain(
+      "removes the merged mark from the 3 other documents.",
+    );
+    expect(`${one}${three}`).not.toMatch(/absorbed/i);
     expect(describeUndoMergeAction(null, 2)).toMatch(/could not be found/i);
+  });
+});
+
+describe("host and compile texts (FR-23)", () => {
+  it("describes the success with the target and the number of other documents", () => {
+    expect(describeMergeSuccess("Chapter 1", 1)).toBe(
+      "The text of 1 other document was added to the end of “Chapter 1”.",
+    );
+    expect(describeMergeSuccess("Chapter 1", 3)).toContain("3 other documents");
   });
 });
 
@@ -251,6 +277,13 @@ describe("every text is distinct", () => {
       MERGE_TARGET_EXCLUDED_FROM_COMPILE_WARNING,
       MERGE_TARGET_IN_INBOX_WARNING,
       ...Object.values(UNDO_MERGE_REFUSAL_MESSAGES),
+      COMPILE_MERGED_NOTICE,
+      MERGE_SAVE_FAILED_MESSAGE,
+      MERGE_READ_FAILED_MESSAGE,
+      MERGE_UNEXPECTED_FAILURE_MESSAGE,
+      MERGE_RELOAD_FAILED_MESSAGE,
+      MERGE_TREE_REFRESH_FAILED_MESSAGE,
+      MERGE_SUCCESS_TITLE,
     ];
     expect(new Set(all).size).toBe(all.length);
   });

@@ -5,7 +5,9 @@
  * FR-23, OQ-12: every refusal, notice, failure, mark and Undo text of "Merge
  * documents", in one module, as `split-messages.ts` does for Split.
  *
- * THE WORDING IS A DRAFT. The owner reviews it in Task 37.
+ * The wording was reviewed by the owner in Task 37 (Gate 5, 2026-11-19); see
+ * `specs/features/merge-documents/experiments/task-37.md`. Texts of the merge
+ * host and the Compile dialog live here too (FR-23).
  *
  * Texts are plain, state what happened, and name no mechanism. None takes or
  * echoes client input: every lookup key is a closed enum of the contract, and
@@ -181,7 +183,7 @@ export const MERGED_RULE_TEXTS = {
   compile: "It is left out of compile, in every format.",
   exportAndSearch: "It is still included in export and still found by search.",
   goals:
-    "Its words no longer count toward the project goal, the daily goal or the goal filter.",
+    "It no longer counts toward the project goal or the goal filter. For the daily goal, words written before the merge still count.",
   wordCounts:
     "Its words are left out of the project word totals. Its own word count is unchanged.",
 } as const;
@@ -192,7 +194,7 @@ export const MERGED_TREE_LABEL_RULE =
 
 /** The notice line at the top of an open merged document (FR-16). The editor stays editable. */
 export const MERGED_NOTICE_LINE =
-  "This document was merged into another. It is left out of compile, goals and word totals, but it is still exported and found by search. You can still edit it.";
+  "It is left out of compile, goals and word totals, but it is still exported and found by search. You can still edit it.";
 
 /** Undo merge refusals (FR-22). Undo changes nothing when it refuses. */
 export const UNDO_MERGE_REFUSAL_MESSAGES = {
@@ -216,5 +218,39 @@ export function describeUndoMergeAction(
       ? "the first document (its name could not be found in the project)"
       : `“${targetName}”`;
   const noun = absorbedCount === 1 ? "document" : "documents";
-  return `Puts ${subject} back as it was before the merge and removes the merged mark from ${absorbedCount} absorbed ${noun}. Edits made since the merge are kept in saved revisions.`;
+  return `Puts ${subject} back as it was before the merge and removes the merged mark from the ${absorbedCount === 1 ? "other" : `${absorbedCount} other`} ${noun}. Edits made since the merge are kept in saved revisions.`;
+}
+
+/** The Compile dialogs' statement of the merged-away rule (FR-17). Shown only when a document being compiled is merged. */
+export const COMPILE_MERGED_NOTICE =
+  "Documents merged into another document are left out of every compile.";
+
+/** Host text: the pending edits could not be saved before the merge. */
+export const MERGE_SAVE_FAILED_MESSAGE =
+  "Your latest edits could not be saved, so the documents were not merged. Nothing was changed.";
+/** Host text: a stored document could not be read before the merge. */
+export const MERGE_READ_FAILED_MESSAGE =
+  "A saved document could not be read, so the documents were not merged. Nothing was changed.";
+/** Host text: the merge could not be started. */
+export const MERGE_UNEXPECTED_FAILURE_MESSAGE =
+  "The merge could not be started. Nothing was changed.";
+/** Host text: the merge was saved but the open document could not be read back. */
+export const MERGE_RELOAD_FAILED_MESSAGE =
+  "The merge was saved, but the open document could not be read back into the editor. The editor is read-only until you open another document and come back, so the text from before the merge cannot be saved over the result.";
+/** Host text: the merge was saved but the project tree could not be refreshed. */
+export const MERGE_TREE_REFRESH_FAILED_MESSAGE =
+  "The documents were merged, but the project tree could not be refreshed. Reopen the project to see the current documents.";
+/** The success toast's title. */
+export const MERGE_SUCCESS_TITLE = "Documents merged";
+
+/** The success toast's body; the name comes from the preview the writer saw. */
+export function describeMergeSuccess(
+  targetName: string,
+  absorbedCount: number,
+): string {
+  const others =
+    absorbedCount === 1
+      ? "1 other document"
+      : `${absorbedCount} other documents`;
+  return `The text of ${others} was added to the end of “${targetName}”.`;
 }

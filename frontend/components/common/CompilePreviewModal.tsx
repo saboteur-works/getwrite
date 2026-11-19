@@ -28,6 +28,7 @@ import {
 import CitationCheckDialog from "./CitationCheckDialog";
 import { checkCitations } from "../../src/lib/api/citations-check";
 import { isLockedAccessError } from "../../src/lib/models/locked-access";
+import { COMPILE_MERGED_NOTICE } from "../../src/lib/models/merge-messages";
 import { readCompileDefaults } from "../../src/lib/api/saved-defaults-read";
 import { setCompileDefaults } from "../../src/lib/api/compile-defaults";
 import {
@@ -51,6 +52,12 @@ export type { EntityCompileEntry };
 export interface EntityCompileMode {
   entries: EntityCompileEntry[];
   orderedResourceIds: string[];
+  /**
+   * Every resource id the entity is associated with, before documents marked
+   * as merged are left out. The merged notice shows only when one of these is
+   * a merged document. Absent: no notice in entity mode.
+   */
+  candidateResourceIds?: string[];
 }
 
 export type CompileFormat = "txt" | "md" | "pdf" | "docx";
@@ -118,10 +125,6 @@ export interface CompilePreviewModalProps {
     resourceIds: readonly string[],
   ) => Promise<CitationCheckResult>;
 }
-
-/** FR-17: the dialog's statement of the merged-away rule (owner reviews wording). */
-const COMPILE_MERGED_NOTICE =
-  "Documents merged into another document are left out of every compile.";
 
 /** Why the citations switch is disabled, or undefined when it is usable. */
 function citationsDisabledReason(
@@ -198,7 +201,19 @@ function CompileModalBody(
     () => excludeMergedDocuments(allResources),
     [allResources],
   );
-  const hasMergedDocuments = resources.length !== allResources.length;
+  // The notice names a rule that applies to this run only when a document
+  // being compiled is merged: any project document in the whole-project
+  // dialog, an associated document in the entity dialog.
+  const hasMergedDocuments = useMemo(() => {
+    const keptIds = new Set(resources.map((r) => r.id));
+    const mergedIds = new Set(
+      allResources.filter((r) => !keptIds.has(r.id)).map((r) => r.id),
+    );
+    if (!entityMode) return mergedIds.size > 0;
+    return (entityMode.candidateResourceIds ?? []).some((id) =>
+      mergedIds.has(id),
+    );
+  }, [allResources, resources, entityMode]);
   const tree = useMemo(() => buildCompileTree(resources), [resources]);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() =>
     initAllChecked(tree),

@@ -27,7 +27,16 @@ import {
 import { hashSplitContent } from "../../src/lib/models/split-content-hash";
 import { flushPendingSaves } from "../../src/lib/pending-saves";
 import { isLockedAccessError } from "../../src/lib/models/crypto/locked-errors";
-import { MERGE_REFUSAL_MESSAGES } from "../../src/lib/models/merge-messages";
+import {
+  describeMergeSuccess,
+  MERGE_READ_FAILED_MESSAGE,
+  MERGE_REFUSAL_MESSAGES,
+  MERGE_RELOAD_FAILED_MESSAGE,
+  MERGE_SAVE_FAILED_MESSAGE,
+  MERGE_SUCCESS_TITLE,
+  MERGE_TREE_REFRESH_FAILED_MESSAGE,
+  MERGE_UNEXPECTED_FAILURE_MESSAGE,
+} from "../../src/lib/models/merge-messages";
 import type { MergePreviewDocumentRef } from "../../src/lib/models/merge-preview-core";
 import {
   MERGE_REFUSAL_REASONS,
@@ -46,37 +55,6 @@ import {
 } from "../../src/store/resourcesSlice";
 import { loadRevisionsForSelectedResource } from "../../src/store/revisionsSlice";
 import type { RootState } from "../../src/store/store";
-
-/*
- * Host texts. Task 16's constants (`merge-messages.ts`) cover refusals, merge
- * failures and the index failure; these cover only what the host itself says
- * when it cannot start, cannot read back, or finishes. Drafted here for the
- * owner's wording review (Task 37).
- */
-export const MERGE_SAVE_FAILED_MESSAGE =
-  "Your latest edits could not be saved, so the documents were not merged. Nothing was changed.";
-export const MERGE_READ_FAILED_MESSAGE =
-  "A saved document could not be read, so the documents were not merged. Nothing was changed.";
-export const MERGE_UNEXPECTED_FAILURE_MESSAGE =
-  "The merge could not be started. Nothing was changed.";
-export const MERGE_RELOAD_FAILED_MESSAGE =
-  "The merge was saved, but the open document could not be read back into the editor. The editor is read-only until you open another document and come back, so the text from before the merge cannot be saved over the result.";
-export const MERGE_TREE_REFRESH_FAILED_MESSAGE =
-  "The documents were merged, but the project tree could not be refreshed. Reopen the project to see the current documents.";
-/** The success toast's title. */
-export const MERGE_SUCCESS_TITLE = "Documents merged";
-
-/** The success toast's body; the name comes from the preview the writer saw. */
-export function describeMergeSuccess(
-  targetName: string,
-  absorbedCount: number,
-): string {
-  const others =
-    absorbedCount === 1
-      ? "1 other document"
-      : `${absorbedCount} other documents`;
-  return `The text of ${others} was added to the end of “${targetName}”.`;
-}
 
 export interface MergeHostProps {
   /**

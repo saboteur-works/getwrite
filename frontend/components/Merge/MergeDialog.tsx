@@ -134,7 +134,7 @@ function DocumentsList({
       {preview.absorbed.map((doc, index) => (
         <li key={doc.documentId} className="text-sm text-gw-primary">
           <p className="font-semibold">
-            Added no. {index + 2}: {doc.name}
+            Document {index + 2}: {doc.name}
           </p>
           <p className="text-gw-secondary">
             {pathText(doc.folderPath)}. {wordsText(doc.words)}.
@@ -289,7 +289,7 @@ function UnitedField({
   return (
     <fieldset className="flex flex-col gap-1">
       <legend className="text-sm text-gw-primary">
-        {offer.field} (values are united with the first document&apos;s)
+        {offer.field} (combined with the first document&apos;s values)
       </legend>
       {offer.values.map((v) => (
         <label

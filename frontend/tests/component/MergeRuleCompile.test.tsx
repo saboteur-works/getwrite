@@ -27,6 +27,7 @@ import {
 import { createTextResource } from "../../src/lib/models/resource";
 import type { AnyResource } from "../../src/lib/models/types";
 import type { CompileFormat } from "../../components/common/CompilePreviewModal";
+import { COMPILE_MERGED_NOTICE } from "../../src/lib/models/merge-messages";
 import { runCompileAndDownload } from "../../src/lib/compile/run-compile-and-download";
 
 vi.mock("../../src/lib/compile/run-compile-and-download", () => ({
@@ -39,7 +40,7 @@ const MARK = {
   snapshotRevisionId: "rev-1",
   date: "2026-11-15",
 };
-const NOTICE = /merged into another document are left out of every compile/i;
+const NOTICE = COMPILE_MERGED_NOTICE;
 
 function doc(id: string, extra: Record<string, unknown> = {}): AnyResource {
   const res = createTextResource({ name: `Doc ${id}` });
@@ -101,6 +102,28 @@ describe("Compile dialog (FR-17)", () => {
   it("states the exclusion when a marked document exists", () => {
     renderDialog([doc("a"), doc("b", { mergedMark: MARK })]);
     expect(screen.getByText(NOTICE)).toBeInTheDocument();
+  });
+
+  it("states the exclusion in entity mode when an associated document is marked", () => {
+    renderDialog([doc("a"), doc("b", { mergedMark: MARK })], {
+      entityMode: {
+        entries: [{ resourceId: "a", name: "Doc a", resourceType: "text" }],
+        orderedResourceIds: ["a"],
+        candidateResourceIds: ["a", "b"],
+      },
+    });
+    expect(screen.getByText(NOTICE)).toBeInTheDocument();
+  });
+
+  it("states nothing in entity mode when only an unassociated document is marked", () => {
+    renderDialog([doc("a"), doc("b", { mergedMark: MARK })], {
+      entityMode: {
+        entries: [{ resourceId: "a", name: "Doc a", resourceType: "text" }],
+        orderedResourceIds: ["a"],
+        candidateResourceIds: ["a"],
+      },
+    });
+    expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
   });
 
   it("states nothing when no document is marked", () => {
@@ -189,5 +212,53 @@ describe("Compile Entity Resources dialog (FR-17)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Compile \(1\)/ }));
     await waitFor(() => expect(runCompileMock).toHaveBeenCalled());
     expect(runCompileMock.mock.calls[0][0].resourceIds).toEqual(["a"]);
+  });
+
+  it("states nothing when the merged document is not one of the entity's", async () => {
+    const store = makeStore();
+    store.dispatch(
+      setProject({ id: "p1", name: "Test Project", rootPath: "/tmp/p" }),
+    );
+    store.dispatch(setSelectedProjectId("p1"));
+    const entity = doc("entity-1", { entityKind: "character" });
+    store.dispatch(
+      setResources([entity, doc("a"), doc("b", { mergedMark: MARK })]),
+    );
+    store.dispatch(setSelectedResourceId("entity-1"));
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      if (input.toString().includes("/mentioned-in")) {
+        return {
+          ok: true,
+          json: async () => ({
+            mentionedIn: [
+              {
+                resourceId: "a",
+                name: "a",
+                isLinked: true,
+                isMentioned: false,
+                snippets: [],
+                offsets: [],
+                ambiguousWith: [],
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+    render(
+      <Provider store={store}>
+        <EntityMentionsProvider>
+          <EntityCompileSection />
+        </EntityMentionsProvider>
+      </Provider>,
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Compile this entity's resources",
+      }),
+    );
+    expect(await screen.findByText("Doc a")).toBeInTheDocument();
+    expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
   });
 });
