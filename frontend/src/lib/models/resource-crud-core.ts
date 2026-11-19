@@ -28,6 +28,7 @@
  * `project-crud-core.ts` rather than re-declared here) when the supplied
  * `projectId` is not a well-formed UUID.
  */
+import { withoutMergedMark } from "./merge-mark-core";
 import path from "node:path";
 import type { Dirent } from "node:fs";
 import {
@@ -369,12 +370,17 @@ export async function copyResourceCore(
   }
 
   // The copy gets its own annotation ids in the sidecar and the document (FR-21).
-  const newSidecar = await remapCopiedAnnotations(projectRoot, newId, {
-    ...(sourceSidecar ?? {}),
-    id: newId,
-    name: newName,
-    createdAt: new Date().toISOString(),
-  });
+  // The copy never carries the merged mark (Feature 121, FR-5).
+  const newSidecar = await remapCopiedAnnotations(
+    projectRoot,
+    newId,
+    withoutMergedMark({
+      ...(sourceSidecar ?? {}),
+      id: newId,
+      name: newName,
+      createdAt: new Date().toISOString(),
+    }),
+  );
 
   await writeSidecar(projectRoot, newId, newSidecar);
 
