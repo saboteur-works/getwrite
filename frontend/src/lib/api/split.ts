@@ -53,7 +53,6 @@ import type {
 } from "../models/split-undo-core";
 import type { SplitIndexFailure } from "../models/split-index-update";
 import {
-  SPLIT_OPERATION_KINDS,
   type LatestOperationRecord,
   SPLIT_REFUSAL_REASONS,
   SPLIT_STEPS,
