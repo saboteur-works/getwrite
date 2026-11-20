@@ -14,7 +14,7 @@ Merge is for the desktop app and GetWrite on the web. It is not offered on Andro
 
 1. In the Resource Tree, select two or more text documents. Click the one that should take the others' text first, then **Cmd+click** or **Ctrl+click** the others, or hold **Shift** and click to select a range. The base document you click is the one that receives the text.
 2. Right-click one of the selected documents and choose **Merge**. If you right-click a document that is not part of the selection, Merge is not offered.
-3. In the **Merge** window, choose what travels with the text (see below), and choose **Merge**.
+3. In the **Merge documents** window, choose what travels with the text (see below), and choose **Merge**.
 
 Merge is only in the Resource Tree's menu. It is not in the command palette or the editor's menu, and it has no keyboard shortcut. You can select documents from different folders.
 
@@ -29,12 +29,12 @@ After a merge:
 
 While the window is open, GetWrite sends any text it was still waiting to save before it asks the server about the documents. If a document changed after the window opened, GetWrite tells you and does nothing; open the window again and retry.
 
-### The Merge window
+### The Merge documents window
 
 The window shows the base document by name and the documents added to it in order, with each document's folder and word count. It asks what travels, every time. It opens with the same starting choices whatever you chose last, and it remembers nothing between merges.
 
-- **Notes, citations and claims** in the other documents are listed by document and kind, one tick box each, whether or not the module they belong to is switched on. They start ticked. A ticked one moves to the base document with its passage, keeping its text, its saved passage, its link to a Source and, for a claim, its status and date. An unticked one stays with the document it was in, and its highlight is removed from the text that is added.
-- **Details** such as status, point of view and each custom field are listed only where one of the other documents holds a value. They start unticked. For each detail you choose one document to copy it from, or none. Lists of values are combined with the base document's. A detail you do not copy is left as it was on the base document.
+- The section headed **Select the notes, citations, and claims you would like to move to the base document** lists the notes, citations and claims in the other documents by document and kind, one tick box each, whether or not the module they belong to is switched on. They start ticked. A ticked one moves to the base document with its passage, keeping its text, its saved passage, its link to a Source and, for a claim, its status and date. An unticked one stays with the document it was in, and its highlight is removed from the text that is added.
+- The section headed **Select metadata fields you would like to override on the base document below** lists details such as status, point of view and each custom field, only where one of the other documents holds a value. They start unticked. For each detail you choose one document to copy it from, or none. Lists of values are combined with the base document's. A detail you do not copy is left as it was on the base document.
 - The base document's name, subtype, word-count goal, compile setting, folder and position are never changed.
 - The window states what happens to each other document after the merge (see "After a merge: what applies to the other documents" below).
 - A warning is shown when the base document is left out of compile or is in the Inbox while a document being added is not, because the added text will then be left out of compile or of your goals. You can still merge.

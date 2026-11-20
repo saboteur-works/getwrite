@@ -4,7 +4,10 @@
  * The refusal texts of Undo merge (Feature 121, FR-22), one distinct text per
  * cause. The two texts `merge-messages.ts` already holds (`target-gone`,
  * `snapshot-gone`) are reused so a rewording there is followed here; the other
- * two are new and are drafted, not reviewed by the owner.
+ * two are new. The owner kept the texts as written in Task 41 and signed off
+ * the wording, including the "base document" change, in the packaged app
+ * (2026-11-19; `specs/features/merge-documents/experiments/task-43.md`,
+ * `task-44.md`).
  *
  * No React, JSX, JSON or `node:*`.
  */
@@ -40,8 +43,9 @@ export const MERGE_UNDO_REFUSAL_MESSAGES: Record<
 
 // --- Undo merge host texts (Task 41) ------------------------------------
 //
-// Drafted, NOT reviewed by the owner: every text below, in the same plain
-// style as the Undo split texts (`split-messages.ts`). The action's
+// Kept as written by the owner and signed off in the packaged app (2026-11-19;
+// `task-43.md`, `task-44.md`): every text below, in the same plain style as
+// the Undo split texts (`split-messages.ts`). The action's
 // description is `describeUndoMergeAction` in `merge-messages.ts`, the
 // owner-approved wording, reused and not reworded.
 

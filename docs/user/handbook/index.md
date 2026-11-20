@@ -24,6 +24,7 @@ summary: Contents of the GetWrite handbook, grouped by part.
 - [Headings](write/headings.md) — Apply heading levels in the editor and set how each level looks for a project.
 - [Editor Appearance](write/editor-appearance.md) — What sets the look of the writing surface and the body text and heading settings you can change in a project.
 - [Split at the Cursor](write/split-at-cursor.md) — Split a text document in two at the cursor, choose what travels with the text that moves, and undo the latest split.
+- [Merge Documents](write/merge-documents.md) — Add the text of other documents to the end of the base document you select, choose what travels with it, and undo the latest merge.
 - [Annotations](write/annotations.md) — Attach private notes to passages of a document, edit or delete them, re-attach detached ones, and find them in search.
 - [Claims](write/claims.md) — Mark a statement in your text as a claim, record whether you have checked it, tie it to a Source, and review every claim in the project.
 - [Citations](write/citations.md) — Describe each Source once, then compile a PDF or DOCX with numbered notes and a bibliography built from your citations.
