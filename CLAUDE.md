@@ -188,3 +188,17 @@ Detailed styling guidance exists in STYLING.md
 ## Testing
 
 Unit, integration, component and a11y tests live in `frontend/tests/`; E2E (`frontend/e2e/`, Playwright, Chromium only) runs against a built Storybook that `pnpm test:e2e` builds and serves itself. Prefer TDD and extend an existing test file before creating one. Never use a prop on an in-project component without opening its source and stories first. Details in `frontend/CLAUDE.md` and `docs/standards/testing.md`.
+
+## Surfaces
+
+The environments a user-facing change must work in. The saboteur-ship pipeline reads this list: done conditions name the surfaces a task can behave differently on, command smokes run after the last wave, run books are followed before handover, and only `hardware` surfaces are handed to the owner.
+
+- Desktop browser, 1280×800 — `pnpm dev`, a real browser — agent
+- Phone width, 412×915 (layout switches at `max-width: 767px`) — `pnpm dev`, a real browser at that size; jsdom has no layout — agent
+- Dark colour scheme — `pnpm dev` with the browser's `prefers-color-scheme: dark` — agent
+- Home-network sharing over plain HTTP — desktop app with sharing on, opened at `http://<LAN address>:7340`, an insecure origin; pair with the code shown in the desktop window — agent
+  Smoke: `pnpm smoke:sharing`
+- Hosted auth (Postgres, SMTP, production build) — Docker Compose — agent
+  Smoke: run book `scripts/hosted-smoke/README.md`
+- Packaged desktop app — `pnpm electron:package`, then run the unpacked build — agent
+- Android app on a device — `pnpm --filter getwrite-frontend build:native`, installed on the owner's phone — hardware

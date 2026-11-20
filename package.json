@@ -14,6 +14,7 @@
     "cli": "pnpm --filter getwrite-cli exec getwrite-cli",
     "cli:build": "pnpm --filter getwrite-cli build",
     "cli:test": "pnpm --filter getwrite-cli test",
+    "smoke:sharing": "pnpm --filter getwrite-frontend build && rm -rf frontend/.next/standalone/frontend/.next/static && cp -R frontend/.next/static frontend/.next/standalone/frontend/.next/static && pnpm --filter getwrite-frontend test:sharing-smoke",
     "format:check": "prettier --check \"**/*.{md,json,yaml,yml}\"",
     "knip": "knip",
     "prepare": "husky"
