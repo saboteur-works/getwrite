@@ -64,6 +64,7 @@ import {
   UNDO_MERGE_UNEXPECTED_FAILURE_MESSAGE,
   UNDO_MERGE_WORKING_MESSAGE,
 } from "../../src/lib/models/merge-undo-messages";
+import { reportTransportValidationFailure } from "../../src/lib/api/transport-validation";
 import { UNDO_SPLIT_READ_FAILED_MESSAGE } from "../../src/lib/models/split-messages";
 import { ProjectLockedError } from "../../src/lib/models/crypto/locked-errors";
 import type { AnyResource } from "../../src/lib/models/types";
@@ -225,7 +226,6 @@ const MERGE_RECORD = {
   kind: "merge",
   affectedDocumentIds: [TARGET_ID, ABSORBED_A, ABSORBED_B],
   snapshotRevisions: [],
-  newDocumentId: TARGET_ID,
   date: "2026-11-18T10:00:00.000Z",
 };
 const SPLIT_RECORD = {
@@ -400,6 +400,40 @@ describe("Undo merge in the command palette", () => {
     renderPalette();
     await screen.findByRole("option", { name: /Undo split/ });
     expect(screen.queryByRole("option", { name: /Undo merge/ })).toBeNull();
+  });
+
+  it("is enabled for the server's merge record, which has no newDocumentId (Task 44)", async () => {
+    const original = await vi.importActual<
+      typeof import("../../src/lib/api/split")
+    >("../../src/lib/api/split");
+    requestLatestSplitOperation.mockImplementation(
+      original.requestLatestSplitOperation,
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          outcome: "found",
+          record: {
+            kind: "merge",
+            affectedDocumentIds: [TARGET_ID, ABSORBED_A, ABSORBED_B],
+            snapshotRevisions: [TARGET_ID, ABSORBED_A, ABSORBED_B].map(
+              (documentId, i) => ({
+                documentId,
+                revisionId: `5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e4${i}`,
+                revisionNumber: i + 2,
+              }),
+            ),
+            date: "2026-11-19T09:30:15.123Z",
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+    renderPalette(OTHER_ID);
+    const option = await undoMergeOption();
+    expect(option.getAttribute("aria-disabled")).not.toBe("true");
+    expect(option.textContent).toContain("2 other documents");
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
   });
 
   it("a failed read shows its own disabled message for a merge and does not read as no merge", async () => {

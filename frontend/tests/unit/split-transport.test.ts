@@ -467,6 +467,43 @@ describe("requestLatestSplitOperation (Feature 120 Task 31)", () => {
     expect(init?.method ?? "GET").toBe("GET");
   });
 
+  it("accepts a real-shaped merge record with no newDocumentId (Task 44)", async () => {
+    const A = "11111111-1111-4111-8111-111111111111";
+    const B = "22222222-2222-4222-8222-222222222222";
+    const C = "33333333-3333-4333-8333-333333333333";
+    const MERGE = {
+      kind: "merge",
+      affectedDocumentIds: [A, B, C],
+      snapshotRevisions: [A, B, C].map((documentId, i) => ({
+        documentId,
+        revisionId: `5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e4${i}`,
+        revisionNumber: i + 2,
+      })),
+      date: "2026-11-19T09:30:15.123Z",
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, { outcome: "found", record: MERGE }),
+    );
+    expect(await requestLatestSplitOperation(PID)).toEqual({
+      kind: "record",
+      record: MERGE,
+    });
+    expect(reportTransportValidationFailure).not.toHaveBeenCalled();
+  });
+
+  it("still refuses a split record with no newDocumentId (Task 44)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      response(200, {
+        outcome: "found",
+        record: { ...RECORD, newDocumentId: undefined },
+      }),
+    );
+    expect(await requestLatestSplitOperation(PID)).toMatchObject({
+      kind: "failed",
+    });
+    expect(reportTransportValidationFailure).toHaveBeenCalled();
+  });
+
   it("returns none as none and a failed read as failed, never the same value", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       response(200, { outcome: "none" }),

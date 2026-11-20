@@ -650,17 +650,30 @@ const MergeUndoBodySchema = z.discriminatedUnion("outcome", [
   }),
 ]);
 
-const LatestBodySchema = z.discriminatedUnion("outcome", [
+/**
+ * The stored record, by kind (mirrors `isLatestOperationRecord`): a split
+ * names the split-off document; a merge has no `newDocumentId` (FR-21), and
+ * one a Feature 120 test wrote before Feature 121 is still accepted.
+ */
+const LatestRecordSchema = z.discriminatedUnion("kind", [
   z.object({
-    outcome: z.literal("found"),
-    record: z.object({
-      kind: z.enum(SPLIT_OPERATION_KINDS),
-      affectedDocumentIds: z.array(z.string()),
-      snapshotRevisions: z.array(RevisionRefSchema),
-      newDocumentId: z.string(),
-      date: z.string(),
-    }),
+    kind: z.literal("split"),
+    affectedDocumentIds: z.array(z.string()),
+    snapshotRevisions: z.array(RevisionRefSchema),
+    newDocumentId: z.string(),
+    date: z.string(),
   }),
+  z.object({
+    kind: z.literal("merge"),
+    affectedDocumentIds: z.array(z.string()),
+    snapshotRevisions: z.array(RevisionRefSchema),
+    newDocumentId: z.string().optional(),
+    date: z.string(),
+  }),
+]);
+
+const LatestBodySchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("found"), record: LatestRecordSchema }),
   z.object({ outcome: z.literal("none") }),
   z.object({ outcome: z.literal("failed"), cause: z.string() }),
 ]);
