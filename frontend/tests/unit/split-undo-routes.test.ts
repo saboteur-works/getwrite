@@ -39,6 +39,7 @@ vi.mock("../../src/lib/models/split-undo-core", async (importOriginal) => ({
     typeof import("../../src/lib/models/split-undo-core")
   >()),
   undoLatestSplit: vi.fn(),
+  undoLatestMerge: vi.fn(),
 }));
 vi.mock("../../src/lib/models/split-records-core", async (importOriginal) => ({
   ...(await importOriginal<
@@ -61,7 +62,9 @@ import { resolveProjectsDir } from "../../src/lib/models/projects-dir";
 import { readLatestOperation } from "../../src/lib/models/split-records-core";
 import { SplitLockKeyError } from "../../src/lib/models/split-preview-core";
 import {
+  undoLatestMerge,
   undoLatestSplit,
+  type MergeUndoResult,
   type SplitUndoResult,
 } from "../../src/lib/models/split-undo-core";
 import type { LatestOperationRecord } from "../../src/lib/models/split-types";
@@ -507,4 +510,213 @@ describe("paired-device gate: classified as the capture and split routes are", (
       }
     },
   );
+});
+
+// --- Feature 121, Task 40: the merge outcomes through the same two routes ---
+
+const TARGET = "44444444-4444-4444-8444-444444444444";
+const ABSORBED_A = "55555555-5555-4555-8555-555555555551";
+const ABSORBED_B = "55555555-5555-4555-8555-555555555552";
+const MERGE_RECORD: LatestOperationRecord = {
+  kind: "merge",
+  affectedDocumentIds: [TARGET, ABSORBED_A, ABSORBED_B],
+  snapshotRevisions: [TARGET, ABSORBED_A, ABSORBED_B].map((documentId) => ({
+    documentId,
+    revisionId: "5b0c7f0e-8a3d-4c55-9d1e-2f6a1c9b7e42",
+    revisionNumber: 2,
+  })),
+  newDocumentId: TARGET,
+  date: "2026-11-18T10:00:00.000Z",
+};
+const MERGE_APPLIED: MergeUndoResult = {
+  outcome: "applied",
+  operation: "merge",
+  targetDocumentId: TARGET,
+  targetName: "Chapter 1",
+  absorbedDocumentIds: [ABSORBED_A, ABSORBED_B],
+  skippedDocuments: [],
+  preservedRevisions: [
+    {
+      documentId: TARGET,
+      revisionId: "9d2f4a6c-1b7e-4e08-a3c5-7e1d0b4f8a63",
+      revisionNumber: 3,
+    },
+  ],
+  movedAnnotationIds: [],
+};
+
+describe("undo route: a merge record (Feature 121, FR-22)", () => {
+  beforeEach(() => {
+    vi.mocked(readLatestOperation).mockResolvedValue({
+      outcome: "found",
+      record: MERGE_RECORD,
+    });
+    vi.mocked(undoLatestMerge).mockResolvedValue(MERGE_APPLIED);
+  });
+  afterEach(() => {
+    vi.mocked(undoLatestMerge).mockReset();
+  });
+
+  it("undoes the stored merge, not through the split core, and returns the applied body with the target's name and the absorbed documents", async () => {
+    const res = await undoPost(send(UNDO_BODY));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(MERGE_APPLIED);
+    expect(undoLatestMerge).toHaveBeenCalledWith(PROJECT, MERGE_RECORD, {});
+    expect(undoLatestSplit).not.toHaveBeenCalled();
+  });
+
+  it("reads the record of the validated project only", async () => {
+    await undoPost(send(UNDO_BODY));
+    const root = vi.mocked(readLatestOperation).mock.calls[0][0];
+    expect(path.basename(root)).toBe(PROJECT);
+  });
+
+  it.each<[string, MergeUndoResult]>([
+    [
+      "index-failed",
+      {
+        ...MERGE_APPLIED,
+        outcome: "index-failed",
+        failures: [{ documentId: TARGET, step: "inverted-index" }],
+      } as MergeUndoResult,
+    ],
+    [
+      "refused",
+      {
+        outcome: "refused",
+        operation: "merge",
+        reason: "target-in-trash",
+        message: "text",
+        documentId: TARGET,
+      },
+    ],
+    [
+      "failed with the state that remains",
+      {
+        outcome: "failed",
+        operation: "merge",
+        failedStep: "clear-marks",
+        cause: "Error",
+        remainingState: "merge-restored",
+      },
+    ],
+    ["nothing-to-undo", { outcome: "nothing-to-undo" }],
+  ])("returns %s as a typed 200 body", async (_n, result) => {
+    vi.mocked(undoLatestMerge).mockResolvedValueOnce(result);
+    const res = await undoPost(send(UNDO_BODY));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(result);
+  });
+
+  it("keeps a could-not-be-checked cause from the fixed list and replaces a stored message", async () => {
+    vi.mocked(undoLatestMerge).mockResolvedValueOnce({
+      outcome: "could-not-be-checked",
+      cause: "record-changed",
+    });
+    expect(await (await undoPost(send(UNDO_BODY))).json()).toEqual({
+      outcome: "could-not-be-checked",
+      cause: "record-changed",
+    });
+    vi.mocked(undoLatestMerge).mockResolvedValueOnce({
+      outcome: "could-not-be-checked",
+      cause: "snapshot-unreadable:EACCES /private/path/SECRET",
+    });
+    const body: unknown = await (await undoPost(send(UNDO_BODY))).json();
+    expect(body).toEqual({
+      outcome: "could-not-be-checked",
+      cause: "record-unreadable",
+    });
+  });
+
+  it("maps a locked project to 401 and 409 and does not turn another failure into a body", async () => {
+    vi.mocked(undoLatestMerge).mockRejectedValueOnce(
+      new ProjectLockedError(PROJECT),
+    );
+    expect((await undoPost(send(UNDO_BODY))).status).toBe(401);
+    vi.mocked(undoLatestMerge).mockRejectedValueOnce(
+      new MissingProjectKeyError(PROJECT),
+    );
+    expect((await undoPost(send(UNDO_BODY))).status).toBe(409);
+    vi.mocked(undoLatestMerge).mockRejectedValueOnce(new Error("disk"));
+    await expect(undoPost(send(UNDO_BODY))).rejects.toThrow("disk");
+  });
+
+  it("leaves a missing or unreadable record to the split core, which answers it as before", async () => {
+    vi.mocked(readLatestOperation).mockResolvedValueOnce({ outcome: "none" });
+    await undoPost(send(UNDO_BODY));
+    vi.mocked(readLatestOperation).mockResolvedValueOnce({
+      outcome: "failed",
+      cause: "x",
+    });
+    await undoPost(send(UNDO_BODY));
+    expect(undoLatestSplit).toHaveBeenCalledTimes(2);
+    expect(undoLatestMerge).not.toHaveBeenCalled();
+  });
+
+  it("sends a split record to the split core as before", async () => {
+    vi.mocked(readLatestOperation).mockResolvedValueOnce({
+      outcome: "found",
+      record: RECORD,
+    });
+    await undoPost(send(UNDO_BODY));
+    expect(undoLatestSplit).toHaveBeenCalledWith(PROJECT);
+    expect(undoLatestMerge).not.toHaveBeenCalled();
+  });
+});
+
+describe("latest route: a merge record (Feature 121, FR-22)", () => {
+  it("returns the record with its kind", async () => {
+    vi.mocked(readLatestOperation).mockResolvedValueOnce({
+      outcome: "found",
+      record: MERGE_RECORD,
+    });
+    const res = await latestGet(read(`?projectId=${PROJECT}`));
+    expect(await res.json()).toEqual({
+      outcome: "found",
+      record: MERGE_RECORD,
+    });
+  });
+});
+
+describe("hosted tenancy of a merge Undo (cores faked over the request's storage context)", () => {
+  beforeEach(() => {
+    isHostedAuthActiveMock.mockReturnValue(true);
+    vi.mocked(undoLatestMerge).mockImplementation(async (projectId: string) => {
+      const dir = path.join(resolveProjectsDir(), projectId);
+      await fs.stat(dir);
+      await fs.writeFile(path.join(dir, "undo-marker"), "written");
+      return MERGE_APPLIED;
+    });
+    vi.mocked(readLatestOperation).mockImplementation(
+      async (projectRoot: string) => {
+        await fs.stat(projectRoot);
+        return { outcome: "found", record: MERGE_RECORD };
+      },
+    );
+  });
+  afterEach(() => {
+    vi.mocked(undoLatestMerge).mockReset();
+  });
+
+  it("writes only into the signed-in tenant's project, and a tenant with no such project writes nothing", async () => {
+    const tenantA = await tmp("gw-mundo-a-");
+    const tenantB = await tmp("gw-mundo-b-");
+    const dirA = path.join(tenantA, PROJECT);
+    const dirB = path.join(tenantB, PROJECT);
+    await fs.mkdir(dirA, { recursive: true });
+    await fs.mkdir(dirB, { recursive: true });
+    tenantState.root = tenantB;
+    const res = await undoPost(send(UNDO_BODY, { origin: ORIGIN }));
+    expect(res.status).toBe(200);
+    expect(await fs.readdir(dirB)).toEqual(["undo-marker"]);
+    expect(await fs.readdir(dirA)).toEqual([]);
+
+    await fs.rm(dirB, { recursive: true });
+    const outcome = await undoPost(send(UNDO_BODY, { origin: ORIGIN })).then(
+      (r: Response) => ({ status: r.status }),
+      () => ({ status: 0 }),
+    );
+    expect(outcome.status === 0 || outcome.status >= 400).toBe(true);
+    expect(await fs.readdir(dirA)).toEqual([]);
+  });
 });

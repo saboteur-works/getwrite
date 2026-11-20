@@ -33,6 +33,7 @@ import { buildEditorBodyStyleVariables } from "../src/lib/editor-body-settings";
 import { MenuBar } from "./Editor/MenuBar/MenuBar";
 import AnnotationsPanel from "./Editor/Annotations/AnnotationsPanel";
 import CitationControlSlot from "./Editor/Citations/CitationControlSlot";
+import { MergedNoticeForResource } from "./Merge/MergedNoticeLine";
 import {
   ANNOTATIONS_PANEL_ID,
   useAnnotationsPanel,
@@ -896,6 +897,9 @@ export default function TipTapEditor({
     // that read initial content (like EditView) behave deterministically.
     return (
       <div data-testid="tiptap-mock" className="tiptap-editor-shell">
+        {annotationResourceId !== undefined ? (
+          <MergedNoticeForResource resourceId={annotationResourceId} />
+        ) : null}
         <div dangerouslySetInnerHTML={{ __html: value || "" }} />
       </div>
     );
@@ -910,6 +914,11 @@ export default function TipTapEditor({
   return (
     <EditorContext.Provider value={{ editor }}>
       <div className="tiptap-editor-shell" style={bodyStyle}>
+        {/* Feature 121 FR-16: the merged document's notice, above the toolbar
+            and the text in both modes. Nothing here changes `editable`. */}
+        {annotationResourceId !== undefined ? (
+          <MergedNoticeForResource resourceId={annotationResourceId} />
+        ) : null}
         {mode === "source" ? (
           <MarkdownSourceView
             id={id}

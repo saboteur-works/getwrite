@@ -17,6 +17,11 @@ import {
   describeUndoSplitAction,
   UNDO_SPLIT_LABEL,
 } from "../../src/lib/models/split-messages";
+import { describeUndoMergeAction } from "../../src/lib/models/merge-messages";
+import {
+  UNDO_MERGE_LABEL,
+  UNDO_MERGE_READ_FAILED_MESSAGE,
+} from "../../src/lib/models/merge-undo-messages";
 import { splitEligibility } from "../../src/lib/models/split-eligibility";
 import { SPLIT_REFUSAL_REASONS } from "../../src/lib/models/split-types";
 import { SPLIT_REFUSAL_MESSAGES } from "../../src/lib/models/split-messages";
@@ -52,6 +57,7 @@ type PaletteRow =
   | { kind: "capture" }
   | { kind: "split"; refusal: string | null }
   | { kind: "undo-split"; description: string; isDisabled: boolean }
+  | { kind: "undo-merge"; description: string; isDisabled: boolean }
   | { kind: "resource"; resource: AnyResource };
 
 const CAPTURE_ROW_LABEL = "Capture...";
@@ -59,6 +65,7 @@ const CAPTURE_ROW_VALUE = "palette-action:capture";
 const SPLIT_ROW_LABEL = "Split at cursor";
 const SPLIT_ROW_VALUE = "palette-action:split";
 const UNDO_SPLIT_ROW_VALUE = "palette-action:undo-split";
+const UNDO_MERGE_ROW_VALUE = "palette-action:undo-merge";
 
 /** True for an empty query or a case-insensitive prefix of the Split label. */
 function matchesSplitRow(normalizedQuery: string): boolean {
@@ -68,6 +75,11 @@ function matchesSplitRow(normalizedQuery: string): boolean {
 /** True for an empty query or a case-insensitive prefix of the Undo split label. */
 function matchesUndoSplitRow(normalizedQuery: string): boolean {
   return UNDO_SPLIT_LABEL.toLowerCase().startsWith(normalizedQuery);
+}
+
+/** True for an empty query or a case-insensitive prefix of the Undo merge label. */
+function matchesUndoMergeRow(normalizedQuery: string): boolean {
+  return UNDO_MERGE_LABEL.toLowerCase().startsWith(normalizedQuery);
 }
 
 /**
@@ -182,6 +194,30 @@ export default function ResourceCommandPalette({
         });
       }
     }
+    // Undo merge likewise (Feature 121, FR-22), while the read shows a merge;
+    // a failed read is its own row here too, never "no merge".
+    if (
+      process.env.NEXT_PUBLIC_GETWRITE_RUNTIME !== "native" &&
+      matchesUndoMergeRow(normalizedQuery)
+    ) {
+      if (undoAvailability.kind === "merge") {
+        actionRows.push({
+          kind: "undo-merge",
+          isDisabled: false,
+          description: describeUndoMergeAction(
+            resolveSplitOffName(resources, undoAvailability.targetDocumentId),
+            undoAvailability.absorbedCount,
+          ),
+        });
+      } else if (undoAvailability.kind === "read-failed") {
+        actionRows.push({
+          kind: "undo-merge",
+          isDisabled: true,
+          description:
+            undoAvailability.mergeMessage ?? UNDO_MERGE_READ_FAILED_MESSAGE,
+        });
+      }
+    }
     return [...actionRows, ...resourceRows];
   }, [
     openableResources,
@@ -222,7 +258,7 @@ export default function ResourceCommandPalette({
       openSplitDialog();
       return;
     }
-    if (row.kind === "undo-split") {
+    if (row.kind === "undo-split" || row.kind === "undo-merge") {
       if (row.isDisabled) return;
       onClose();
       requestSplitUndo();
@@ -242,6 +278,7 @@ export default function ResourceCommandPalette({
         if (row.kind === "capture") return value === CAPTURE_ROW_VALUE;
         if (row.kind === "split") return value === SPLIT_ROW_VALUE;
         if (row.kind === "undo-split") return value === UNDO_SPLIT_ROW_VALUE;
+        if (row.kind === "undo-merge") return value === UNDO_MERGE_ROW_VALUE;
         return row.resource.id === value;
       }),
     );
@@ -299,7 +336,9 @@ export default function ResourceCommandPalette({
                 ? "Enter to split at the cursor"
                 : rows[highlightedIndex]?.kind === "undo-split"
                   ? "Enter to undo the split"
-                  : "Enter to open"}
+                  : rows[highlightedIndex]?.kind === "undo-merge"
+                    ? "Enter to undo the merge"
+                    : "Enter to open"}
           </span>
         </div>
 
@@ -344,6 +383,16 @@ export default function ResourceCommandPalette({
                 return {
                   value: UNDO_SPLIT_ROW_VALUE,
                   label: UNDO_SPLIT_LABEL,
+                  icon: <Undo2 size={16} aria-hidden="true" />,
+                  meta: row.isDisabled ? "Unavailable" : "Action",
+                  description: row.description,
+                  disabled: row.isDisabled,
+                };
+              }
+              if (row.kind === "undo-merge") {
+                return {
+                  value: UNDO_MERGE_ROW_VALUE,
+                  label: UNDO_MERGE_LABEL,
                   icon: <Undo2 size={16} aria-hidden="true" />,
                   meta: row.isDisabled ? "Unavailable" : "Action",
                   description: row.description,

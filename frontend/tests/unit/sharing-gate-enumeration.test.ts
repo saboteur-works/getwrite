@@ -22,6 +22,10 @@
  * `GET /api/project/split/latest`: 90 route files, 126 route/method pairs and
  * 6 page files = 132 enumerated entries.
  *
+ * Feature 121, Task 32: raised again for `POST /api/project/merge/preview` and
+ * `POST /api/project/merge`: 92 route files, 128 route/method pairs and 6 page
+ * files = 134 enumerated entries.
+ *
  * No test name, message or assertion prints a window secret or a credential.
  */
 import { existsSync } from "node:fs";
@@ -59,9 +63,9 @@ const HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];
 
 /** Floors for the walk; see the header comment for the observed values. */
-const MIN_ROUTE_FILES = 90;
+const MIN_ROUTE_FILES = 92;
 const MIN_PAGE_FILES = 5;
-const MIN_ENTRIES = 132;
+const MIN_ENTRIES = 134;
 
 /**
  * The documented exceptions, by name. Adding one changes EXCEPTION_COUNT, which
@@ -454,6 +458,45 @@ describe("route and page enumeration", () => {
       );
       expect(route).not.toMatch(/checkLimit|limits-check|refusalFor/);
     }
+  });
+
+  it("enumerates POST /api/project/merge/preview and POST /api/project/merge by walking, refuses them unconfirmed and lets a paired device through (Feature 121, FR-15)", async () => {
+    const { entries } = await enumerate(APP_DIR);
+    const origin = "http://10.0.0.5:3000";
+    const token = await pairInto(dir);
+    for (const url of ["/api/project/merge/preview", "/api/project/merge"]) {
+      const found = entries.filter((e) => e.url === url);
+      expect(found.map(label)).toEqual([`POST ${url}`]);
+      expect(isException(found[0])).toBe(false);
+      const unpaired = await proxy(
+        makeRequest(found[0], { headers: { origin } }),
+      );
+      expect(isRefusal(unpaired), url).toBe(true);
+      const paired = await proxy(
+        makeRequest(found[0], {
+          headers: { cookie: `${DEVICE_COOKIE}=${token}`, origin },
+        }),
+      );
+      expect(isPassThrough(paired), url).toBe(true);
+    }
+  });
+
+  it("adds no paired-device limit switch or route guard to the merge routes, and no sixth limit switch (Feature 121, FR-15)", async () => {
+    for (const parts of [
+      ["merge", "preview", "route.ts"],
+      ["merge", "route.ts"],
+    ]) {
+      const route = await readFile(
+        path.join(APP_DIR, "api", "project", ...parts),
+        "utf8",
+      );
+      expect(route).not.toMatch(/checkLimit|limits-check|refusalFor/);
+    }
+    const limits = await readFile(
+      path.join(FRONTEND, "src", "lib", "sharing", "limits-check.ts"),
+      "utf8",
+    );
+    expect(limits).not.toMatch(/merge/i);
   });
 
   it("counts the documented exceptions", () => {

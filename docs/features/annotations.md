@@ -67,6 +67,20 @@ A split of a text document at the cursor carries notes, citations and claims by 
 
 Not measured: a cut through nodes with `textAlign` or leading attributes, an inline image (not loadable in the editor schema, task-6), a document of hundreds of thousands of words. The 500-per-resource limit is not exceeded by a split because a carried annotation leaves the original's sidecar (read from the rule above; no test builds 500 notes).
 
+## Merge (Feature 121)
+
+Spec: [specs/features/merge-documents.md](../../specs/features/merge-documents.md) (FR-9, FR-22). Records: `specs/features/merge-documents/experiments/task-19.md`, `task-25.md`, `task-38.md`. Code: `merge-annotations.ts` (pure partition and mark strip), applied by `merge-core.ts`.
+
+A merge of documents carries the notes, citations and claims of the absorbed documents to the target, one rule for the three kinds because they are all annotations (`merge-annotations.ts`; the offer is not tied to a module setting, spec FR-9 read).
+
+- Chosen in the dialog: the annotation moves to the target keeping its `id`, `body`, `target` and, for a claim, its status and date. It is in the target's sidecar list, has its mark in the appended text, and is no longer in the absorbed document's list; its mark is stripped from the absorbed document's stored text, so no annotation id is in the stored text of both documents (task-19, task-25).
+- Not chosen: it stays in the absorbed document's list unchanged, and its mark is stripped from the text appended to the target (task-19, task-25). With no choice, nothing moves (task-19).
+- Limit: if the moved notes would give the target more than the per-resource limit (500), the merge is refused with the counts, before any write (task-25, directory snapshot equal).
+- A sidecar write of `annotations` re-checks, inside `mutateSidecar`, that the stored list equals the one read under the locks; a difference returns `failed` (task-25).
+- Undo merge moves notes back: the notes on the target whose `annotation` mark ids are in a live absorbed document's snapshot text go back onto that document, once, and leave the target (task-38). The record does not store which notes were chosen, so this is derived from the snapshot text (task-38 decision). A note of an absorbed document that is in Trash or purged stays on the target (task-38 decision; its mark is absent from the restored target text, so it reads as detached there). A note that was not chosen at the merge stays where it was (task-38). Notes added after the merge stay where they were added (read from `moveMergeAnnotationsBack`, which moves only the ids found in the snapshot).
+
+Not measured: annotations in a table cell, or a document with `textStyle` marks in the appended part (task-25 "Not measured"); an encrypted project.
+
 ## Search
 
 Bodies are indexed in `indexer-queue.ts` `runTask` into `meta/index/annotations.json` (same shape as `inverted.json`; see [indexing.md](./indexing.md)). An annotation write enqueues an index task. `reindex` and the three importers call the shared `rebuildDerivedIndexes` (`derived-index-rebuild.ts`), which drops `meta/index/annotations.json` and rewrites it from every stored body, so a stale entry goes and a missing one returns (before Feature 103, `reindex` left the file as it found it). A locked project fails the rebuild with the locked-access error. `execute-search.ts` takes candidates from `search()` plus `searchAnnotationBodies()` (prose hits first, annotation-only ids after, de-duplicated) and sets `snippetKind: "note"` on a body snippet, which `SearchBar.tsx` renders with the text "Note: ". Annotation matching is AND within bodies and prose matching is AND within prose, so a multi-term query whose terms split between the two matches neither (a known limitation).

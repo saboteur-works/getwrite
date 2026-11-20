@@ -15,6 +15,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import toast, { Toaster } from "react-hot-toast";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { Schema } from "@tiptap/pm/model";
@@ -60,6 +61,14 @@ import type { AnyResource } from "../../src/lib/models/types";
 import type { SplitUndoRemainingState } from "../../src/lib/models/split-undo-core";
 import type { TipTapDocument } from "../../src/lib/models";
 import { runAxe } from "../a11y/helpers/axe";
+
+// Feature 121 Task 41: the Undo report is a toast, so a Toaster is mounted in
+// the harnesses below. The store setup triggers an unrelated alias-table read
+// that fails in jsdom and would raise a stray "could not be loaded" toast.
+vi.mock("../../src/lib/api/transport-validation", () => ({
+  reportTransportValidationFailure: vi.fn(),
+  reportTransportReadFailure: vi.fn(),
+}));
 
 const requestLatestSplitOperation = vi.fn();
 const requestUndoSplit = vi.fn();
@@ -248,6 +257,7 @@ function PaletteHarness({
   const [isOpen, setIsOpen] = React.useState<boolean>(true);
   return (
     <>
+      <Toaster />
       <SplitUndoHost />
       <button type="button" onClick={() => setIsOpen(true)}>
         reopen palette
@@ -288,6 +298,21 @@ async function undoOption(): Promise<HTMLElement> {
 }
 
 beforeEach(() => {
+  // react-hot-toast reads the reduced-motion preference; jsdom has no matchMedia.
+  vi.stubGlobal(
+    "matchMedia",
+    (query: string): MediaQueryList =>
+      ({
+        matches: false,
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        onchange: null,
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList,
+  );
   stored = JSON.stringify(RESTORED);
   requestLatestSplitOperation.mockReset();
   requestUndoSplit.mockReset();
@@ -305,6 +330,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  toast.remove();
   setActiveEditor(null);
   setActiveEditorResourceId(null);
   vi.unstubAllEnvs();
@@ -469,7 +495,7 @@ describe("Undo split report and editor", () => {
     expect(text).toContain("“Chapter 3 (part 2)” is now in the Trash.");
     expect(text).toContain("2 notes were put back");
     expect(text).toContain("Edits made since the split are kept");
-    expect(screen.getByRole("alert").textContent).toBe("");
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(fake.loaded).toEqual([RESTORED]);
     expect(fake.editable).toEqual([false, true]);
     expect(requestUndoSplit).toHaveBeenCalledTimes(1);
@@ -482,12 +508,12 @@ describe("Undo split report and editor", () => {
     renderPalette();
     await runUndoFromPalette();
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toBe(
+      expect(screen.getByRole("alert").textContent).toContain(
         UNDO_SPLIT_SAVE_FAILED_MESSAGE,
       ),
     );
     expect(requestUndoSplit).not.toHaveBeenCalled();
-    expect(screen.getByRole("status").textContent).toBe("");
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("leaves an unrelated open document as it is after a successful Undo", async () => {
@@ -566,7 +592,7 @@ describe("Undo split report and editor", () => {
     renderPalette();
     await runUndoFromPalette();
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toBe(
+      expect(screen.getByRole("alert").textContent).toContain(
         describeUndoSplitIndexFailure(["inverted-index"]),
       ),
     );
@@ -586,11 +612,11 @@ describe("Undo split report and editor", () => {
     renderPalette();
     await runUndoFromPalette();
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toBe(
+      expect(screen.getByRole("alert").textContent).toContain(
         SPLIT_UNDO_REFUSAL_MESSAGES["original-in-trash"],
       ),
     );
-    expect(screen.getByRole("status").textContent).toBe("");
+    expect(screen.queryByRole("status")).toBeNull();
     expect(fake.editable).toEqual([false, true]);
   });
 
@@ -600,7 +626,7 @@ describe("Undo split report and editor", () => {
     renderPalette();
     await runUndoFromPalette();
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toBe(
+      expect(screen.getByRole("alert").textContent).toContain(
         UNDO_SPLIT_NOTHING_TO_UNDO_MESSAGE,
       ),
     );
@@ -645,7 +671,7 @@ describe("Undo split report and editor", () => {
         UNDO_SPLIT_REMAINING_STATE_MESSAGES["split-off-in-trash"],
       );
     });
-    expect(screen.getByRole("status").textContent).toBe("");
+    expect(screen.queryByRole("status")).toBeNull();
     expect(fake.editable).toEqual([false]);
   });
 
@@ -672,7 +698,7 @@ describe("Undo split report and editor", () => {
     renderPalette();
     await runUndoFromPalette();
     await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toBe(
+      expect(screen.getByRole("alert").textContent).toContain(
         UNDO_SPLIT_LOCKED_MESSAGE,
       ),
     );
@@ -745,6 +771,7 @@ describe("Undo split in the editor context menu", () => {
     render(
       <Provider store={store}>
         <TrashRefreshProvider>
+          <Toaster />
           <SplitUndoHost />
           <EditorContextMenu editor={editor}>
             <EditorContent editor={editor} data-testid="prosemirror" />

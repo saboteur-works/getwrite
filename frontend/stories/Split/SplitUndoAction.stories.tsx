@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import ResourceCommandPalette from "../../components/common/ResourceCommandPalette";
-import { SplitUndoRegions } from "../../components/Split/SplitUndoHost";
+import { UndoToastView } from "../../components/Split/UndoToast";
 import {
   setSplitUndoAvailability,
   type SplitUndoAvailability,
@@ -96,27 +96,25 @@ export const NotOffered: Story = {
   ],
 };
 
-/** The report regions after a successful Undo (a `role="status"` region). */
-export const ReportSuccess: StoryObj<typeof SplitUndoRegions> = {
+/** The toast after a successful Undo (a dismissable `role="status"` toast). */
+export const ReportSuccess: StoryObj<typeof UndoToastView> = {
   render: () => (
-    <SplitUndoRegions
-      status={describeUndoSplitSuccess(
-        "Chapter 3 (part 2)",
-        "moved-to-trash",
-        2,
-      )}
-      alerts={[]}
+    <UndoToastView
+      kind="status"
+      messages={[
+        describeUndoSplitSuccess("Chapter 3 (part 2)", "moved-to-trash", 2),
+      ]}
       onDismiss={() => undefined}
     />
   ),
 };
 
-/** The report regions after a failed Undo (a `role="alert"` region): where it stopped and what remains. */
-export const ReportFailure: StoryObj<typeof SplitUndoRegions> = {
+/** The toast after a failed Undo (a dismissable `role="alert"` toast): where it stopped and what remains. */
+export const ReportFailure: StoryObj<typeof UndoToastView> = {
   render: () => (
-    <SplitUndoRegions
-      status=""
-      alerts={[
+    <UndoToastView
+      kind="alert"
+      messages={[
         describeUndoSplitFailure(
           "trash-split-off",
           "split-off-in-trash",

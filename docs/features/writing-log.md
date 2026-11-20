@@ -35,6 +35,17 @@ A split of a document at the cursor and its Undo add no entry to the log, for ei
 - Measured: with the `meta/writing-log` directory compared before and after a split, its contents were identical and `config.dailyWordGoal` was unchanged (task-20). The same comparison before and after Undo, with entries present from two earlier ordinary edits, was identical (task-29). In `revision-core-no-log-write.test.ts` a later ordinary `updateRevisionInPlace` logged only its own words (2 added, 0 deleted) and the truncating write left the directory as it was (task-16).
 - So the log holds no entry for the text that moved: it is not recorded as words deleted from the original or words added to the new document.
 
+Merge, Undo merge and the daily goal (Feature 121)
+
+A merge of documents and its Undo add no entry to the log, for any document. Spec: [specs/features/merge-documents.md](../../specs/features/merge-documents.md) (FR-8, FR-19). Records: `specs/features/merge-documents/experiments/task-4.md`, `task-25.md`, `task-30.md`, `task-37.md`, `task-38.md`, `task-47.md`.
+
+- The target's appended text is written with `writeCanonicalContentWithoutLog` and an absorbed document's text is not logged. Measured (task-25): the `meta/writing-log` directory was byte-identical before and after a merge, no "Auto-backup" revision was made besides the snapshots, and the daily figure was unchanged. The same comparison across Undo merge, with entries present from two edits made between merge and Undo, was byte-identical (task-38).
+- Daily goal and the merged mark. Before Feature 121 the key was ignored: with the mark set on a document, no daily figure changed (task-4, probe with the in-memory adapter). Now `aggregateForRoot` in `writing-log-core.ts` skips a non-import entry of a marked document whose timestamp is later than the mark's date; an entry at the same instant or earlier counts (task-30). So a merge does not change today's figure, and words typed into the target after the merge count normally because the target carries no mark (task-30, task-37 wording of the rule).
+- The mark's date is a full ISO 8601 instant. The mark store refuses to write a date-only, zone-less or unparseable date and reads a stored one as `failed` (task-47). Where a stored mark has no usable date, the daily figure is reported as unavailable (`GoalFilteredFigureUnavailableError`, cause `corrupt`), never a number (task-30 decision).
+- With a goal filter set, membership excludes a marked document, while the daily figure keeps it in the selection and applies the date rule itself: `writing-log-core.ts` calls `evaluateGoalMembership` with `includeMerged: true` (task-30). Only that call sets the option.
+- Undo merge clears the mark and the daily figure then counts the document's entries by the ordinary rule again (read from the date rule: it applies only while the mark is present).
+- Not measured: whether a real merge can leave an entry for an absorbed document dated after the mark (task-4 "Not established"); the daily figure through the running app.
+
 Word diff and blind spots
 
 `diffWords` (`frontend/src/lib/models/word-diff.ts`) computes a word-bag (multiset) difference between the previous and new plain text (`tiptapToPlainText`). Tokenization mirrors `countWords`. `added` is the words in the new text not matched in the old text; `deleted` is the reverse. Known blind spots:

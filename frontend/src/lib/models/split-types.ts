@@ -88,14 +88,15 @@ export interface SnapshotRevisionRef {
 }
 
 /** The latest operation of a project (FR-16). */
-export interface LatestOperationRecord {
-  kind: SplitOperationKind;
+export type LatestOperationRecord = {
   affectedDocumentIds: string[];
   snapshotRevisions: SnapshotRevisionRef[];
-  newDocumentId: string;
   /** ISO 8601 instant. */
   date: string;
-}
+} & (
+  | { kind: "split"; newDocumentId: string }
+  | { kind: "merge"; newDocumentId?: string }
+);
 
 /** What the writer chose in the split dialog (FR-12). */
 export interface SplitCarryOverChoice {

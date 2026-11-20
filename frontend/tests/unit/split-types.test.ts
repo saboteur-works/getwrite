@@ -191,3 +191,30 @@ describe("result unions", () => {
     expect(failed.state).not.toBe(gone.state);
   });
 });
+
+describe("latest-operation record kinds (Feature 121 FR-21)", () => {
+  it("accepts a merge record with no newDocumentId", () => {
+    const record: LatestOperationRecord = {
+      kind: "merge",
+      affectedDocumentIds: ["target", "absorbed"],
+      snapshotRevisions: [
+        { documentId: "target", revisionId: "r1", revisionNumber: 2 },
+        { documentId: "absorbed", revisionId: "r2", revisionNumber: 4 },
+      ],
+      date: "2026-11-18T00:00:00.000Z",
+    };
+    expect(record.kind).toBe("merge");
+    expect("newDocumentId" in record).toBe(false);
+  });
+
+  it("requires newDocumentId when the kind is split", () => {
+    // @ts-expect-error a split record without newDocumentId does not compile
+    const record: LatestOperationRecord = {
+      kind: "split",
+      affectedDocumentIds: ["doc-1"],
+      snapshotRevisions: [],
+      date: "2026-11-18T00:00:00.000Z",
+    };
+    expect(record.kind).toBe("split");
+  });
+});

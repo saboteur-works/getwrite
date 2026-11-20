@@ -733,7 +733,7 @@ describe("undoLatestSplit on a real project", () => {
       await splitOk(id);
       const first = (await records.readLatestOperation(projectPath)) as {
         outcome: "found";
-        record: LatestOperationRecord;
+        record: LatestOperationRecord & { kind: "split" };
       };
       const second = await splitOk(
         first.record.newDocumentId,

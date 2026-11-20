@@ -25,6 +25,7 @@ import {
   UNDO_SPLIT_STEP_LABELS,
   UNDO_SPLIT_REMAINING_STATE_MESSAGES,
   UNDO_SPLIT_LABEL,
+  UNDO_TOAST_DISMISS_LABEL,
   UNDO_SPLIT_UNKNOWN_NAME_PHRASE,
   UNDO_SPLIT_READ_FAILED_MESSAGE,
   UNDO_SPLIT_READ_LOCKED_MESSAGE,
@@ -234,6 +235,11 @@ describe("split host and Undo texts moved here (Task 28)", () => {
       for (const text of record) expect(text.trim().length).toBeGreaterThan(0);
       expect(new Set(record).size).toBe(record.length);
     }
+  });
+
+  it("has the Undo toast's Dismiss label, which is no other text in the module (Feature 121 Task 41)", () => {
+    expect(UNDO_TOAST_DISMISS_LABEL).toBe("Dismiss");
+    expect(allTexts()).not.toContain(UNDO_TOAST_DISMISS_LABEL);
   });
 
   it("has distinct Undo constants, none equal to a text already in the module", () => {

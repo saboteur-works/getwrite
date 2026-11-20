@@ -4,10 +4,29 @@ import {
   ROOT_ITEM_ID,
 } from "../ResourceTree/buildResourceTree";
 import type { AnyResource } from "../../src/lib/models/types";
+import { isMergedDocument } from "../../src/lib/models/split-eligibility";
 
 export { ROOT_ITEM_ID };
 export type { ResourceItemData };
 export type CompileTree = Record<string, ResourceItemData>;
+
+/**
+ * Feature 121 (FR-17): leaves out every document carrying the merged mark.
+ * A read-time rule over the loaded resources, applied before the compile tree
+ * is built (tree items carry no sidecar key). Nothing is written, and there is
+ * no per-run override: Trash, restore and the mark's removal change the result
+ * only through the resources passed in.
+ */
+export function excludeMergedDocuments(
+  resources: AnyResource[],
+): AnyResource[] {
+  return resources.filter(
+    (resource) =>
+      !isMergedDocument(
+        resource as unknown as Readonly<Record<string, unknown>>,
+      ),
+  );
+}
 
 /** Converts a flat resources array into the compile tree map. */
 export function buildCompileTree(resources: AnyResource[]): CompileTree {

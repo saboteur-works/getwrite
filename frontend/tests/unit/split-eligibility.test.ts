@@ -13,6 +13,7 @@ import {
   MERGED_MARK_SIDECAR_KEY,
   SPLIT_REFUSAL_REASONS,
 } from "../../src/lib/models/split-types";
+import type { MergedMark } from "../../src/lib/models/merge-types";
 import type { TipTapDocument, TipTapNode } from "../../src/lib/models/types";
 
 const p = (text: string): TipTapNode => ({
@@ -371,5 +372,20 @@ describe("splitEligibility: offsets that cannot be located", () => {
     const before = JSON.stringify(input);
     splitEligibility(input);
     expect(JSON.stringify(input)).toBe(before);
+  });
+});
+
+describe("splitEligibility: a document carrying a Feature 121 merged mark", () => {
+  it("refuses a document with a real merged mark with the merged-document reason", () => {
+    const mark: MergedMark = {
+      targetDocumentId: "target",
+      targetSnapshotRevisionId: "rev-2",
+      date: "2026-01-01T00:00:00.000Z",
+    };
+    const sidecar = { type: "text", [MERGED_MARK_SIDECAR_KEY]: mark };
+    expect(isMergedDocument(sidecar)).toBe(true);
+    expect(
+      splitEligibility({ document: doc(p("Hello world")), sidecar, offset: 5 }),
+    ).toEqual(refused(SPLIT_REFUSAL_REASONS.mergedDocument));
   });
 });

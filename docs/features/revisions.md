@@ -106,6 +106,24 @@ Not measured: revision pruning during Undo (if saving Undo's revision pruned an 
 
 ---
 
+## Merge snapshot (Feature 121)
+
+Spec: [specs/features/merge-documents.md](../../specs/features/merge-documents.md) (FR-4, FR-21, FR-22). Records: `specs/features/merge-documents/experiments/task-25.md`, `task-26.md`, `task-38.md`, `task-39.md`. Writer-facing guide: [docs/user/handbook/write/merge-documents.md](../user/handbook/write/merge-documents.md).
+
+A merge of documents (`merge-core.ts`, `applyMerge`) saves, for the target and for every absorbed document, its full stored text as a revision before anything else is written. That revision is the Merge snapshot.
+
+- Created with `createRevision` as a non-canonical revision with `metadata: { name: "Before merge <date>", preserve: true, mergeSnapshot: true }`. The text is the stored canonical text read inside the operation, under the document's `revision-content` lock, not text from the client (task-25). So each snapshot is preserved (protected from pruning and from `deleteRevision`) and `metadata.mergeSnapshot` marks it. The target's snapshot is taken first, then the absorbed documents' in append order (task-25).
+- Every revision an absorbed document had is kept, plus its snapshot, and each document keeps exactly one canonical revision; no revision of an absorbed document is deleted or copied (task-25). The revision id is the id `createRevision` returns, compared as an opaque string (task-25; spec FR-4 read).
+- The merge takes the `revision-content:<root>:<id>` lock of the target and of every absorbed document, each once, in ascending order of document id, whichever document is the target (task-25). Text is written only with `writeCanonicalContentWithoutLog` and `{ lockHeld: true }`, so a merge appends no writing-log entry and leaves no "Auto-backup" revision besides the snapshots (task-25).
+- Each absorbed document's merged mark holds the id of the target's snapshot (task-25), and that is the revision Undo merge reads to restore the target. See the `CLAUDE.md` glossary: Merged mark.
+- A merge that fails is compensated in reverse. Compensation clears each snapshot's `preserve` flag and then deletes it, because `deleteRevision` refuses a preserved revision; if that deletion cannot be done, the result is `snapshot-revisions-kept` with the snapshots left in place (task-26).
+
+Undo merge (`split-undo-core.ts`, `undoLatestMerge`, reached through `undoLatestOperation` or the Undo route) does not use `setCanonicalRevision`. Before it changes any text it saves the current text of the target and of each absorbed document that is still live as its own non-canonical revision, named "Before undo merge <date>" with `preserve: true` and `mergeUndoSave: true` (read from `saveCurrentMergeText` in `split-undo-core.ts`; the revisions are asserted preserved and non-canonical in task-38). So an edit made to the target or to an absorbed document after the merge is in a preserved revision of the document it was made in (task-38, one test per case). It then overwrites the target's canonical content from its snapshot with `writeCanonicalContentWithoutLog`, and puts each absorbed document's text back from its snapshot only where it differs (task-38). The snapshots are not deleted by Undo (read from `undoLatestMerge`, which has no delete). An absorbed document that is in Trash or purged is skipped, never purged by Undo (task-38). A failed Undo is compensated in reverse: the revisions Undo made are deleted after clearing their `preserve` flag, except for a document whose text could not be put back, whose revision is kept (task-39).
+
+Not measured: revision pruning during a merge or an Undo merge; several server instances (the locks are per process; the claim holds under one writer instance per tenant, a comment in `merge-core.ts` per task-25); an encrypted project through a merge or Undo.
+
+---
+
 ## Pruning
 
 Pruning removes old revisions to enforce a `maxRevisions` cap.

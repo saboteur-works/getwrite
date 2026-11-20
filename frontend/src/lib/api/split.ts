@@ -39,14 +39,20 @@ import {
   type SplitIndexFailureStep,
   type SplitUndoRefusalReason,
 } from "../models/split-messages";
+import {
+  MERGE_UNDO_REFUSAL_MESSAGES,
+  MERGE_UNDO_REFUSAL_REASONS,
+  type MergeUndoRefusalReason,
+} from "../models/merge-undo-messages";
 import type {
+  MergeUndoRemainingState,
+  MergeUndoStep,
   SplitUndoAppliedFields,
   SplitUndoRemainingState,
   SplitUndoStep,
 } from "../models/split-undo-core";
 import type { SplitIndexFailure } from "../models/split-index-update";
 import {
-  SPLIT_OPERATION_KINDS,
   type LatestOperationRecord,
   SPLIT_REFUSAL_REASONS,
   SPLIT_STEPS,
@@ -580,20 +586,136 @@ const UndoBodySchema = z.discriminatedUnion("outcome", [
   }),
 ]);
 
-const LatestBodySchema = z.discriminatedUnion("outcome", [
+const MERGE_UNDO_REMAINING_STATES: Record<MergeUndoRemainingState, true> = {
+  "merge-restored": true,
+  "record-not-restored": true,
+  "marks-not-restored": true,
+  "notes-not-restored": true,
+  "documents-not-restored": true,
+  "preserved-revisions-kept": true,
+  "state-unknown": true,
+};
+const MERGE_UNDO_STEP_TABLE: Record<MergeUndoStep, true> = {
+  "save-current-text": true,
+  "restore-target": true,
+  "restore-absorbed": true,
+  "move-annotations": true,
+  "clear-marks": true,
+  "clear-record": true,
+};
+
+/** The merge bodies; every one carries `operation: "merge"`, which no split body does. */
+const MergeUndoAppliedShape = {
+  operation: z.literal("merge"),
+  targetDocumentId: z.string(),
+  targetName: z.string().nullable(),
+  absorbedDocumentIds: z.array(z.string()),
+  skippedDocuments: z.array(
+    z.object({ documentId: z.string(), state: z.enum(["in-trash", "purged"]) }),
+  ),
+  preservedRevisions: z.array(RevisionRefSchema),
+  movedAnnotationIds: z.array(z.string()),
+};
+
+const MergeUndoBodySchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("applied"), ...MergeUndoAppliedShape }),
   z.object({
-    outcome: z.literal("found"),
-    record: z.object({
-      kind: z.enum(SPLIT_OPERATION_KINDS),
-      affectedDocumentIds: z.array(z.string()),
-      snapshotRevisions: z.array(RevisionRefSchema),
-      newDocumentId: z.string(),
-      date: z.string(),
-    }),
+    outcome: z.literal("index-failed"),
+    ...MergeUndoAppliedShape,
+    failures: z.array(
+      z.object({ documentId: z.string(), step: UndoIndexStepSchema }),
+    ),
   }),
+  z.object({
+    outcome: z.literal("refused"),
+    operation: z.literal("merge"),
+    reason: z.custom<MergeUndoRefusalReason>(
+      (v) =>
+        typeof v === "string" &&
+        (MERGE_UNDO_REFUSAL_REASONS as readonly string[]).includes(v),
+    ),
+    documentId: z.string(),
+  }),
+  z.object({
+    outcome: z.literal("failed"),
+    operation: z.literal("merge"),
+    failedStep: z.custom<MergeUndoStep>((v) =>
+      isKeyOf(MERGE_UNDO_STEP_TABLE, v),
+    ),
+    cause: z.string(),
+    remainingState: z.custom<MergeUndoRemainingState>((v) =>
+      isKeyOf(MERGE_UNDO_REMAINING_STATES, v),
+    ),
+  }),
+]);
+
+/**
+ * The stored record, by kind (mirrors `isLatestOperationRecord`): a split
+ * names the split-off document; a merge has no `newDocumentId` (FR-21), and
+ * one a Feature 120 test wrote before Feature 121 is still accepted.
+ */
+const LatestRecordSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("split"),
+    affectedDocumentIds: z.array(z.string()),
+    snapshotRevisions: z.array(RevisionRefSchema),
+    newDocumentId: z.string(),
+    date: z.string(),
+  }),
+  z.object({
+    kind: z.literal("merge"),
+    affectedDocumentIds: z.array(z.string()),
+    snapshotRevisions: z.array(RevisionRefSchema),
+    newDocumentId: z.string().optional(),
+    date: z.string(),
+  }),
+]);
+
+const LatestBodySchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("found"), record: LatestRecordSchema }),
   z.object({ outcome: z.literal("none") }),
   z.object({ outcome: z.literal("failed"), cause: z.string() }),
 ]);
+
+/** What an applied Undo merge reports to the host. */
+export interface MergeUndoClientFields {
+  targetDocumentId: string;
+  /** `null` when the server could not read the name after the Undo. */
+  targetName: string | null;
+  absorbedCount: number;
+  absorbedDocumentIds: string[];
+  skippedDocuments: { documentId: string; state: "in-trash" | "purged" }[];
+  preservedRevisions: {
+    documentId: string;
+    revisionId: string;
+    revisionNumber: number;
+  }[];
+  movedAnnotationIds: string[];
+}
+
+/**
+ * The kinds of an Undo of a merge (Feature 121). `nothing-to-undo`,
+ * `could-not-be-checked` and the transport `failed` are shared with the
+ * split Undo.
+ */
+export type MergeUndoClientResult =
+  | ({ kind: "merge-applied" } & MergeUndoClientFields)
+  | ({
+      kind: "merge-index-failed";
+      failures: SplitIndexFailure[];
+    } & MergeUndoClientFields)
+  | {
+      kind: "merge-refused";
+      reason: MergeUndoRefusalReason;
+      message: string;
+      documentId: string;
+    }
+  | {
+      kind: "merge-failed";
+      failedStep: MergeUndoStep;
+      remainingState: MergeUndoRemainingState;
+      cause: string;
+    };
 
 /**
  * Outcome of {@link requestUndoSplit}; the kinds never share a value. No kind
@@ -603,6 +725,7 @@ const LatestBodySchema = z.discriminatedUnion("outcome", [
  * values and the caller must not show a made-up sentence for them.
  */
 export type SplitUndoClientResult =
+  | MergeUndoClientResult
   | ({ kind: "applied" } & SplitUndoAppliedFields)
   | ({
       kind: "index-failed";
@@ -634,8 +757,45 @@ function undoFailed(
   return { kind: "failed", failedStep: null, remainingState, cause };
 }
 
+function mergeUndoResultOf(
+  data: z.infer<typeof MergeUndoBodySchema>,
+): MergeUndoClientResult {
+  switch (data.outcome) {
+    case "applied":
+    case "index-failed": {
+      const fields: MergeUndoClientFields = {
+        targetDocumentId: data.targetDocumentId,
+        targetName: data.targetName,
+        absorbedCount: data.absorbedDocumentIds.length,
+        absorbedDocumentIds: data.absorbedDocumentIds,
+        skippedDocuments: data.skippedDocuments,
+        preservedRevisions: data.preservedRevisions,
+        movedAnnotationIds: data.movedAnnotationIds,
+      };
+      return data.outcome === "applied"
+        ? { kind: "merge-applied", ...fields }
+        : { kind: "merge-index-failed", ...fields, failures: data.failures };
+    }
+    case "refused":
+      return {
+        kind: "merge-refused",
+        reason: data.reason,
+        message: MERGE_UNDO_REFUSAL_MESSAGES[data.reason],
+        documentId: data.documentId,
+      };
+    case "failed":
+      return {
+        kind: "merge-failed",
+        failedStep: data.failedStep,
+        remainingState: data.remainingState,
+        cause: data.cause,
+      };
+  }
+}
+
 /**
- * Undoes the project's latest split. A thrown fetch, a non-ok response or a
+ * Undoes the project's latest operation, a split or a merge (the server
+ * reads the stored record and picks). A thrown fetch, a non-ok response or a
  * malformed body is a `failed` result with `state-unknown`, never "no result".
  *
  * @throws The locked-access error when the project is locked.
@@ -647,6 +807,8 @@ export async function requestUndoSplit(
   if (!checked.ok) return undoFailed("split-restored", "invalid-request");
   const sent = await post(UNDO_ENDPOINT, checked.value, projectId);
   if (!sent.ok) return undoFailed("state-unknown", "transport-failed");
+  const merge = MergeUndoBodySchema.safeParse(sent.json);
+  if (merge.success) return mergeUndoResultOf(merge.data);
   const parsed = UndoBodySchema.safeParse(sent.json);
   if (!parsed.success) {
     reportTransportValidationFailure(
@@ -673,7 +835,11 @@ export async function requestUndoSplit(
     case "nothing-to-undo":
       return { kind: "nothing-to-undo" };
     case "unsupported-operation":
-      return { kind: "unsupported-operation", operationKind: data.kind };
+      // The server no longer answers this for a merge; if an older one does,
+      // nothing was undone and the check did not complete.
+      return data.kind === "merge"
+        ? { kind: "could-not-be-checked", cause: "unsupported-operation" }
+        : { kind: "unsupported-operation", operationKind: data.kind };
     case "refused":
       return {
         kind: "refused",

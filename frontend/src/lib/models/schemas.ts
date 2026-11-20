@@ -574,6 +574,14 @@ export const ResourceBaseSchema = z
     statuses: z.array(z.string()).optional(),
     /** At most one subtype label (Feature 72, FR-5); independent of entity fields. */
     resourceSubtype: z.string().trim().min(1).optional(),
+    /**
+     * The merged mark (Feature 121, FR-5), server-written only. Declared so a
+     * response parse keeps it for the readers that decide on it (tree label,
+     * eligibility, rules); its shape is checked where it is read
+     * (`merge-mark-core.ts`), and left `unknown` here so a malformed stored
+     * value cannot make a whole project list fail to load.
+     */
+    mergedMark: z.unknown().optional(),
     userMetadata: z.record(z.string(), MetadataValue).optional(),
     /** Capture time and link (Feature 106, FR-22); server-written only. */
     capturedAt: IsoDateString.optional(),

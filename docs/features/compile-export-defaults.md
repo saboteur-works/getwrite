@@ -36,6 +36,17 @@ The Compile dialog (`CompilePreviewModal.tsx`) carries an optional citations opt
 - PDF fonts: `registerIBMPlexFonts` in `CompilePDFDocument.tsx` registers the four IBM Plex faces from the `.woff` files of the installed `@fontsource` packages, not `.woff2` (`experiments/task-61.md`; the editor UI's `styles/bundled-fonts.css` still uses WOFF2).
 - Not verified: Android, a paired device, a DOCX opened in Word, the browser PDF renderer, hosted web, the built and packaged apps (see the experiments directory for what each task ran).
 
+## Merged documents (Feature 121)
+
+Spec: [specs/features/merge-documents.md](../../specs/features/merge-documents.md) (FR-17, FR-18). Records: `specs/features/merge-documents/experiments/task-3.md`, `task-28.md`, `task-29.md`, `task-37.md`.
+
+- Compile: a document that carries the merged mark is left out of every compile, in every format (txt, md, pdf, docx), in the Compile dialog and in the Compile Entity Resources dialog. The rule is applied at read time from the mark, by `excludeMergedDocuments` in `compileSelection.ts` before the tree is built (the tree items carry no sidecar key; task-3), and the dialog (`CompilePreviewModal.tsx`) and `EntityCompileSection.tsx` use the filtered list (task-28). There is no control to include a marked document for one run (a marked document has no checkbox and Select All leaves the count unchanged, task-28) and nothing is written to `compileDefaults` (task-28: `saveDefaults` not called). The saved defaults of an unmarked document behave as before (task-28).
+- Server side and CLI: `section-loader.ts` takes the client's ids and has no compile list of its own, and no CLI compile exists, so neither was edited (task-3, task-28).
+- The notice "Documents merged into another document are left out of every compile." (`COMPILE_MERGED_NOTICE` in `merge-messages.ts`) is shown only when a document being compiled is a merged one: in the whole-project dialog when any project document carries the mark, in the entity dialog when an id of the entity's associated set does (task-37). Its wording is the text task-28 drafted and task-37 kept.
+- Follows the mark: as the rule is a function of the resources passed in, a document is excluded while marked, also when it is restored from Trash with its mark, and listed again when the key is gone (task-28 tests of the function; no Trash or Undo operation was run against disk in that task).
+- Export: a marked document is still exported. Measured (task-29): the Export dialog's initial selection includes it, `loadTextSections` returns a section for it, and the plain-text and Markdown exports hold its name and text. Search still finds it, by its text and by its note bodies (task-29). A marked document taken to Trash leaves the indexes and returns on restore, with the mark kept (task-29).
+- Not measured: the Export and Compile dialogs in a built app; the Start Page compile path on its own (it mounts the same modal, task-28); a marked document in a folder taken to Trash.
+
 ## Paired devices and locked projects
 
 The routes sit behind the same pairing gate as other `/api` routes. No paired-device limit switch was added, and no sharing code references these routes. A run of them from a paired device was not recorded. A locked project refuses the setters with the existing locked-access errors.

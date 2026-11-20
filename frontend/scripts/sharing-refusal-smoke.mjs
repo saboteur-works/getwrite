@@ -57,13 +57,19 @@ const EXCEPTION_COUNT = ENUMERATED_EXCEPTIONS.length + 1;
 const PROOF_CONTEXT = "getwrite-ready/1\n";
 const READINESS_URL = "/api/sharing/ready";
 /** Entry-count floor; same value as the unit test's MIN_ENTRIES. */
-const MIN_ENTRIES = 132;
+const MIN_ENTRIES = 134;
 /** The four Feature 120 routes; each is gated like the capture route, with no limit switch. */
 const SPLIT_ROUTE_LABELS = [
   "POST /api/project/split/preview",
   "POST /api/project/split",
   "POST /api/project/split/undo",
   "GET /api/project/split/latest",
+];
+
+/** The two Feature 121 routes; each is gated like the capture route, with no limit switch. */
+const MERGE_ROUTE_LABELS = [
+  "POST /api/project/merge/preview",
+  "POST /api/project/merge",
 ];
 
 const failures = [];
@@ -248,7 +254,8 @@ async function main() {
   // Feature 120, Task 23: floors as in the unit test's MIN_ROUTE_FILES and
   // MIN_ENTRIES (88 route files, 124 route/method pairs and 6 pages = 130
   // entries when the split routes were added; 90, 126 and 6 = 132 with the
-  // Task 31 undo and latest routes); never lowered.
+  // Task 31 undo and latest routes; 92, 128 and 6 = 134 with the Feature 121
+  // merge preview and merge routes); never lowered.
   check(
     "enumeration is at least the recorded floor",
     entries.length >= MIN_ENTRIES,
@@ -256,6 +263,10 @@ async function main() {
   check(
     "enumeration includes the split preview, split, undo and latest routes",
     SPLIT_ROUTE_LABELS.every((n) => entries.map(label).includes(n)),
+  );
+  check(
+    "enumeration includes the merge preview and merge routes",
+    MERGE_ROUTE_LABELS.every((n) => entries.map(label).includes(n)),
   );
   check(
     "enumeration includes the pairing page and route",

@@ -9,7 +9,13 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  MERGE_MARK_STATES,
+  type MergedMark,
+} from "../../src/lib/models/merge-types";
+import {
+  resolveMergedMarkState,
   resolveSplitLineageState,
+  type MergedMarkResolverInput,
   type SplitLineageProbe,
   type SplitLineageResolverInput,
 } from "../../src/lib/models/split-lineage-resolver";
@@ -136,5 +142,101 @@ describe("resolveSplitLineageState", () => {
     );
     expect(source).not.toMatch(/from\s+["'](?:node:|fs|react)/);
     expect(source).not.toMatch(/readFile|writeFile|toast|JSX/i);
+  });
+});
+
+/**
+ * Feature 121, Task 21: a merged mark resolved through the same probes, with
+ * the TARGET as the named document and the snapshot as the named revision
+ * (`experiments/task-7.md`: the resolver reads none of a record's fields).
+ */
+const MARK: MergedMark = {
+  targetDocumentId: SOURCE_ID,
+  targetSnapshotRevisionId: "rev-snapshot",
+  date: "2026-11-18T10:00:00.000Z",
+};
+
+function markInputFor(
+  paths: string[],
+  failing: string[] = [],
+): MergedMarkResolverInput {
+  const split = inputFor(paths, failing);
+  return {
+    mark: MARK,
+    liveDocument: split.liveDocument,
+    liveSnapshotRevision: split.liveSnapshotRevision,
+    trashedDocument: split.trashedDocument,
+    trashedRevisions: split.trashedRevisions,
+  };
+}
+
+describe("resolveMergedMarkState", () => {
+  it("is available when the target and its snapshot revision are stored", () => {
+    expect(
+      resolveMergedMarkState(markInputFor([LIVE_SIDECAR, LIVE_REVISION])),
+    ).toEqual({ state: "available" });
+  });
+
+  it("reports the revision no longer kept when the target is live and the snapshot is gone", () => {
+    expect(resolveMergedMarkState(markInputFor([LIVE_SIDECAR]))).toEqual({
+      state: "revision-no-longer-kept",
+    });
+  });
+
+  it("reports the target in Trash", () => {
+    expect(
+      resolveMergedMarkState(markInputFor([TRASH_SIDECAR, TRASH_REVISIONS])),
+    ).toEqual({ state: "target-in-trash" });
+  });
+
+  it("reports the target permanently removed when nothing of it is stored", () => {
+    expect(resolveMergedMarkState(markInputFor([]))).toEqual({
+      state: "target-permanently-removed",
+    });
+  });
+
+  it("reports could-not-be-checked with a cause, distinct from an empty read", () => {
+    const failed = resolveMergedMarkState(markInputFor([], [LIVE_SIDECAR]));
+    expect(failed).toEqual({
+      state: "could-not-be-checked",
+      cause: `read of ${LIVE_SIDECAR} failed`,
+    });
+    expect(failed.state).not.toBe(
+      resolveMergedMarkState(markInputFor([])).state,
+    );
+    expect(
+      resolveMergedMarkState(markInputFor([LIVE_SIDECAR], [LIVE_REVISION]))
+        .state,
+    ).toBe("could-not-be-checked");
+  });
+
+  it("returns exactly the five states across the fixtures", () => {
+    const outcomes = [
+      markInputFor([LIVE_SIDECAR, LIVE_REVISION]),
+      markInputFor([LIVE_SIDECAR]),
+      markInputFor([TRASH_SIDECAR]),
+      markInputFor([]),
+      markInputFor([], [LIVE_SIDECAR]),
+    ].map((input) => resolveMergedMarkState(input).state);
+    expect(new Set(outcomes)).toEqual(new Set(MERGE_MARK_STATES));
+  });
+
+  it("agrees with the split resolver on the same probes", () => {
+    const sets = [
+      [LIVE_SIDECAR, LIVE_REVISION],
+      [LIVE_SIDECAR],
+      [TRASH_REVISIONS],
+      [],
+    ];
+    const rename: Record<string, string> = {
+      "document-in-trash": "target-in-trash",
+      "document-permanently-removed": "target-permanently-removed",
+    };
+    for (const paths of sets) {
+      const split = resolveSplitLineageState(inputFor(paths)).state;
+      expect(resolveMergedMarkState(markInputFor(paths)).state).toBe(
+        rename[split] ?? split,
+      );
+    }
   });
 });

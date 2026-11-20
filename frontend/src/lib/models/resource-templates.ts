@@ -14,6 +14,7 @@
  * thrown errors for filesystem failures. When possible callers should run
  * template creation operations in a temporary project root during tests.
  */
+import { withoutMergedMark } from "./merge-mark-core";
 import {
   appendFile,
   copyFile,
@@ -525,10 +526,12 @@ export async function duplicateResource(
 
   // clone sidecar metadata, replacing id
   // The duplicate gets its own annotation ids in the sidecar and the document (FR-21).
-  const newMeta = await remapCopiedAnnotations(projectRoot, newId, {
-    ...meta,
-    id: newId,
-  } as Record<string, MetadataValue>);
+  // The duplicate never carries the merged mark (Feature 121, FR-5).
+  const newMeta = await remapCopiedAnnotations(
+    projectRoot,
+    newId,
+    withoutMergedMark({ ...meta, id: newId } as Record<string, MetadataValue>),
+  );
   await writeSidecar(projectRoot, newId, newMeta);
 
   if (isText) {

@@ -9,6 +9,7 @@ import type { FolderRow } from "../../src/lib/folder-data-rows";
 import StubResourcesSection from "./StubResourcesSection";
 import ResourceBreakdown, { type ResourceGroup } from "./ResourceBreakdown";
 import StatusRollup from "./StatusRollup";
+import { isMergedDocument } from "../../src/lib/models/split-eligibility";
 import {
   computeInboxSubtree,
   isInInbox,
@@ -98,6 +99,17 @@ type ResourceWithWordCount = AnyResource & {
 function getWordCount(r: AnyResource): number {
   const rc = r as ResourceWithWordCount;
   return rc.userMetadata?.wordCount ?? rc.wordCount ?? 0;
+}
+
+/**
+ * Feature 121 FR-20: the figure a project-level total adds for a document.
+ * A document marked as merged adds nothing; `getWordCount` (the document's own
+ * figure, the stub flag and the list rows) is unchanged.
+ */
+function getCountedWords(r: AnyResource): number {
+  return isMergedDocument(r as unknown as Record<string, unknown>)
+    ? 0
+    : getWordCount(r);
 }
 
 export interface DataViewProps {
@@ -255,7 +267,7 @@ export default function DataView({
             : (folderMap.get(fid) ?? "Unknown"),
         folderId: fid === "__ungrouped__" ? null : fid,
         resourceCount: rs.length,
-        wordCount: rs.reduce((acc, r) => acc + getWordCount(r), 0),
+        wordCount: rs.reduce((acc, r) => acc + getCountedWords(r), 0),
       }),
     );
     groups.sort((a, b) => {
@@ -268,7 +280,7 @@ export default function DataView({
 
   const totalResources = flatResources.length;
   const totalWords = flatResources.reduce(
-    (acc: number, r: AnyResource) => acc + getWordCount(r),
+    (acc: number, r: AnyResource) => acc + getCountedWords(r),
     0,
   );
 
@@ -289,7 +301,7 @@ export default function DataView({
       (acc: number, r: AnyResource) =>
         r.type === "source" || isInInbox(computed.subtree, r)
           ? acc
-          : acc + getWordCount(r),
+          : acc + getCountedWords(r),
       0,
     );
   }, [flatResources, folders, inboxFolderId]);

@@ -168,7 +168,7 @@ interface UnlockPromptProps {
  * limits read allows it. Mounted only while a locked project needs it, so the
  * host itself needs no sharing-limits context.
  */
-function SplitUnlockPrompt({
+export function SplitUnlockPrompt({
   unlock,
   onUnlocked,
   onDeclined,

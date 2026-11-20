@@ -85,8 +85,19 @@ import {
   SIDECAR_UNCHANGED,
   sidecarFilename,
 } from "./sidecar";
+import { removeMergedMark } from "./merge-mark-core";
 import {
+  MERGE_UNDO_REFUSAL_MESSAGES,
+  type MergeUndoRefusalReason,
+} from "./merge-undo-messages";
+import {
+  MERGED_MARK_SIDECAR_KEY,
+  type MergeMarkStateResult,
+} from "./merge-types";
+import {
+  resolveMergedMarkState,
   resolveSplitLineageState,
+  type MergedMarkResolverInput,
   type SplitLineageProbe,
 } from "./split-lineage-resolver";
 import {
@@ -386,6 +397,7 @@ async function gatherWriteFacts(
   snapshot: SnapshotRevisionRef,
 ): Promise<Gathered> {
   const originalId = snapshot.documentId;
+  if (record.kind !== "split") return cannotCheck("unsupported-operation");
   const splitOffId = record.newDocumentId;
   const later = await laterSplitOf(projectRoot, splitOffId);
   if (later === "found") return refuse("split-off-split-since");
@@ -880,9 +892,10 @@ async function removeSavedRevisions(
   projectRoot: string,
   documentId: string,
   before: ReadonlySet<string>,
+  flag: "splitUndoSave" | "mergeUndoSave" = "splitUndoSave",
 ): Promise<void> {
   for (const revision of await listRevisions(projectRoot, documentId)) {
-    if (before.has(revision.id) || revision.metadata?.splitUndoSave !== true) {
+    if (before.has(revision.id) || revision.metadata?.[flag] !== true) {
       continue;
     }
     await setRevisionPreserve(projectRoot, documentId, revision.id, false);
@@ -1114,4 +1127,760 @@ async function finishAfterUndo(
     return { ...fields, outcome: "index-failed", failures: update.failures };
   }
   return { ...fields, outcome: "applied" };
+}
+
+// --- Undo of the latest merge (Feature 121, Task 38) -----------------------
+//
+// Forward path, refusals and reverse compensation (Task 39). One
+// operation over the N+1 `revision-content` locks (ascending document id, the
+// order `applyMerge` takes them), the record read again inside them. Reads, no
+// write: the record, each document through the merged-mark resolver (target
+// and each absorbed document, from the stored layout), the snapshot texts and
+// the notes whose marks are in an absorbed snapshot. Writes, in order:
+// `save-current-text` (a preserved revision of the target and of each live
+// absorbed document, so an edit made since the merge is kept in the document it
+// was made in), `restore-target` and `restore-absorbed` (the no-log write, not
+// `setCanonicalRevision`; an absorbed document only where its text differs),
+// `move-annotations`, `clear-marks`, `clear-record`. An absorbed document in
+// Trash or purged is skipped and never purged. After the locks, the derived
+// data of the changed documents is updated; a failure there is `index-failed`.
+
+/** The ordered write steps of Undo merge; a failure names one. */
+export const MERGE_UNDO_STEPS = [
+  "save-current-text",
+  "restore-target",
+  "restore-absorbed",
+  "move-annotations",
+  "clear-marks",
+  "clear-record",
+] as const;
+
+/** One write step of Undo merge. */
+export type MergeUndoStep = (typeof MERGE_UNDO_STEPS)[number];
+
+/** What a committed Undo merge reports. */
+export interface MergeUndoAppliedFields {
+  operation: "merge";
+  targetDocumentId: string;
+  /** The target's name read after the Undo; `null` when that read failed (Undo itself is not affected). */
+  targetName: string | null;
+  absorbedDocumentIds: string[];
+  /** Absorbed documents that were in Trash or purged and so were left alone. */
+  skippedDocuments: { documentId: string; state: "in-trash" | "purged" }[];
+  /** The revisions that hold each live document's text as it was when Undo ran. */
+  preservedRevisions: SnapshotRevisionRef[];
+  /** Notes put back on their absorbed documents. */
+  movedAnnotationIds: string[];
+}
+
+/**
+ * What a failed Undo merge leaves, after its reverse compensation ran:
+ * `merge-restored` is the merged state before Undo, with the record present;
+ * a named value is the one thing that could not be put back; two or more are
+ * `state-unknown`.
+ */
+export type MergeUndoRemainingState =
+  | "merge-restored"
+  | "record-not-restored"
+  | "marks-not-restored"
+  | "notes-not-restored"
+  | "documents-not-restored"
+  | "preserved-revisions-kept"
+  | "state-unknown";
+
+/** Result of {@link undoLatestOperation} for a merge; the outcomes never share a value. */
+export type MergeUndoResult =
+  | ({ outcome: "applied" } & MergeUndoAppliedFields)
+  | ({
+      outcome: "index-failed";
+      failures: SplitIndexFailure[];
+    } & MergeUndoAppliedFields)
+  | { outcome: "nothing-to-undo" }
+  | { outcome: "could-not-be-checked"; cause: string }
+  | {
+      outcome: "refused";
+      operation: "merge";
+      reason: MergeUndoRefusalReason;
+      message: string;
+      documentId: string;
+    }
+  | {
+      outcome: "failed";
+      operation: "merge";
+      failedStep: MergeUndoStep;
+      cause: string;
+      remainingState: MergeUndoRemainingState;
+    };
+
+type AbsorbedState = "live" | "in-trash" | "purged";
+
+interface MergeUndoAbsorbed {
+  ref: SnapshotRevisionRef;
+  state: AbsorbedState;
+  snapshotContent: string;
+  /** Notes on the target whose marks are in this document's snapshot text. */
+  returning: Annotation[];
+}
+
+interface MergeUndoFacts {
+  targetId: string;
+  targetSnapshotContent: string;
+  absorbed: MergeUndoAbsorbed[];
+}
+
+type MergeGathered =
+  | { kind: "go"; facts: MergeUndoFacts }
+  | { kind: "stop"; result: MergeUndoResult };
+
+interface MergeShape {
+  target: SnapshotRevisionRef;
+  absorbed: SnapshotRevisionRef[];
+}
+
+/** The refs of a merge record, target first, or `null` when the record is not one a merge writes. */
+function mergeShapeOf(record: LatestOperationRecord): MergeShape | null {
+  if (record.kind !== "merge") return null;
+  const ids = record.affectedDocumentIds;
+  if (ids.length < 2 || new Set(ids).size !== ids.length) return null;
+  if (record.snapshotRevisions.length !== ids.length) return null;
+  const byDocument = new Map(
+    record.snapshotRevisions.map((ref) => [ref.documentId, ref]),
+  );
+  if (byDocument.size !== ids.length) return null;
+  const refs: SnapshotRevisionRef[] = [];
+  for (const id of ids) {
+    const ref = byDocument.get(id);
+    if (!ref) return null;
+    refs.push(ref);
+  }
+  return { target: refs[0], absorbed: refs.slice(1) };
+}
+
+function mergeRefuse(
+  reason: MergeUndoRefusalReason,
+  documentId: string,
+): MergeGathered {
+  return {
+    kind: "stop",
+    result: {
+      outcome: "refused",
+      operation: "merge",
+      reason,
+      message: MERGE_UNDO_REFUSAL_MESSAGES[reason],
+      documentId,
+    },
+  };
+}
+
+/** The merged-mark resolver's state for one document and its snapshot, from the stored layout. */
+async function resolveDocument(
+  projectRoot: string,
+  ref: SnapshotRevisionRef,
+  date: string,
+): Promise<MergeMarkStateResult> {
+  const documentId = ref.documentId;
+  const input: MergedMarkResolverInput = {
+    mark: {
+      targetDocumentId: documentId,
+      targetSnapshotRevisionId: ref.revisionId,
+      date,
+    },
+    liveDocument: await observe(
+      async () => (await readSidecar(projectRoot, documentId)) !== null,
+    ),
+    liveSnapshotRevision: await observe(async () =>
+      (await listRevisions(projectRoot, documentId)).some(
+        (r) =>
+          r.id === ref.revisionId && r.versionNumber === ref.revisionNumber,
+      ),
+    ),
+    trashedDocument: await observe(() =>
+      pathExists(`${projectRoot}/.trash/meta/${sidecarFilename(documentId)}`),
+    ),
+    trashedRevisions: await observe(() =>
+      pathExists(`${projectRoot}/.trash/revisions/${documentId}`),
+    ),
+  };
+  return resolveMergedMarkState(input);
+}
+
+async function readSnapshot(
+  projectRoot: string,
+  ref: SnapshotRevisionRef,
+): Promise<{ content: string; markIds: Set<string> } | { failed: string }> {
+  try {
+    const { content } = await readRevision(
+      projectRoot,
+      ref.documentId,
+      ref.revisionId,
+    );
+    const markIds = new Set<string>();
+    collectMarkIds(JSON.parse(content), markIds);
+    return { content, markIds };
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
+    return { failed: `snapshot-unreadable:${causeOf(err)}` };
+  }
+}
+
+function stopUnchecked(cause: string): MergeGathered {
+  return { kind: "stop", result: { outcome: "could-not-be-checked", cause } };
+}
+
+/** The target's state and snapshot text, or the stop that ends Undo. */
+async function gatherMergeTarget(
+  projectRoot: string,
+  record: LatestOperationRecord,
+  ref: SnapshotRevisionRef,
+): Promise<{ stop: MergeGathered } | { content: string; notes: Annotation[] }> {
+  const state = await resolveDocument(projectRoot, ref, record.date);
+  switch (state.state) {
+    case "could-not-be-checked":
+      return { stop: stopUnchecked(state.cause) };
+    case "target-in-trash":
+      return { stop: mergeRefuse("target-in-trash", ref.documentId) };
+    case "target-permanently-removed":
+      return { stop: mergeRefuse("target-purged", ref.documentId) };
+    case "revision-no-longer-kept":
+      return { stop: mergeRefuse("snapshot-gone", ref.documentId) };
+    case "available":
+      break;
+  }
+  const snapshot = await readSnapshot(projectRoot, ref);
+  if ("failed" in snapshot) return { stop: stopUnchecked(snapshot.failed) };
+  try {
+    return {
+      content: snapshot.content,
+      notes: annotationsOf(await readSidecar(projectRoot, ref.documentId)),
+    };
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
+    return { stop: stopUnchecked(`target-unreadable:${causeOf(err)}`) };
+  }
+}
+
+/** Reads and resolves; writes nothing. */
+async function gatherMergeFacts(
+  projectRoot: string,
+  record: LatestOperationRecord,
+  shape: MergeShape,
+): Promise<MergeGathered> {
+  const target = await gatherMergeTarget(projectRoot, record, shape.target);
+  if ("stop" in target) return target.stop;
+  const absorbed: MergeUndoAbsorbed[] = [];
+  for (const ref of shape.absorbed) {
+    const resolved = await resolveDocument(projectRoot, ref, record.date);
+    if (resolved.state === "could-not-be-checked") {
+      return stopUnchecked(resolved.cause);
+    }
+    if (resolved.state === "revision-no-longer-kept") {
+      return mergeRefuse("absorbed-snapshot-gone", ref.documentId);
+    }
+    if (resolved.state !== "available") {
+      const state: AbsorbedState =
+        resolved.state === "target-in-trash" ? "in-trash" : "purged";
+      absorbed.push({ ref, state, snapshotContent: "", returning: [] });
+      continue;
+    }
+    const snapshot = await readSnapshot(projectRoot, ref);
+    if ("failed" in snapshot) return stopUnchecked(snapshot.failed);
+    absorbed.push({
+      ref,
+      state: "live",
+      snapshotContent: snapshot.content,
+      returning: target.notes.filter((a) => snapshot.markIds.has(a.id)),
+    });
+  }
+  return {
+    kind: "go",
+    facts: {
+      targetId: shape.target.documentId,
+      targetSnapshotContent: target.content,
+      absorbed,
+    },
+  };
+}
+
+async function canonicalIdOf(
+  projectRoot: string,
+  documentId: string,
+): Promise<string> {
+  const canonical = (await listRevisions(projectRoot, documentId)).find(
+    (r) => r.isCanonical,
+  );
+  if (!canonical) throw new Error("no canonical revision");
+  return canonical.id;
+}
+
+async function saveCurrentMergeText(
+  projectRoot: string,
+  documentId: string,
+  date: string,
+): Promise<SnapshotRevisionRef> {
+  const canonicalId = await canonicalIdOf(projectRoot, documentId);
+  const { content } = await readRevision(projectRoot, documentId, canonicalId);
+  const saved = await createRevision(projectRoot, documentId, {
+    content,
+    isCanonical: false,
+    metadata: {
+      name: `Before undo merge ${date.slice(0, 10)}`,
+      preserve: true,
+      mergeUndoSave: true,
+    },
+  });
+  return {
+    documentId,
+    revisionId: saved.id,
+    revisionNumber: saved.versionNumber,
+  };
+}
+
+/** The no-log overwrite of a document's canonical content; `onlyIfDifferent` skips an identical text. */
+async function overwriteCanonical(
+  projectRoot: string,
+  documentId: string,
+  content: string,
+  onlyIfDifferent: boolean,
+): Promise<void> {
+  const canonicalId = await canonicalIdOf(projectRoot, documentId);
+  if (onlyIfDifferent) {
+    const current = await readRevision(projectRoot, documentId, canonicalId);
+    if (current.content === content) return;
+  }
+  await writeCanonicalContentWithoutLog(
+    projectRoot,
+    documentId,
+    canonicalId,
+    content,
+    { lockHeld: true },
+  );
+}
+
+/** Notes go back to their absorbed document (each once) and leave the target. */
+async function moveMergeAnnotationsBack(
+  projectRoot: string,
+  facts: MergeUndoFacts,
+): Promise<string[]> {
+  const moving = facts.absorbed.filter(
+    (a) => a.state === "live" && a.returning.length > 0,
+  );
+  if (moving.length === 0) return [];
+  const moved = new Set(moving.flatMap((a) => a.returning.map((n) => n.id)));
+  for (const doc of moving) {
+    await mutateSidecar(projectRoot, doc.ref.documentId, (current) => {
+      if (current === null) throw new Error("sidecar missing");
+      const now = annotationsOf(current);
+      const present = new Set(now.map((a) => a.id));
+      const added = doc.returning.filter((a) => !present.has(a.id));
+      return {
+        ...current,
+        annotations: [...now, ...added] as unknown as MetadataValue,
+      };
+    });
+  }
+  await mutateSidecar(projectRoot, facts.targetId, (current) => {
+    if (current === null) throw new Error("sidecar missing");
+    return {
+      ...current,
+      annotations: annotationsOf(current).filter(
+        (a) => !moved.has(a.id),
+      ) as unknown as MetadataValue,
+    };
+  });
+  return [...moved];
+}
+
+/** One document's sidecar `mergedMark` value before it was cleared. */
+interface MarkBackup {
+  documentId: string;
+  hadKey: boolean;
+  value: unknown;
+  /** The sidecar's key order, so the mark goes back to its own place. */
+  keys: string[];
+}
+
+/**
+ * What each step had read or recorded before it wrote, set when the step (or
+ * the document within it) is entered, so a step that threw after writing is
+ * undone as well.
+ */
+interface MergeUndoProgress {
+  step: MergeUndoStep;
+  hasWritten: boolean;
+  record: RawFile | null;
+  isRecordClearEntered: boolean;
+  savesBefore: Map<string, Set<string>> | null;
+  documents: { documentId: string; backup: OriginalBackup }[];
+  notes: NoteListBackup[] | null;
+  marks: MarkBackup[] | null;
+}
+
+function newMergeProgress(): MergeUndoProgress {
+  return {
+    step: "save-current-text",
+    hasWritten: false,
+    record: null,
+    isRecordClearEntered: false,
+    savesBefore: null,
+    documents: [],
+    notes: null,
+    marks: null,
+  };
+}
+
+function skippedOf(
+  facts: MergeUndoFacts,
+): MergeUndoAppliedFields["skippedDocuments"] {
+  const skipped: MergeUndoAppliedFields["skippedDocuments"] = [];
+  for (const a of facts.absorbed) {
+    if (a.state === "in-trash") {
+      skipped.push({ documentId: a.ref.documentId, state: "in-trash" });
+    } else if (a.state === "purged") {
+      skipped.push({ documentId: a.ref.documentId, state: "purged" });
+    }
+  }
+  return skipped;
+}
+
+async function backUpMark(
+  projectRoot: string,
+  documentId: string,
+): Promise<MarkBackup> {
+  const sidecar = (await readSidecar(projectRoot, documentId)) ?? {};
+  return {
+    documentId,
+    hadKey: Object.prototype.hasOwnProperty.call(
+      sidecar,
+      MERGED_MARK_SIDECAR_KEY,
+    ),
+    value: sidecar[MERGED_MARK_SIDECAR_KEY],
+    keys: Object.keys(sidecar),
+  };
+}
+
+/** Writes the mark back as it was; a document that never had one is left without. */
+async function restoreMark(
+  projectRoot: string,
+  backup: MarkBackup,
+): Promise<void> {
+  await mutateSidecar(projectRoot, backup.documentId, (current) => {
+    if (current === null) throw new Error("sidecar missing");
+    const hasKey = Object.prototype.hasOwnProperty.call(
+      current,
+      MERGED_MARK_SIDECAR_KEY,
+    );
+    if (
+      hasKey === backup.hadKey &&
+      JSON.stringify(current[MERGED_MARK_SIDECAR_KEY]) ===
+        JSON.stringify(backup.value)
+    ) {
+      return SIDECAR_UNCHANGED;
+    }
+    const withMark: Record<string, MetadataValue> = { ...current };
+    if (backup.hadKey) {
+      withMark[MERGED_MARK_SIDECAR_KEY] = backup.value as MetadataValue;
+    } else delete withMark[MERGED_MARK_SIDECAR_KEY];
+    const next: Record<string, MetadataValue> = {};
+    for (const key of backup.keys) {
+      if (key in withMark) next[key] = withMark[key];
+    }
+    for (const key of Object.keys(withMark)) {
+      if (!(key in next)) next[key] = withMark[key];
+    }
+    return next;
+  });
+}
+
+type MergeUndoKind = "record" | "marks" | "notes" | "documents" | "saves";
+
+const MERGE_REMAINING_BY_KIND: Record<MergeUndoKind, MergeUndoRemainingState> =
+  {
+    record: "record-not-restored",
+    marks: "marks-not-restored",
+    notes: "notes-not-restored",
+    documents: "documents-not-restored",
+    saves: "preserved-revisions-kept",
+  };
+
+/**
+ * Undoes the steps that were entered, in reverse: the record, the marks, the
+ * note lists, each document's text and derived values, then the preserved
+ * revisions Undo made. Every undo is attempted; one that fails is recorded and
+ * decides the state returned. A document whose text cannot be put back keeps
+ * the revision that holds its text from before Undo.
+ */
+async function compensateMergeUndo(
+  projectRoot: string,
+  progress: MergeUndoProgress,
+): Promise<MergeUndoRemainingState> {
+  const failed = new Set<MergeUndoKind>();
+  const failedDocuments = new Set<string>();
+  const attempt = async (
+    kind: MergeUndoKind,
+    run: () => Promise<void>,
+  ): Promise<boolean> => {
+    try {
+      await run();
+      return true;
+    } catch {
+      failed.add(kind);
+      return false;
+    }
+  };
+  const { record, marks, notes, documents, savesBefore } = progress;
+  if (progress.isRecordClearEntered && record) {
+    await attempt("record", () => restoreRecord(projectRoot, record));
+  }
+  for (const mark of marks ?? []) {
+    await attempt("marks", () => restoreMark(projectRoot, mark));
+  }
+  for (const list of notes ?? []) {
+    await attempt("notes", () => restoreNoteList(projectRoot, list));
+  }
+  for (const { documentId, backup } of documents) {
+    const isRestored = await attempt("documents", () =>
+      restoreOriginalBackup(projectRoot, documentId, backup),
+    );
+    if (!isRestored) failedDocuments.add(documentId);
+  }
+  for (const [documentId, before] of savesBefore ?? []) {
+    if (failedDocuments.has(documentId)) continue;
+    await attempt("saves", () =>
+      removeSavedRevisions(projectRoot, documentId, before, "mergeUndoSave"),
+    );
+  }
+  await flushIndexer();
+  if (failed.size === 0) return "merge-restored";
+  if (failed.size > 1) return "state-unknown";
+  const [kind] = [...failed];
+  return MERGE_REMAINING_BY_KIND[kind];
+}
+
+/** What the write steps report; the name is read after the locks are released. */
+type MergeUndoStepFields = Omit<MergeUndoAppliedFields, "targetName">;
+
+async function runMergeUndoSteps(
+  projectRoot: string,
+  facts: MergeUndoFacts,
+  date: string,
+  progress: MergeUndoProgress,
+): Promise<MergeUndoStepFields> {
+  const live = facts.absorbed.filter((a) => a.state === "live");
+  const liveIds = [facts.targetId, ...live.map((a) => a.ref.documentId)];
+  progress.record = await readRawOrNull(
+    `${projectRoot}/meta/${LATEST_OPERATION_FILE_NAME}`,
+  );
+  progress.step = "save-current-text";
+  const savesBefore = new Map<string, Set<string>>();
+  for (const documentId of liveIds) {
+    savesBefore.set(documentId, await revisionIdsOf(projectRoot, documentId));
+  }
+  progress.savesBefore = savesBefore;
+  const preservedRevisions: SnapshotRevisionRef[] = [];
+  for (const documentId of liveIds) {
+    progress.hasWritten = true;
+    preservedRevisions.push(
+      await saveCurrentMergeText(projectRoot, documentId, date),
+    );
+  }
+  progress.step = "restore-target";
+  progress.documents.push({
+    documentId: facts.targetId,
+    backup: await backUpOriginal(projectRoot, facts.targetId),
+  });
+  await overwriteCanonical(
+    projectRoot,
+    facts.targetId,
+    facts.targetSnapshotContent,
+    false,
+  );
+  progress.step = "restore-absorbed";
+  for (const doc of live) {
+    progress.documents.push({
+      documentId: doc.ref.documentId,
+      backup: await backUpOriginal(projectRoot, doc.ref.documentId),
+    });
+    await overwriteCanonical(
+      projectRoot,
+      doc.ref.documentId,
+      doc.snapshotContent,
+      true,
+    );
+  }
+  progress.step = "move-annotations";
+  const moving = live.filter((a) => a.returning.length > 0);
+  if (moving.length > 0) {
+    progress.notes = [
+      await backUpNoteList(projectRoot, facts.targetId),
+      ...(await Promise.all(
+        moving.map((a) => backUpNoteList(projectRoot, a.ref.documentId)),
+      )),
+    ];
+  }
+  const movedAnnotationIds = await moveMergeAnnotationsBack(projectRoot, facts);
+  progress.step = "clear-marks";
+  progress.marks = await Promise.all(
+    live.map((doc) => backUpMark(projectRoot, doc.ref.documentId)),
+  );
+  for (const doc of live) {
+    await removeMergedMark(projectRoot, doc.ref.documentId);
+  }
+  progress.step = "clear-record";
+  progress.isRecordClearEntered = true;
+  await clearLatestOperation(projectRoot);
+  return {
+    operation: "merge",
+    targetDocumentId: facts.targetId,
+    absorbedDocumentIds: facts.absorbed.map((a) => a.ref.documentId),
+    skippedDocuments: skippedOf(facts),
+    preservedRevisions,
+    movedAnnotationIds,
+  };
+}
+
+type MergeUndoLocked =
+  | { kind: "applied"; fields: MergeUndoStepFields }
+  | { kind: "result"; result: MergeUndoResult };
+
+async function undoMergeUnderLocks(
+  projectRoot: string,
+  first: LatestOperationRecord,
+  shape: MergeShape,
+  options: SplitUndoOptions,
+): Promise<MergeUndoLocked> {
+  const again = await readLatestOperation(projectRoot);
+  if (again.outcome === "none") {
+    return { kind: "result", result: { outcome: "nothing-to-undo" } };
+  }
+  if (again.outcome === "failed") {
+    return {
+      kind: "result",
+      result: { outcome: "could-not-be-checked", cause: again.cause },
+    };
+  }
+  if (!isSameRecord(first, again.record)) {
+    return {
+      kind: "result",
+      result: { outcome: "could-not-be-checked", cause: "record-changed" },
+    };
+  }
+  const gathered = await gatherMergeFacts(projectRoot, first, shape);
+  if (gathered.kind === "stop") {
+    return { kind: "result", result: gathered.result };
+  }
+  const date = (options.now ?? (() => new Date()))().toISOString();
+  const progress = newMergeProgress();
+  try {
+    const fields = await runMergeUndoSteps(
+      projectRoot,
+      gathered.facts,
+      date,
+      progress,
+    );
+    return { kind: "applied", fields };
+  } catch (err) {
+    if (isLockedAccessError(err) && !progress.hasWritten) throw err;
+    const remainingState = await compensateMergeUndo(projectRoot, progress);
+    return {
+      kind: "result",
+      result: {
+        outcome: "failed",
+        operation: "merge",
+        failedStep: progress.step,
+        cause: causeOf(err),
+        remainingState,
+      },
+    };
+  }
+}
+
+/** The target's name, or `null` when the sidecar cannot be read. */
+async function readTargetName(
+  projectRoot: string,
+  documentId: string,
+): Promise<string | null> {
+  try {
+    const name = (await readSidecar(projectRoot, documentId))?.name;
+    return typeof name === "string" ? name : null;
+  } catch (err) {
+    if (isLockedAccessError(err)) throw err;
+    return null;
+  }
+}
+
+/**
+ * Undoes the merge a stored record describes. `record` is the one the caller
+ * read; it is read again inside the locks and a difference is
+ * `could-not-be-checked` (`record-changed`). Exported for the Undo route.
+ */
+export async function undoLatestMerge(
+  projectId: string,
+  record: LatestOperationRecord,
+  options: SplitUndoOptions,
+): Promise<MergeUndoResult> {
+  const projectRoot = resolveResourceProjectRootOrThrow(projectId);
+  const shape = mergeShapeOf(record);
+  if (shape === null) {
+    return { outcome: "could-not-be-checked", cause: "record-malformed" };
+  }
+  const keys = [
+    ...new Set(
+      record.affectedDocumentIds.map((id) =>
+        revisionContentLockKey(projectRoot, id),
+      ),
+    ),
+  ].sort();
+  const releases: Array<() => void> = [];
+  let outcome: MergeUndoLocked;
+  try {
+    for (const key of keys) releases.push(await acquireLock(key));
+    outcome = await undoMergeUnderLocks(projectRoot, record, shape, options);
+  } finally {
+    for (const release of releases.reverse()) release();
+  }
+  if (outcome.kind === "result") return outcome.result;
+  await flushIndexer();
+  const fields: MergeUndoAppliedFields = {
+    ...outcome.fields,
+    targetName: await readTargetName(
+      projectRoot,
+      outcome.fields.targetDocumentId,
+    ),
+  };
+  const skipped = new Set(fields.skippedDocuments.map((s) => s.documentId));
+  const changed = [
+    fields.targetDocumentId,
+    ...fields.absorbedDocumentIds.filter((id) => !skipped.has(id)),
+  ];
+  const update = await updateDocumentIndexes(projectRoot, changed);
+  if (update.outcome === "failed") {
+    return { ...fields, outcome: "index-failed", failures: update.failures };
+  }
+  return { ...fields, outcome: "applied" };
+}
+
+/**
+ * Undoes the project's latest operation, whichever kind it is: a split goes to
+ * {@link undoLatestSplit} unchanged, a merge to the merge branch above, which
+ * replaces the `unsupported-operation` outcome {@link undoLatestSplit} still
+ * returns for a merge record.
+ *
+ * @throws The locked-access error for a locked or key-less encrypted project
+ *   when nothing has been changed; `InvalidProjectIdCoreError` for a bad
+ *   `projectId`.
+ */
+export async function undoLatestOperation(
+  projectId: string,
+  options: SplitUndoOptions = {},
+): Promise<SplitUndoResult | MergeUndoResult> {
+  const projectRoot = resolveResourceProjectRootOrThrow(projectId);
+  const stored = await readLatestOperation(projectRoot);
+  if (stored.outcome === "none") return { outcome: "nothing-to-undo" };
+  if (stored.outcome === "failed") {
+    return { outcome: "could-not-be-checked", cause: stored.cause };
+  }
+  if (stored.record.kind === "merge") {
+    return undoLatestMerge(projectId, stored.record, options);
+  }
+  return undoLatestSplit(projectId, options);
 }
