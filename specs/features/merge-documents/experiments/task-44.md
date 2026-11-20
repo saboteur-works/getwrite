@@ -39,7 +39,7 @@ Only Undo merge removes a Merged mark, and Undo reaches only the latest operatio
 
 ### Step 9: timings
 
-Merges of 2, 10 and 25 documents (25 is the cap, `MERGE_DOCUMENT_CAP`; the 50 in the task cannot be merged). The owner reported each as "pretty fast". This is the owner's impression in the packaged app, not a timed measurement. The timed figures are the lead's earlier runs at the cap: 110 to 120 ms for the merge request, then 388 to 431 ms for the index queue to drain.
+Merges of 2, 10 and 25 documents (25 is the cap, `MERGE_DOCUMENT_CAP`; the 50 in the task cannot be merged). The owner reported each as "pretty fast". This is the owner's impression in the packaged app, not a timed measurement. The timed figures at the cap come from Task 27's probe of the core, not from the app (`task-27.md`): `applyMerge`, including the awaited index update, returned in 110 to 120 ms over 3 runs, and the index queue then drained in 388 to 431 ms.
 
 ### Step 7, rerun: Undo merge after edits (lead read of the files)
 
