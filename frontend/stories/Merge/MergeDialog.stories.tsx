@@ -87,7 +87,7 @@ type Story = StoryObj<typeof MergeDialog>;
 /** Defaults: every annotation ticked, every metadata choice left at "keep". */
 export const Default: Story = {};
 
-/** The first document is left out of compile and sits in the Inbox; Merge stays available. */
+/** The base document is left out of compile and sits in the Inbox; Merge stays available. */
 export const WithWarnings: Story = {
   args: {
     preview: {
@@ -116,7 +116,7 @@ export const RefusedCap: Story = {
   },
 };
 
-/** The first document could not hold the chosen notes; the counts are stated. */
+/** The base document could not hold the chosen notes; the counts are stated. */
 export const RefusedAnnotationLimit: Story = {
   args: {
     refusal: {
@@ -141,7 +141,7 @@ export const Submitting: Story = { args: { isSubmitting: true } };
 export const Failed: Story = {
   args: {
     failure:
-      "The merge did not finish. It stopped while adding the text to the first document. Your documents are as they were before, and nothing new was kept.",
+      "The merge did not finish. It stopped while adding the text to the base document. Your documents are as they were before, and nothing new was kept.",
   },
 };
 

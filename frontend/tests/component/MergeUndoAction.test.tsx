@@ -513,7 +513,7 @@ describe("the Undo merge toast and the editor", () => {
 
   it("names the documents left alone, and an unknown target name", async () => {
     expect(describeUndoMergeSuccess(null, 2, 1, 0)).toContain(
-      "The first document is back as it was",
+      "The base document is back as it was",
     );
     expect(describeUndoMergeSuccess("X", 2, 1, 0)).toContain(
       "1 of them was in the Trash or permanently removed and was left alone",

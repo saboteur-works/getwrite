@@ -39,7 +39,7 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusalReason, string> = {
   [MERGE_REFUSAL_REASONS.entityDocument]:
     "A document set up as an entity is in the selection. Remove the entity first if you want to merge it.",
   [MERGE_REFUSAL_REASONS.mergedTarget]:
-    "The first document you selected was already merged into another document. Choose a different first document.",
+    "The base document you selected was already merged into another document. Choose a different base document.",
   [MERGE_REFUSAL_REASONS.mergedAbsorbed]:
     "A document in the selection was already merged into another document. Remove it from the selection.",
   [MERGE_REFUSAL_REASONS.missingDocument]:
@@ -49,7 +49,7 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusalReason, string> = {
   [MERGE_REFUSAL_REASONS.staleContent]:
     "A document changed after the merge dialog opened. Open the dialog again and retry.",
   [MERGE_REFUSAL_REASONS.annotationLimit]:
-    "The first document cannot hold all the notes that were chosen to move.",
+    "The base document cannot hold all the notes that were chosen to move.",
   [MERGE_REFUSAL_REASONS.tooManyDocuments]:
     "Too many documents are selected to merge at once.",
   [MERGE_REFUSAL_REASONS.lockedProject]:
@@ -60,7 +60,7 @@ export const MERGE_REFUSAL_MESSAGES: Record<MergeRefusalReason, string> = {
 
 /** The annotation-limit refusal, generic form (FR-9). */
 export const MERGE_ANNOTATION_LIMIT_MESSAGE =
-  "There would be too many notes on the first document, so nothing was merged. Leave some notes behind, or remove some, and try again.";
+  "There would be too many notes on the base document, so nothing was merged. Leave some notes behind, or remove some, and try again.";
 
 /** The document-cap refusal, generic form (FR-15). */
 export const MERGE_DOCUMENT_CAP_MESSAGE =
@@ -70,7 +70,7 @@ export const MERGE_DOCUMENT_CAP_MESSAGE =
 export function describeMergeAnnotationLimit(
   counts: MergeAnnotationLimitCounts,
 ): string {
-  return `The first document has ${counts.existing} notes and ${counts.incoming} more were chosen to move, but a document holds at most ${counts.limit}. Nothing was changed.`;
+  return `The base document has ${counts.existing} notes and ${counts.incoming} more were chosen to move, but a document holds at most ${counts.limit}. Nothing was changed.`;
 }
 
 /** The document-cap refusal naming the limit (FR-15). Nothing was written. */
@@ -97,10 +97,10 @@ export const MERGE_FAILED_REMAINING_STATE_MESSAGES: Record<
 export const MERGE_FAILED_STEP_LABELS: Record<MergeStep, string> = {
   "lock-documents": "securing the documents",
   snapshot: "saving copies of the documents",
-  "move-annotations": "moving notes to the first document",
+  "move-annotations": "moving notes to the base document",
   "write-marks": "marking the documents that were merged",
   "strip-absorbed-marks": "removing note marks from the merged documents",
-  "append-to-target": "adding the text to the first document",
+  "append-to-target": "adding the text to the base document",
   "write-records": "recording the merge",
 };
 
@@ -143,11 +143,11 @@ export function describeMergeIndexFailure(
 
 /** Warning (OQ-12): the target is left out of compile while an absorbed document is not. The merge proceeds. */
 export const MERGE_TARGET_EXCLUDED_FROM_COMPILE_WARNING =
-  "The first document is left out of compile, so the text added to it will be left out of compile too. You can still merge.";
+  "The base document is left out of compile, so the text added to it will be left out of compile too. You can still merge.";
 
 /** Warning (OQ-12): the target is in the Inbox, so it is left out of the goals. The merge proceeds. */
 export const MERGE_TARGET_IN_INBOX_WARNING =
-  "The first document is in the Inbox, so the text added to it will not count toward your goals. You can still merge.";
+  "The base document is in the Inbox, so the text added to it will not count toward your goals. You can still merge.";
 
 /** The merged-mark texts for the states beyond live (FR-16). Never blank, never the live label. */
 export const MERGE_MARK_STATE_MESSAGES = {
@@ -201,7 +201,7 @@ export const UNDO_MERGE_REFUSAL_MESSAGES = {
   "target-gone":
     "The document the others were merged into can no longer be found, so the merge cannot be undone.",
   "snapshot-gone":
-    "The saved copy of the first document from before the merge is no longer kept, so the merge cannot be undone.",
+    "The saved copy of the base document from before the merge is no longer kept, so the merge cannot be undone.",
 } as const;
 
 /**
@@ -215,7 +215,7 @@ export function describeUndoMergeAction(
 ): string {
   const subject =
     targetName === null
-      ? "the first document (its name could not be found in the project)"
+      ? "the base document (its name could not be found in the project)"
       : `“${targetName}”`;
   const noun = absorbedCount === 1 ? "document" : "documents";
   return `Puts ${subject} back as it was before the merge and removes the merged mark from the ${absorbedCount === 1 ? "other" : `${absorbedCount} other`} ${noun}, ${absorbedCount === 1 ? "which stays where it is" : "which stay where they are"} in the tree. Edits made since the merge are kept in saved revisions.`;

@@ -63,6 +63,10 @@ const KIND_HEADINGS: Record<OfferKind, string> = {
 
 type MetadataOffer = MergePreviewData["metadata"][number];
 
+/** The menu surface of `.resource-context-menu` (border, radius, chrome2), padded for content. */
+const PANEL_CLASS =
+  "rounded-md border-[0.5px] border-gw-border bg-gw-chrome2 p-4";
+
 const INITIAL_FOCUS_SELECTOR =
   "input:not([disabled]), select:not([disabled]), button:not([disabled])";
 
@@ -125,7 +129,7 @@ function DocumentsList({
       className="flex list-none flex-col gap-3 p-0"
     >
       <li className="text-sm text-gw-primary">
-        <p className="font-semibold">First document: {preview.target.name}</p>
+        <p className="font-semibold">Base document: {preview.target.name}</p>
         <p className="text-gw-secondary">
           {pathText(preview.target.folderPath)}.{" "}
           {wordsText(preview.target.words)}. It receives the text.
@@ -215,9 +219,10 @@ function AnnotationSections({
       </p>
     );
   return (
-    <section className="flex flex-col gap-3">
+    <section className={`flex flex-col gap-3 ${PANEL_CLASS}`}>
       <h3 className="text-sm font-semibold text-gw-primary">
-        Move these to the first document
+        Select the notes, citations, and claims you would like to move to the
+        base document
       </h3>
       {groups.map((group) => (
         <div key={group.documentId} className="flex flex-col gap-2">
@@ -264,7 +269,7 @@ function SingleValueField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
-        <option value="">Keep the first document&apos;s value</option>
+        <option value="">Keep the base document&apos;s value</option>
         {offer.values.map((v) => (
           <option key={v.documentId} value={v.documentId}>
             {`${names.get(v.documentId) ?? "A document"}: ${valueText(v.value)}`}
@@ -289,7 +294,7 @@ function UnitedField({
   return (
     <fieldset className="flex flex-col gap-1">
       <legend className="text-sm text-gw-primary">
-        {offer.field} (combined with the first document&apos;s values)
+        {offer.field} (combined with the base document&apos;s values)
       </legend>
       {offer.values.map((v) => (
         <label
@@ -329,9 +334,13 @@ function MetadataSection({
   if (preview.metadata.length === 0) return null;
   const names = new Map(preview.absorbed.map((d) => [d.documentId, d.name]));
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-3">
+    <section
+      aria-labelledby={headingId}
+      className={`flex flex-col gap-3 ${PANEL_CLASS}`}
+    >
       <h3 id={headingId} className="text-sm font-semibold text-gw-primary">
-        Copy these details to the first document
+        Select metadata fields you would like to override on the base document
+        below
       </h3>
       {preview.metadata.map((offer) =>
         isListField(offer) ? (
@@ -422,11 +431,14 @@ function MergeForm({
     <form onSubmit={submit} className="flex flex-col gap-4">
       {preview ? (
         <>
-          <p className="text-sm text-gw-primary">
-            The first document keeps its name, folder and place in the tree. The
-            text of the others is added to the end of it, in the order below.
-          </p>
-          <DocumentsList preview={preview} />
+          <div className={`flex flex-col gap-4 ${PANEL_CLASS}`}>
+            <p className="text-sm text-gw-primary">
+              The base document keeps its name, folder and place in the tree.
+              The text of the others is added to the end of it, in the order
+              below.
+            </p>
+            <DocumentsList preview={preview} />
+          </div>
           {preview.warnings.length > 0 ? (
             <ul
               aria-label="Warnings"
@@ -534,7 +546,7 @@ export default function MergeDialog({
         >
           <DialogTitle>Merge documents</DialogTitle>
           <DialogDescription className="mb-4">
-            Choose what goes to the first document. Escape closes without
+            Choose what goes to the base document. Escape closes without
             merging.
           </DialogDescription>
           <MergeForm

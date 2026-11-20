@@ -134,13 +134,13 @@ afterEach(() => {
 describe("MergeDialog target and order", () => {
   it("names the target with a visible text label and shows the append order of the others", () => {
     render(dialog());
-    expect(screen.getByText(/The first document keeps its name/i)).toBeTruthy();
+    expect(screen.getByText(/The base document keeps its name/i)).toBeTruthy();
     const list = screen.getByRole("list", { name: "Documents in the merge" });
     const top = within(list)
       .getAllByRole("listitem")
       .filter((li: HTMLElement) => li.parentElement === list);
     expect(top).toHaveLength(3);
-    expect(top[0].textContent).toMatch(/First document: Chapter 1/);
+    expect(top[0].textContent).toMatch(/Base document: Chapter 1/);
     expect(top[1].textContent).toMatch(/Document 2: Chapter 2/);
     expect(top[2].textContent).toMatch(/Document 3: Chapter 3/);
   });
@@ -244,7 +244,7 @@ describe("MergeDialog defaults", () => {
   it("shows a multiselect as united, with the values of each source", () => {
     render(dialog());
     const united = screen.getByRole("group", { name: /tags/i });
-    expect(united.textContent).toMatch(/combined with the first document/i);
+    expect(united.textContent).toMatch(/combined with the base document/i);
     expect(within(united).getByText(/Chapter 2: sea, night/)).toBeTruthy();
     expect(within(united).getByText(/Chapter 3: night, storm/)).toBeTruthy();
   });

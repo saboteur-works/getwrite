@@ -102,7 +102,7 @@ export const UNDO_MERGE_COULD_NOT_BE_CHECKED_MESSAGE =
 /** Where a failed Undo merge stopped, in words. */
 export const UNDO_MERGE_STEP_LABELS: Record<MergeUndoStep, string> = {
   "save-current-text": "saving the current text of the documents",
-  "restore-target": "putting back the text of the first document",
+  "restore-target": "putting back the text of the base document",
   "restore-absorbed": "putting back the text of the other documents",
   "move-annotations": "moving the notes back",
   "clear-marks": "removing the merged mark from the other documents",
@@ -163,8 +163,7 @@ export function describeUndoMergeSuccess(
   skippedCount: number,
   movedNoteCount: number,
 ): string {
-  const subject =
-    targetName === null ? "The first document" : `“${targetName}”`;
+  const subject = targetName === null ? "The base document" : `“${targetName}”`;
   const others =
     absorbedCount === 1
       ? "1 other document"
