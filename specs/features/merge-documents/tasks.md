@@ -82,7 +82,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** none
 **Estimate:** 2
 **Notes:** Index only; measurements go to the per-task files. The spec names `experiments.md` as the FR-1 record; here it is the index that links the measurement tasks, because only one task may edit it while the probes run in parallel.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 2: FR-1 (a): tree selection
 **What:** Record how the tree's multi-selection behaves with Shift+click, Ctrl/Cmd+click and a plain click, and whether it reaches a context menu action.
@@ -91,7 +91,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** Reads and throwaway probes only (a component test in the scratchpad is acceptable); probes live in the scratchpad and no production file is edited. Read `frontend/components/ResourceTree/ResourceTree.tsx`, `frontend/components/ResourceTree/ResourceContextMenu.tsx` and `frontend/src/store/resourcesSlice.ts`. A real-browser run is the owner's in Task 44; here, state what was and was not run.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 3: FR-1 (b): every reader of a document's word figure or membership
 **What:** Enumerate every project-level reader that decides whether a document counts, for each surface of FR-17 to FR-20, before the merged predicate is added to any of them.
@@ -100,7 +100,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** Reads and probes only. Start from `frontend/components/common/CompilePreviewModal.tsx`, `frontend/components/common/ExportPreviewModal.tsx`, `frontend/components/Sidebar/EntityCompileSection.tsx`, `frontend/components/common/compileSelection.ts`, `frontend/src/lib/models/writing-log-core.ts`, `frontend/src/lib/models/goal-filter-membership-core.ts`, `frontend/src/lib/models/goal-filtered-total-core.ts`, `frontend/components/WorkArea/DataView.tsx` and `frontend/src/lib/status-rollup.ts`. The `cli/` commands read so far (`doctor`, `project`, `prune`, `qa`, `reindex`, `repair-revisions`, `screenshots`, `templates`) show no compile command, which this task must confirm or refute; if it refutes, Task 28 gains the CLI file.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 4: FR-1 (c) daily goal and (h) copy paths carrying the mark
 **What:** Record the effect on the daily goal of skipping only the writing-log entries dated after a mark's date, and whether the copy and duplicate paths carry the `mergedMark` key today.
@@ -109,7 +109,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Probes in the scratchpad; no production file is edited. Tasks 22 and 30 read this record before writing tests. `CLAUDE.md` is not edited here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 5: FR-1 (d): lock edges, overlap and failure injection over N+1 documents
 **What:** Record the lock edges of a merge over N+1 documents, what two overlapping merges that share a document do, and what reverse compensation leaves on disk after a failure injected after each write step.
@@ -118,7 +118,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** Probes in the scratchpad; no production file is edited. Read `frontend/src/lib/models/locks.ts`, `frontend/src/lib/models/lock-guard.ts`, `frontend/src/lib/models/meta-locks.ts`, `frontend/src/lib/models/split-core.ts` and `specs/features/split-at-cursor/experiments/task-5.md`. Task 25 reads this record before writing tests.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 6: FR-1 (e): appended node ids, the 500-annotation limit and mark stripping
 **What:** Record what the ids of appended nodes are, what happens to the target's 500-annotation limit, and what stripping or keeping a moved note's mark does to an absorbed document's stored text.
@@ -127,7 +127,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** Probes in the scratchpad using the schema of `frontend/components/Editor/editorExtensions.ts`, `frontend/src/lib/models/annotation-mark-ids.ts`, `frontend/src/lib/models/annotation-mark-strip.ts` and `frontend/src/lib/models/annotation-validation.ts`. Tasks 18, 19 and 25 read this record before writing tests.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 7: FR-1 (g): what Undo needs for documents in Trash, purged or edited
 **What:** Record what an Undo of a merge needs and finds for an absorbed document that is in Trash, purged or edited since, and for a target in Trash or purged.
@@ -136,7 +136,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Probes in the scratchpad; no production file is edited. Read `frontend/src/lib/models/split-lineage-resolver.ts`, `frontend/src/lib/models/split-undo-core.ts`, `frontend/src/lib/models/trash.ts` and `specs/features/split-at-cursor/experiments/task-3.md`. Task 21 reads this record before writing fixtures.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 8: Sample project: record how a script can build through the real core functions
 **What:** Record whether a script under `scripts/sample-project/` can create a project through the real model or core functions (or the CLI), and whether the encryption layer can be driven from a script, so the generator stays schema-valid as the app changes.
@@ -145,7 +145,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** Test tooling only, POS `task_23e9c7df`. Read `scripts/organizer-grid-fixture/generate.mjs` and its README for the pattern to follow (`--out <dir>`, deterministic ids from a seed, synthetic text, one JSON line printed, `project.json` carries `rootPath`). Probes live in the scratchpad; no `package.json` or lockfile is edited.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 9: Sample project generator, general coverage
 **What:** Write the generator script that builds a synthetic project covering the general features of the app, with a test that loads the output.
@@ -154,7 +154,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1, 8
 **Estimate:** 8
 **Notes:** Test tooling, not part of Feature 121's product surface; POS `task_23e9c7df`, note `note_eaac570d`. Owner: "I'd like a sample project created for tests I'll need to run. Ideally, that project will be reusable in the future as well." A committed project folder is not used: `projects/` is gitignored and real projects must never be used. Read `docs/standards/testing.md` for where a script-driven test lives and use an existing test file's setup helpers.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 10: Sample project generator, merge-specific coverage
 **What:** Add to the generator the documents arranged for every merge check of the spec, so each owner check has a ready selection.
@@ -163,7 +163,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 9
 **Estimate:** 5
 **Notes:** Test tooling, POS `task_23e9c7df`. The marked document is built by writing the existing key directly (the generator cannot call a merge that does not exist yet); a note in the README (Task 12) says the mark is hand-written and shows how to produce a real one with the app after Task 25 ships. Text stays synthetic.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 11: Sample project generator, encrypted copy
 **What:** Add an option that writes an encrypted copy of the sample project, or, if the encryption layer cannot be driven from a script, the documented in-app steps and a test that says so.
@@ -172,7 +172,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 10
 **Estimate:** 3
 **Notes:** Test tooling, POS `task_23e9c7df`. Never place a passphrase in a file under the repository. Read `frontend/src/lib/models/encryptingAdapter.ts` and `frontend/src/lib/api/encryption.ts`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 12: Sample project README and whole-project check
 **What:** Write the README saying how to generate and load the sample project on desktop and hosted, and run the whole generator test.
@@ -181,7 +181,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 11
 **Estimate:** 2
 **Notes:** Test tooling, POS `task_23e9c7df`. Model the layout on `scripts/organizer-grid-fixture/README.md`. Loading into a running app is the owner's step in Tasks 44 and 45.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 13: FR-1 (f): timing of a merge of 2, 10 and 50 documents
 **What:** Record the time of a merge of 2, 10 and 50 documents of about 5000 words, of the post-commit index update and of an Undo of each, on a project of at least 500 documents.
@@ -190,7 +190,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1
 **Estimate:** 5
 **Notes:** Probes in the scratchpad. The fixture generator is count-only (its cards hold 20 to 79 generated words and it has no word-length option), so the 2, 10 and 50 documents of about 5000 words are made by the probe in the scratchpad, which rewrites `content.txt`, `content.tiptap.json` and the canonical `v-1` of that many generated cards in a scratchpad copy of the generated project; neither the generator nor the sample-project tasks are edited, and this task does not depend on them. Read `frontend/src/lib/models/split-index-update.ts`, `frontend/src/lib/models/revision-core.ts` and `specs/features/split-at-cursor/experiments/task-4.md`. Task 14 reads these timings.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 14: LEAD/OWNER: set the maximum number of documents of one merge (OQ-5)
 **What:** The owner sets the fixed maximum number of documents of one merge from the Task 13 timings and the lead records it and writes it as one constant.
@@ -199,7 +199,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 13
 **Estimate:** 1
 **Notes:** LEAD/OWNER, never run by the orchestrator. No agent chooses the value. The spec's own limits also bound it: the target's 500-annotation limit (checked by Task 19) and the 5000-id compile-exclusion list (not used by a merge, OQ-11).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 15: Contract: merge types, constants and result unions
 **What:** Define the inert shared contract: refusal reason codes, the merged-mark shape, the generalised latest-operation record, the carry-over choice shape and the typed result unions.
@@ -208,7 +208,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 1
 **Estimate:** 3
 **Notes:** No behaviour here. Only this task edits `split-types.ts` and `merge-types.ts`. The runtime validator for the record is Task 23. The cap constant is not here (Task 14).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 16: Message constants module (drafted wording)
 **What:** Add the one merge message-constants module holding every refusal, notice and failure text, drafted for the owner to review.
@@ -217,7 +217,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 15
 **Estimate:** 2
 **Notes:** Sibling of `split-messages.ts`, modelled on it and on `frontend/src/lib/sharing/limits-copy.ts`. Wording is drafted, not final; the owner reviews it in Task 37. Texts name no mechanism that no experiment separated.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 17: Eligibility function (pure, FR-2)
 **What:** Decide by one pure function whether a selection can be merged, returning a distinct stable reason naming the document that caused each refusal, and show that Split refuses a marked document.
@@ -226,7 +226,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 15
 **Estimate:** 5
 **Notes:** Used by the client to explain and by the server to enforce (Tasks 24, 25, 35). `split-eligibility.ts` itself is not edited unless the Split-refusal test shows the predicate does not return true for a marked document, in which case the task records it and stops for the owner.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 18: Tree order and joint composition (pure, FR-3)
 **What:** Order the absorbed documents in tree order and compose the target text followed by the absorbed texts with one empty paragraph per joint and fresh ids on appended nodes.
@@ -235,7 +235,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 6, 15
 **Estimate:** 5
 **Notes:** Read `experiments/task-6.md` first. Which row is "first selected" is not decided here: the target is passed in by the caller from what `experiments/task-2.md` shows. Reuse the node-id walk of `frontend/src/lib/models/split-cut.ts` by import if it exports one, without editing it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 19: Annotation carry and mark strip (pure, FR-9)
 **What:** Apply the writer's annotation choices for the absorbed documents: moved notes go to the target with their ids, unchosen ones stay and lose their mark in the appended text, and the 500 limit is checked.
@@ -244,7 +244,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 6, 15, 18
 **Estimate:** 5
 **Notes:** Read `experiments/task-6.md` first; a case it does not cover is returned as a failed outcome naming the annotation id and not guessed. Reuse `frontend/src/lib/models/annotation-mark-strip.ts` and `frontend/src/lib/models/annotation-mark-ids.ts` by import without editing them. `split-annotations.ts` partitions by a cut point and is not the right shape.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 20: Metadata carry (pure, FR-10)
 **What:** Decide which metadata values travel from the absorbed documents to the target, one source per field, multiselects united, the target's own values untouched unless chosen.
@@ -253,7 +253,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 15
 **Estimate:** 3
 **Notes:** Build the result from named keys and never as a spread of one sidecar over another. Modelled on the carry rules of `frontend/src/lib/models/split-new-document.ts`, which is read and not edited.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 21: Generalise the lineage-state resolver (pure, FR-5)
 **What:** Generalise the resolver's input to "a named document and revision" so a merged mark can be resolved to one of the five states.
@@ -262,7 +262,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 7, 15
 **Estimate:** 3
 **Notes:** Used by the mark display (Task 36) and by Undo (Task 38). Only this task edits `split-lineage-resolver.ts`; the read side that gathers inputs is written in Tasks 36 and 38.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 22: Merged-mark store and the copy-path drop (FR-5)
 **What:** Write and read the merged mark on an absorbed document through the storage adapter, and make `copyResourceCore` and `duplicateResource` drop it.
@@ -271,7 +271,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 4, 15
 **Estimate:** 5
 **Notes:** Read `experiments/task-4.md` (h) and `specs/features/split-at-cursor/experiments/task-3.md` first. Only this task edits the two copy paths. The mark is the sidecar key (OQ-9); no new `meta/` file.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 23: Latest-operation record accepts both kinds (FR-21)
 **What:** Make the runtime validator and the reader of the latest-operation record accept a split with its new document and a merge without one, and reject a malformed record.
@@ -280,7 +280,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 15
 **Estimate:** 3
 **Notes:** Only this task edits `split-records-core.ts`. The lineage-entry functions are untouched.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 24: Preview and staleness core (FR-7 server half, FR-11 data)
 **What:** Add the server-side read that checks the selection against the stored documents and returns what the dialog shows.
@@ -289,7 +289,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 14, 17, 19, 20
 **Estimate:** 5
 **Notes:** The client flushes pending saves before it calls this and the apply call (Task 34). Read `frontend/src/lib/models/split-preview-core.ts` and `frontend/src/lib/models/split-stored-read.ts` first. Inbox and compile-exclusion membership are read from `inbox-membership.ts` and `config.compileDefaults`, not recomputed.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 25: Merge apply with ordered writes (FR-3 to FR-10)
 **What:** Apply a merge as one operation in the decided order, holding every document's revision lock in ascending order of document id across the snapshots, with stale and overlap refusals.
@@ -298,7 +298,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 5, 6, 19, 20, 22, 23, 24
 **Estimate:** 8
 **Notes:** Task 47 (the mark store's full-instant date check, Gate 5 owner decision) MUST be done before this task starts: the schema allows a dependency only on a lower-numbered task, and Task 47 was numbered 47 by the owner's instruction not to renumber, so the order is held by Wave 4 (Task 47) before Wave 7 (this task) and not by a Depends-on edge. Read `experiments/task-5.md` (lock edges; the id-sorted order is the owner's decision, (Owner decision, Gate 5, 2026-11-19)) and `experiments/task-6.md` first. This task writes the forward path only; reverse compensation is Task 26, which edits the same file, so it runs after this one. Neither task is mergeable alone; they ship in one PR. A sibling to `split-core.ts` taking N+1 locks, not a generalisation of it. `withIndexingSuspended` is not used. Estimated 8 because it combines N+1 locks, three kinds of write per document and the overlap refusal.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 26: Reverse compensation and failure injection (FR-6)
 **What:** Add reverse compensation to the merge and a test that injects a failure after each write step.
@@ -307,7 +307,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 25
 **Estimate:** 5
 **Notes:** Edits `merge-core.ts` after Task 25, serial. Failed-state texts are read from `merge-messages.ts`, not edited here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 27: Post-commit index update wiring and failure report (FR-12, FR-9)
 **What:** Call the per-document index update after the merge commits, awaited, and return an index failure to the writer without rolling the merge back.
@@ -316,7 +316,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 16, 26
 **Estimate:** 3
 **Notes:** Edits `merge-core.ts` after Task 26, serial. Reuse `frontend/src/lib/models/split-index-update.ts` by import without editing it.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 28: Merged-away rule, compile (FR-17)
 **What:** Exclude a document marked as merged from every compile at read time in the Compile dialog, the Compile Entity Resources dialog and any CLI compile, with no per-run override.
@@ -325,7 +325,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 3, 15
 **Estimate:** 3
 **Notes:** Read `experiments/task-3.md` first: it names the exact reader. A test of this surface does not stand for another. Read the source and stories of `CompilePreviewModal.tsx` before using a prop.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 29: Merged-away rule, export and search (FR-18)
 **What:** Show by test that a marked document is still exported and still found by search, and leaves and rejoins the index with Trash as any document does.
@@ -334,7 +334,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 3, 15
 **Estimate:** 2
 **Notes:** Expected to be mostly tests, as the spec states these behaviours as unchanged; `experiments/task-3.md` says what each reader does with an extra key today.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 30: Merged-away rule, goals (FR-19)
 **What:** Exclude a document marked as merged from the project total goal, the daily goal after the mark's date, and the Goal filter's membership and filtered total.
@@ -343,7 +343,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 3, 4, 15
 **Estimate:** 5
 **Notes:** Read `experiments/task-3.md` and `experiments/task-4.md` first. The root `CLAUDE.md` glossary phrase "count from then on" is not changed here (docs stage, Task 42).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 31: Merged-away rule, word counts (FR-20)
 **What:** Leave a document marked as merged out of the word figures the product shows for the project, by adding the predicate to each project-level reader found by Task 3.
@@ -352,7 +352,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 3, 15
 **Estimate:** 5
 **Notes:** Read the source and stories of `DataView.tsx` before using a prop. This task and Tasks 35 and 36 may all edit `ResourceTree.tsx`; the dependency edges serialize them, with this one first.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 32: Preview and merge routes, client, sharing-gate enumeration and smoke count (FR-15)
 **What:** Add the preview and merge routes in the storage context, the client functions, and the enumeration and smoke-count entries.
@@ -361,7 +361,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 14, 23, 24, 27
 **Estimate:** 5
 **Notes:** Follow `frontend/app/api/project/split/preview/route.ts`, `frontend/app/api/project/split/route.ts` and `frontend/src/lib/api/split.ts`. The routes call the cores of Tasks 24 and 27.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 33: Merge dialog component (FR-11, FR-23)
 **What:** Build the carry-over dialog: the target and append order, word counts, annotations ticked by default grouped by absorbed document and kind, metadata choices unticked, the stated rule and the warnings.
@@ -370,7 +370,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 14, 16, 32
 **Estimate:** 5
 **Notes:** Presentational with props for data and callbacks. Read the source and stories of every shared control before using a prop. The wording shown is the drafted text of Task 16; the owner reviews it in Task 37.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 34: Merge host (flush, request, reload) (FR-7 client half)
 **What:** Mount the host that flushes pending saves, previews, opens the dialog, applies, and then shows the stored state of the document it shows.
@@ -379,7 +379,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 32, 33
 **Estimate:** 5
 **Notes:** Read `frontend/src/lib/pending-saves.ts`, `frontend/components/Split/SplitHost.tsx` and the `TipTapEditor.tsx` autosave path before editing. Task 36 edits `TipTapEditor.tsx` after this one.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 35: Tree selection and context-menu Merge with disabled reasons and Android exclusion (FR-13, FR-14, FR-2)
 **What:** Make the tree's multi-selection reach a context-menu Merge action on two or more rows, shown disabled with its stated reason when the selection cannot be merged, and absent on the Android runtime.
@@ -388,7 +388,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 2, 16, 17, 31, 34
 **Estimate:** 5
 **Notes:** Read `experiments/task-2.md` first and the source and tests of both files; the full item list of the menu is read at the start. Only this task edits `ResourceContextMenu.tsx`. Task 36 edits `ResourceTree.tsx` after this one.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 36: Merged mark in the tree and the notice line (FR-16)
 **What:** Show each absorbed document's mark in the tree as visible text naming its target, and a keyboard-reachable notice line stating the rule at the top of the open absorbed document, with the stated states when the target cannot be named.
@@ -397,7 +397,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 21, 22, 35
 **Estimate:** 3
 **Notes:** Read the source and stories of every shared control before using a prop. The wording is the drafted text of Task 16, reviewed in Task 37. The read side that gathers the resolver inputs is the hook written here.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 37: LEAD/OWNER: wording review of the message constants
 **What:** The owner reviews the drafted wording of every text in the merge message constants, as shown by the dialog, menu, mark, notice line and toasts, and the lead applies the owner's edits.
@@ -406,7 +406,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 33, 36
 **Estimate:** 1
 **Notes:** LEAD/OWNER, never run by the orchestrator. Made its own step after the UI tasks so the owner sees the texts in place; it does not hold any code task. The Undo texts are reviewed with Task 41's work in Task 43's run.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 38: Undo merge core (FR-21, FR-22)
 **What:** Generalise the Undo to dispatch on the record's kind and undo the latest merge as one operation that saves every affected document's current text as a preserved revision, restores the texts from the snapshots, moves chosen annotations back, clears every mark and clears the record.
@@ -415,7 +415,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 21, 22, 23, 27, 36
 **Estimate:** 8
 **Notes:** Built last among the feature tasks, by owner decision (F120-1), after a merge works end to end and its UI exists. Read `experiments/task-7.md` and `experiments/task-25.md` first. This task writes the forward path and the refusals; rollback of a failed Undo is Task 39, which edits the same file, so it runs after this one. Estimated 8 because it generalises a shipped Undo to N+1 documents without changing the split branch.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 39: Undo merge rollback and failure injection (FR-22, FR-6 rules)
 **What:** Add reverse compensation to the merge branch of Undo and a test that injects a failure after each of its write steps.
@@ -424,7 +424,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 38
 **Estimate:** 5
 **Notes:** Edits `split-undo-core.ts` after Task 38, serial.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 40: Undo routes and client carry the merge outcomes (FR-22)
 **What:** Make the existing Undo and latest-operation routes and client functions return the merge kind and the merge outcomes, adding no new route unless one is found necessary.
@@ -433,7 +433,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 32, 39
 **Estimate:** 3
 **Notes:** Edits files Task 31 of Feature 120 created; Task 32 here edited the enumeration and smoke script first, so this task runs after it. Undo is HTTP-only with no native backend pair; the documentation says so (Task 42).
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 41: Undo merge action and the dismissable Undo toast (FR-22, FR-14, FR-23)
 **What:** Offer "Undo merge" in the command palette and the editor context menu in any open document while the latest operation is a merge, and make the Undo status a dismissable toast for both split and merge.
@@ -442,7 +442,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 34, 40
 **Estimate:** 5
 **Notes:** Last UI task. Read the source of each file and the stories of any shared control first. This closes the follow-up left by the Feature 120 owner run that the status should be a dismissable toast (OQ-19). The code-block refusal wording of the split stays out of scope.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 42: Documentation for the scribe (FR-26 documents)
 **What:** Update the handbook, the feature documents, `frontend/CLAUDE.md`, the root `CLAUDE.md` glossary and the Android note, without any sentence that states an unmeasured result as fact.
@@ -451,7 +451,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 28, 29, 30, 31, 41
 **Estimate:** 3
 **Notes:** Only this task edits these documents. Pointer for the docs stage, not a code task (FR-19, FR-26): the root `CLAUDE.md` "Inbox" glossary entry says a filed-out item's words "count from then on"; `experiments/task-4.md` records what `writing-log-core.ts` does today, and the entry is corrected here to match that record, with no code change. It states no device result; the device runs are Tasks 44 and 45.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 43: LEAD-RUN: build check of every CI workflow command
 **What:** Run the typecheck, lint, tests and builds outside the sandbox from the main checkout and record each as run or not run, including every command the CI workflows run.
@@ -460,7 +460,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 12, 37, 41, 42
 **Estimate:** 3
 **Notes:** LEAD-RUN. Builds fail in worktrees here, so these run only from the main checkout.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 44: LEAD-RUN: packaged desktop run with the owner
 **What:** Run the feature in the packaged desktop app with the owner on the sample project and record only what was observed.
@@ -469,7 +469,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 43
 **Estimate:** 5
 **Notes:** LEAD-RUN with the owner, outside the sandbox from the main checkout. A unit test or an emulator run is never reported as a device run. The sample project removes the hand-built setup that slowed Feature 120's owner runs.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 45: LEAD-RUN: hosted-mode run with the owner, including a second-tenant probe
 **What:** Run the same checks in hosted mode with the owner and check that a second tenant cannot reach the first's project.
@@ -478,7 +478,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 43
 **Estimate:** 5
 **Notes:** LEAD-RUN with the owner, outside the sandbox from the main checkout. Hosted claims are stated only for what was observed.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 46: LEAD-RUN: CI commands, sharing smoke and close-out
 **What:** Run every CI workflow command and the sharing smoke, record each as run or not run, link the per-task records in `experiments.md` and close the experiments index.
@@ -487,7 +487,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 44, 45
 **Estimate:** 5
 **Notes:** LEAD-RUN. The last task before the PR. Only this task and Task 1 edit `experiments.md`.
-**Done:** [ ]
+**Done:** [x]
 
 ### Task 47: Merged-mark store refuses a date that is not a full instant (FR-5)
 **What:** Tighten the shipped Task 22 store so a mark whose date is date-only or unparseable is refused on write and read, as Task 30's daily-goal rule needs a full instant.
@@ -496,7 +496,7 @@ Hot files and the only tasks allowed to edit them (the dependency edges above se
 **Depends on:** 22
 **Estimate:** 2
 **Notes:** Owner decision, Gate 5, 2026-11-19: the mark's date is a full ISO 8601 instant (spec FR-5). Task 22 shipped a shape check that requires only that the date parses (`experiments/task-22.md`); Task 30 treats a date-only value as an unavailable daily figure (`experiments/task-30.md`). No dependency on Task 14. Task 25 must not start before this task is done (held by the waves; see Task 25's Notes). Only this task edits `merge-mark-core.ts` after Task 22.
-**Done:** [ ]
+**Done:** [x]
 
 ## Summary
 - Total tasks: 47
